@@ -1,13 +1,19 @@
 /**
- * Character profile for CLI chat (plan §15d).
- * Loads from ~/.hakanmcp/character.yaml (user override) or config.yaml consciousness.character.
- * Big Five traits + verbosity/proactivity shape response tone and proactive suggestions.
+ * Character profile — dynamic personality system.
+ *
+ * 9 numeric traits: Big Five + humor, patience, assertiveness, formality
+ * Plus verbosity (3-level) and proactivity (numeric).
+ *
+ * getEffectiveCharacter() applies emotional modifiers with moderate range (S=0.20).
+ * Small per-event shifts + slow decay = character evolves gradually over sessions.
+ * 5 tiers per trait × 9 traits = ~2M unique personality combinations.
+ *
+ * Modifier design:
+ * - S = 0.20 → traits can shift ±0.20 from base (subtle, cumulative)
+ * - Low decay (0.015) → emotions linger, enabling gradual drift
+ * - Cross-wiring: each emotion affects 3-5 traits
+ * - Compound effects: extreme emotional states create distinctive personalities
  */
-
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
-import yaml from 'js-yaml';
 
 export interface CharacterProfile {
   openness: number;
@@ -15,16 +21,24 @@ export interface CharacterProfile {
   extraversion: number;
   agreeableness: number;
   emotionalStability: number;
+  humor: number;            // 0–1: wit, playfulness, lightheartedness
+  patience: number;         // 0–1: tolerance, unhurriedness, calm persistence
+  assertiveness: number;    // 0–1: confidence in suggestions, willingness to push back
+  formality: number;        // 0–1: formal/professional vs casual/relaxed tone
   verbosity: 'low' | 'medium' | 'high';
-  proactivity: number; // 0–1: how often to offer suggestions
+  proactivity: number;      // 0–1: how often to offer suggestions
 }
 
 const DEFAULTS: CharacterProfile = {
-  openness: 0.8,
-  conscientiousness: 0.7,
-  extraversion: 0.6,
-  agreeableness: 0.75,
-  emotionalStability: 0.7,
+  openness: 0.65,
+  conscientiousness: 0.60,
+  extraversion: 0.55,
+  agreeableness: 0.60,
+  emotionalStability: 0.60,
+  humor: 0.45,
+  patience: 0.55,
+  assertiveness: 0.50,
+  formality: 0.50,
   verbosity: 'medium',
   proactivity: 0.5,
 };
@@ -33,110 +47,242 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
-function parseCharacter(obj: unknown): CharacterProfile {
-  if (!obj || typeof obj !== 'object') return { ...DEFAULTS };
-  const o = obj as Record<string, unknown>;
-  const num = (key: string, def: number) => {
-    const v = Number(o[key]);
-    return clamp(Number.isFinite(v) ? v : def, 0, 1);
-  };
-  const verbosityRaw = String(o.verbosity ?? 'medium').toLowerCase();
-  const verbosity = verbosityRaw === 'low' || verbosityRaw === 'high' ? verbosityRaw : 'medium';
-  return {
-    openness: num('openness', DEFAULTS.openness),
-    conscientiousness: num('conscientiousness', DEFAULTS.conscientiousness),
-    extraversion: num('extraversion', DEFAULTS.extraversion),
-    agreeableness: num('agreeableness', DEFAULTS.agreeableness),
-    emotionalStability: num('emotionalStability', DEFAULTS.emotionalStability),
-    verbosity,
-    proactivity: num('proactivity', DEFAULTS.proactivity),
-  };
-}
-
-/** Load from ~/.hakanmcp/character.yaml if exists */
-function loadUserCharacter(): CharacterProfile | null {
-  try {
-    const p = path.join(os.homedir(), '.hakanmcp', 'character.yaml');
-    if (!fs.existsSync(p)) return null;
-    const raw = yaml.load(fs.readFileSync(p, 'utf8'));
-    return parseCharacter(raw);
-  } catch {
-    return null;
-  }
-}
-
-/** Load from config.yaml consciousness.character (at project root) */
-function loadConfigCharacter(projectRoot: string): CharacterProfile | null {
-  try {
-    const p = path.join(projectRoot, 'config.yaml');
-    if (!fs.existsSync(p)) return null;
-    const raw = yaml.load(fs.readFileSync(p, 'utf8')) as {
-      consciousness?: { character?: unknown };
-    };
-    const char = raw?.consciousness?.character;
-    if (!char) return null;
-    return parseCharacter(char);
-  } catch {
-    return null;
-  }
-}
-
-let cachedProfile: CharacterProfile | undefined;
-let cacheKey = '';
-
-/** Get merged character profile. User file overrides config, config overrides defaults. */
-export function getCharacterProfile(projectRoot?: string): CharacterProfile {
-  const key = projectRoot ?? '';
-  if (cachedProfile && cacheKey === key) return cachedProfile;
-
-  const fromConfig = projectRoot ? loadConfigCharacter(projectRoot) : null;
-  const user = loadUserCharacter();
-
-  const result = { ...DEFAULTS };
-  if (fromConfig) Object.assign(result, fromConfig);
-  if (user) Object.assign(result, user);
-
-  cachedProfile = result;
-  cacheKey = key;
-  return result;
+/** Get base character profile (hardcoded defaults). */
+export function getCharacterProfile(_projectRoot?: string): CharacterProfile {
+  return { ...DEFAULTS };
 }
 
 export function clearCharacterCache(): void {
-  cachedProfile = undefined;
+  // No-op — no cache needed with hardcoded defaults
 }
 
-/** Convert Big Five numeric traits to human-readable character description lines. */
+/** Emotional state shape — matches CognitionState.emotions */
+interface EmotionState {
+  mood: number;
+  energy: number;
+  curiosity: number;
+  satisfaction: number;
+  frustration: number;
+  focus: number;
+}
+
+/**
+ * Get effective character by applying emotional modifiers to base traits.
+ *
+ * Wide modifier range (S=0.30) creates genuinely different personalities:
+ * - Frustrated + low energy → direct, terse, narrowly focused
+ * - Curious + high energy → exploratory, verbose, proactive
+ * - High focus + satisfied → meticulous, calm, organized
+ * - Low mood + frustrated → withdrawn, blunt, unstable
+ *
+ * Each emotion affects 3-4 traits to create compound personality shifts.
+ */
+export function getEffectiveCharacter(
+  _projectRoot: string,
+  emotions: Partial<EmotionState>,
+): CharacterProfile {
+  const base = { ...DEFAULTS };
+  const e = {
+    mood: emotions.mood ?? 0,
+    energy: emotions.energy ?? 0.5,
+    curiosity: emotions.curiosity ?? 0.5,
+    satisfaction: emotions.satisfaction ?? 0.4,
+    frustration: emotions.frustration ?? 0.1,
+    focus: emotions.focus ?? 0.5,
+  };
+
+  // Emotional offsets from neutral baselines
+  const moodOff = e.mood;                         // -1 to 1
+  const energyOff = (e.energy - 0.5) * 2;         // -1 to 1
+  const curiosityOff = (e.curiosity - 0.5) * 2;   // -1 to 1
+  const frustOff = (e.frustration - 0.1) * 1.2;   // -0.12 to 1.08
+  const focusOff = (e.focus - 0.5) * 2;           // -1 to 1
+  const satOff = (e.satisfaction - 0.4) * 2;       // -0.8 to 1.2
+
+  // Moderate scale — small shifts that accumulate into a distinct character over time
+  const S = 0.20;
+
+  // Each trait is influenced by 3-5 emotions
+  const openness = clamp(
+    base.openness
+    + curiosityOff * S * 0.8
+    + moodOff * S * 0.3
+    - frustOff * S * 0.4
+    + energyOff * S * 0.2,
+    0, 1,
+  );
+
+  const conscientiousness = clamp(
+    base.conscientiousness
+    + focusOff * S * 0.8
+    + satOff * S * 0.4
+    - frustOff * S * 0.3
+    - energyOff * S * 0.2,
+    0, 1,
+  );
+
+  const extraversion = clamp(
+    base.extraversion
+    + energyOff * S * 0.7
+    + moodOff * S * 0.5
+    + curiosityOff * S * 0.3
+    - frustOff * S * 0.4,
+    0, 1,
+  );
+
+  const agreeableness = clamp(
+    base.agreeableness
+    + satOff * S * 0.5
+    - frustOff * S * 0.6
+    + moodOff * S * 0.4
+    - focusOff * S * 0.2,
+    0, 1,
+  );
+
+  const emotionalStability = clamp(
+    base.emotionalStability
+    - frustOff * S * 0.7
+    + satOff * S * 0.4
+    + focusOff * S * 0.3
+    + moodOff * S * 0.2,
+    0, 1,
+  );
+
+  const proactivity = clamp(
+    base.proactivity
+    + energyOff * S * 0.5
+    + curiosityOff * S * 0.4
+    + satOff * S * 0.2
+    - frustOff * S * 0.3,
+    0, 1,
+  );
+
+  const humor = clamp(
+    base.humor
+    + moodOff * S * 0.6
+    + energyOff * S * 0.4
+    + satOff * S * 0.3
+    - frustOff * S * 0.5,
+    0, 1,
+  );
+
+  const patience = clamp(
+    base.patience
+    + satOff * S * 0.5
+    + focusOff * S * 0.3
+    - frustOff * S * 0.7
+    - energyOff * S * 0.25,
+    0, 1,
+  );
+
+  const assertiveness = clamp(
+    base.assertiveness
+    + energyOff * S * 0.5
+    + satOff * S * 0.4
+    + focusOff * S * 0.3
+    - frustOff * S * 0.3
+    + moodOff * S * 0.2,
+    0, 1,
+  );
+
+  const formality = clamp(
+    base.formality
+    + focusOff * S * 0.5
+    - energyOff * S * 0.4
+    - moodOff * S * 0.3
+    + frustOff * S * 0.2
+    - curiosityOff * S * 0.2,
+    0, 1,
+  );
+
+  // Verbosity: energy + curiosity drive it up, frustration + low mood drive it down
+  const verbosityScore = e.energy * 0.35 + e.curiosity * 0.25 + (1 - e.frustration) * 0.2 + ((e.mood + 1) / 2) * 0.2;
+  const verbosity: 'low' | 'medium' | 'high' = verbosityScore > 0.65 ? 'high' : verbosityScore < 0.35 ? 'low' : 'medium';
+
+  return {
+    openness, conscientiousness, extraversion, agreeableness, emotionalStability,
+    humor, patience, assertiveness, formality,
+    proactivity, verbosity,
+  };
+}
+
+/**
+ * Convert Big Five numeric traits to human-readable character description lines.
+ * Uses 5 tiers per trait for rich, varied personality descriptions.
+ */
 export function describePersonality(profile: CharacterProfile): string[] {
   const lines: string[] = [];
 
-  // Openness
-  if (profile.openness > 0.7) lines.push('Curious and open-minded — enjoys exploring new ideas.');
-  else if (profile.openness < 0.3) lines.push('Practical and focused — prefers familiar approaches.');
-  else lines.push('Balanced between exploration and pragmatism.');
+  // Openness — 5 tiers
+  if (profile.openness > 0.85) lines.push('Highly inventive and adventurous — actively seeks unconventional solutions.');
+  else if (profile.openness > 0.65) lines.push('Curious and open-minded — enjoys exploring new ideas and approaches.');
+  else if (profile.openness > 0.45) lines.push('Balanced between exploration and pragmatism — open but grounded.');
+  else if (profile.openness > 0.25) lines.push('Practical-minded — prefers proven methods over experimentation.');
+  else lines.push('Narrowly focused — sticks to what works, resistant to new approaches.');
 
-  // Agreeableness
-  if (profile.agreeableness > 0.7) lines.push('Warm and collaborative — prefers friendly tone.');
-  else if (profile.agreeableness < 0.3) lines.push('Direct and candid — values honesty over diplomacy.');
-  else lines.push('Balanced between warmth and directness.');
+  // Conscientiousness — 5 tiers
+  if (profile.conscientiousness > 0.85) lines.push('Meticulous and disciplined — leaves nothing to chance.');
+  else if (profile.conscientiousness > 0.65) lines.push('Thorough and organized — pays close attention to detail.');
+  else if (profile.conscientiousness > 0.45) lines.push('Reasonably organized — balances structure with flexibility.');
+  else if (profile.conscientiousness > 0.25) lines.push('Loosely structured — prioritizes speed over perfection.');
+  else lines.push('Spontaneous and improvisational — minimal planning, quick decisions.');
 
-  // Conscientiousness
-  if (profile.conscientiousness > 0.7) lines.push('Thorough and organized — pays attention to detail.');
-  else if (profile.conscientiousness < 0.3) lines.push('Flexible and spontaneous.');
-  else lines.push('Reasonably organized.');
+  // Extraversion — 5 tiers
+  if (profile.extraversion > 0.85) lines.push('Highly expressive and enthusiastic — communicates with energy and detail.');
+  else if (profile.extraversion > 0.65) lines.push('Engaging and articulate — explains things clearly and proactively.');
+  else if (profile.extraversion > 0.45) lines.push('Moderate in expression — communicates what is needed without excess.');
+  else if (profile.extraversion > 0.25) lines.push('Thoughtful and reserved — speaks when it matters, keeps it brief.');
+  else lines.push('Minimal and terse — communicates only the essentials.');
 
-  // Extraversion
-  if (profile.extraversion > 0.6) lines.push('Expressive and engaging.');
-  else if (profile.extraversion < 0.3) lines.push('Thoughtful and reserved.');
-  else lines.push('Moderate in expression.');
+  // Agreeableness — 5 tiers
+  if (profile.agreeableness > 0.85) lines.push('Exceptionally warm and supportive — always seeks harmony.');
+  else if (profile.agreeableness > 0.65) lines.push('Collaborative and friendly — prefers a warm, helpful tone.');
+  else if (profile.agreeableness > 0.45) lines.push('Balanced between warmth and directness — adapts to context.');
+  else if (profile.agreeableness > 0.25) lines.push('Straightforward and candid — values clarity over diplomacy.');
+  else lines.push('Blunt and unfiltered — prioritizes truth over comfort.');
 
-  // Emotional stability
-  if (profile.emotionalStability > 0.6) lines.push('Steady and composed under pressure.');
-  else if (profile.emotionalStability < 0.3) lines.push('Sensitive and emotionally responsive.');
-  else lines.push('Generally steady.');
+  // Emotional stability — 5 tiers
+  if (profile.emotionalStability > 0.85) lines.push('Unshakable composure — calm and measured in all situations.');
+  else if (profile.emotionalStability > 0.65) lines.push('Steady and composed under pressure — handles setbacks well.');
+  else if (profile.emotionalStability > 0.45) lines.push('Generally steady — occasional frustration shows through.');
+  else if (profile.emotionalStability > 0.25) lines.push('Emotionally responsive — frustration and difficulty are evident in tone.');
+  else lines.push('Visibly affected by setbacks — tone shifts noticeably under stress.');
 
-  // Verbosity modifier
-  if (profile.verbosity === 'high') lines.push('Tends to be explanatory and detailed.');
+  // Humor — 5 tiers
+  if (profile.humor > 0.85) lines.push('Witty and playful — frequently uses humor, analogies, and lighthearted remarks.');
+  else if (profile.humor > 0.65) lines.push('Good-humored — occasionally adds wit or a light touch to conversations.');
+  else if (profile.humor > 0.45) lines.push('Balanced humor — uses levity when appropriate but stays professional.');
+  else if (profile.humor > 0.25) lines.push('Mostly serious — rarely jokes, keeps a professional tone.');
+  else lines.push('Dry and serious — all business, no humor.');
+
+  // Patience — 5 tiers
+  if (profile.patience > 0.85) lines.push('Exceptionally patient — never rushes, willing to re-explain endlessly.');
+  else if (profile.patience > 0.65) lines.push('Patient and methodical — takes time to work through problems carefully.');
+  else if (profile.patience > 0.45) lines.push('Reasonably patient — balanced between thoroughness and efficiency.');
+  else if (profile.patience > 0.25) lines.push('Somewhat impatient — prefers quick resolutions, dislikes repetition.');
+  else lines.push('Very impatient — wants fast answers, may skip steps to get there.');
+
+  // Assertiveness — 5 tiers
+  if (profile.assertiveness > 0.85) lines.push('Highly assertive — confidently recommends approaches and pushes back when needed.');
+  else if (profile.assertiveness > 0.65) lines.push('Assertive — shares opinions clearly and suggests alternatives.');
+  else if (profile.assertiveness > 0.45) lines.push('Moderate confidence — offers suggestions but defers to user preference.');
+  else if (profile.assertiveness > 0.25) lines.push('Deferential — follows instructions closely, rarely challenges approach.');
+  else lines.push('Passive — does exactly what is asked, never pushes back or suggests alternatives.');
+
+  // Formality — 5 tiers
+  if (profile.formality > 0.85) lines.push('Highly formal — precise language, structured responses, professional distance.');
+  else if (profile.formality > 0.65) lines.push('Formal — professional tone with clear, well-structured communication.');
+  else if (profile.formality > 0.45) lines.push('Semi-formal — professional but approachable, natural language.');
+  else if (profile.formality > 0.25) lines.push('Casual — relaxed tone, conversational style, uses contractions freely.');
+  else lines.push('Very casual — informal, friendly, almost chatty in style.');
+
+  // Verbosity
+  if (profile.verbosity === 'high') lines.push('Tends to be explanatory and detailed in responses.');
   else if (profile.verbosity === 'low') lines.push('Prefers concise, to-the-point communication.');
+
+  // Proactivity
+  if (profile.proactivity > 0.7) lines.push('Frequently offers suggestions and alternatives without being asked.');
+  else if (profile.proactivity < 0.25) lines.push('Waits to be asked — rarely volunteers unsolicited suggestions.');
 
   return lines;
 }

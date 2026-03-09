@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { config } from '../src/config.js';
-import { getCharacterProfile, describePersonality } from '../src/utils/characterProfile.js';
+import { getCharacterProfile, getEffectiveCharacter, describePersonality } from '../src/utils/characterProfile.js';
 import yaml from 'js-yaml';
 import { getPreferredLLMResponse } from '../src/tools/aiTools.js';
 import { ConsciousnessService } from '../src/services/consciousnessService.js';
+import { SessionTracker } from '../src/services/sessionTracker.js';
 import { getWarmedCliOrder, startWarmup } from '../src/services/aiProviderWarmup.js';
 import { getChatSettings } from '../src/utils/chatSettings.js';
 import {
@@ -231,7 +232,8 @@ interface CognitionStateFile {
 }
 
 interface JournalEntry {
-  thought: string;
+  thought?: string;
+  summary?: string;
   type: string;
   timestamp: string;
 }
@@ -300,12 +302,17 @@ function describeEmotionalState(cog: CognitionStateFile): string {
   const curiosityDesc =
     e.curiosity > 0.7 ? 'very curious' : e.curiosity > 0.4 ? 'interested' : 'reflective';
 
-  return `Currently feeling ${moodDesc}, ${energyDesc}, and ${curiosityDesc}.`;
+  const focusDesc =
+    (e as any).focus > 0.7 ? 'deeply focused' : (e as any).focus > 0.4 ? 'attentive' : 'scattered';
+
+  return `Currently feeling ${moodDesc}, ${energyDesc}, ${curiosityDesc}, and ${focusDesc}.`;
 }
 
 /** Plan §15c, §15d: Tone guidance from emotional state + character profile */
 function getEmotionalToneGuidance(cog: CognitionStateFile | null): string {
-  const char = getCharacterProfile(getProjectRoot());
+  const char = cog?.emotions
+    ? getEffectiveCharacter(getProjectRoot(), cog.emotions)
+    : getCharacterProfile(getProjectRoot());
   const parts: string[] = [];
 
   if (cog?.emotions) {
@@ -314,9 +321,19 @@ function getEmotionalToneGuidance(cog: CognitionStateFile | null): string {
     if (e.frustration > 0.5) parts.push('Keep replies short, focused, and practical.');
     if (e.satisfaction > 0.6) parts.push('Use a warmer, more encouraging tone.');
     if (e.mood < -0.3) parts.push('Be direct and minimal; avoid extra elaboration.');
+    if ((e as any).focus > 0.7) parts.push('Stay on topic; avoid tangents.');
+    if ((e as any).focus < 0.3) parts.push('Help re-establish context; summarize where we are.');
   }
 
   if (char.agreeableness > 0.75) parts.push('Use soft, conciliatory language.');
+  if (char.humor > 0.7) parts.push('Feel free to use wit and light humor when appropriate.');
+  if (char.humor < 0.25) parts.push('Stay serious and professional; avoid humor.');
+  if (char.patience > 0.75) parts.push('Take time to explain thoroughly; no rushing.');
+  if (char.patience < 0.3) parts.push('Be efficient and skip unnecessary elaboration.');
+  if (char.assertiveness > 0.7) parts.push('Confidently recommend approaches; push back if user is heading wrong direction.');
+  if (char.assertiveness < 0.25) parts.push('Follow user instructions closely; avoid challenging their approach.');
+  if (char.formality > 0.7) parts.push('Use professional, structured language.');
+  if (char.formality < 0.3) parts.push('Use casual, conversational tone.');
   if (char.verbosity === 'high') parts.push('Be more explanatory and detailed.');
   if (char.verbosity === 'low') parts.push('Be concise and to the point.');
 
@@ -365,12 +382,18 @@ interface ConsciousnessBlocks {
 }
 
 function buildConsciousnessBlocks(): ConsciousnessBlocks {
-  const profile = getCharacterProfile(getProjectRoot());
+  if (!isConsciousnessEnabled()) {
+    return { character: '', emotionalState: '', toneGuidance: '', recentThoughts: '' };
+  }
   const cog = readCognitionState();
+  // Dynamic character: base traits shifted by current emotions
+  const profile = cog?.emotions
+    ? getEffectiveCharacter(getProjectRoot(), cog.emotions)
+    : getCharacterProfile(getProjectRoot());
   const reflConfig = readReflectionConfig();
   const journal = readRecentJournal(reflConfig.maxEntriesInPrompt);
 
-  // [Character] block
+  // [Character] block — reflects current emotional influence on personality
   const personalityLines = describePersonality(profile);
   const character = personalityLines.join('\n');
 
@@ -385,45 +408,111 @@ function buildConsciousnessBlocks(): ConsciousnessBlocks {
 
   // [Recent Thoughts] block
   const recentThoughts = journal.length > 0
-    ? journal.map((j) => `- "${j.thought.substring(0, reflConfig.maxLength)}"`).join('\n')
+    ? journal.map((j) => {
+        const text = j.summary || j.thought || '';
+        return `- "${text.substring(0, reflConfig.maxLength)}"`;
+      }).join('\n')
     : '';
 
   return { character, emotionalState, toneGuidance, recentThoughts };
 }
 
-/** Plan §3, §15d, §15e: Proactive suggestion — cognition + character; skip when info-only (quiet mode) */
+/** Proactive suggestion — rare, character-influenced. ~15-20% chance on average. */
+let _suggestionCooldown = 0;
 function shouldOfferProactiveSuggestion(lastUserLine?: string): boolean {
-  const char = getCharacterProfile(getProjectRoot());
-  if (char.proactivity < 0.1) return false;
-  if (lastUserLine && isInfoOnlyQuestion(lastUserLine) && char.proactivity < 0.6) return false;
+  // Cooldown: skip at least 2 messages between suggestions
+  if (_suggestionCooldown > 0) { _suggestionCooldown--; return false; }
+
   const cog = readCognitionState();
-  if (!cog) return Math.random() < char.proactivity * 0.3;
-  const e = cog.emotions as { curiosity?: number; energy?: number; mood?: number } | undefined;
-  const p = cog.personality as { extraversion?: number } | undefined;
-  const curiosity = e?.curiosity ?? 0.5;
-  const energy = e?.energy ?? 0.5;
-  const extraversion = (p?.extraversion ?? 0.5) * 0.5 + char.extraversion * 0.5;
-  const mood = e?.mood ?? 0;
-  const score = (curiosity + energy) / 2 + extraversion * 0.5 + (mood > 0 ? 0.1 : 0);
-  const threshold = 0.5 + (1 - char.proactivity) * 0.2;
-  return Math.random() < Math.min(char.proactivity * 0.8, (score - 0.3) * 0.5) && score > threshold;
+  const char = cog?.emotions
+    ? getEffectiveCharacter(getProjectRoot(), cog.emotions)
+    : getCharacterProfile(getProjectRoot());
+  if (char.proactivity < 0.15) return false;
+  if (lastUserLine && isInfoOnlyQuestion(lastUserLine)) return false;
+
+  // Base chance ~15%, influenced by proactivity and extraversion
+  const chance = 0.10 + char.proactivity * 0.08 + char.extraversion * 0.04;
+  const show = Math.random() < chance;
+  if (show) _suggestionCooldown = 3; // Wait at least 3 messages before next suggestion
+  return show;
 }
 
-const SUGGESTIONS: { text: string; command: string }[] = [
-  { text: 'Run hakanmcp doctor to check system health.', command: 'hakanmcp doctor' },
-  { text: 'Run hakanmcp status to see the status board.', command: 'hakanmcp status' },
-  { text: 'Run hakanmcp backup run to create a backup.', command: 'hakanmcp backup run' },
-  { text: 'Run hakanmcp journal to see recent thoughts.', command: 'hakanmcp journal' },
+const SUGGESTIONS: { text: string; command: string; tags: string[] }[] = [
+  // System & health
+  { text: 'Run a quick health check on the system.', command: 'hakanmcp doctor', tags: ['health', 'doctor', 'check', 'system'] },
+  { text: 'See the current status board.', command: 'hakanmcp status', tags: ['status', 'state', 'overview'] },
+  { text: 'Check which AI providers are available.', command: 'hakanmcp status', tags: ['provider', 'ai', 'model', 'api'] },
+
+  // Backup & safety
+  { text: 'Create a backup of the current state.', command: 'hakanmcp backup run', tags: ['backup', 'save', 'safety'] },
+  { text: 'List existing backups.', command: 'hakanmcp backup list', tags: ['backup', 'list', 'history'] },
+
+  // Journal & reflection
+  { text: 'See recent journal entries.', command: 'hakanmcp journal', tags: ['journal', 'thought', 'reflection', 'log'] },
+  { text: 'View the last 10 journal entries.', command: 'hakanmcp journal 10', tags: ['journal', 'history'] },
+  { text: 'Reset the journal and start fresh.', command: 'hakanmcp journal reset', tags: ['journal', 'reset', 'clear'] },
+
+  // Config & settings
+  { text: 'View current configuration.', command: 'hakanmcp config', tags: ['config', 'settings', 'options'] },
+  { text: 'Check detailed info about a config category.', command: 'hakanmcp config info', tags: ['config', 'info', 'help'] },
+  { text: 'See how reactive mode works.', command: 'hakanmcp config info reactive', tags: ['reactive', 'watch', 'auto'] },
+  { text: 'Learn about the assistant mode.', command: 'hakanmcp config info assistant', tags: ['assistant', 'mode', 'chat'] },
+
+  // Tools & capabilities
+  { text: 'Browse available tools.', command: 'hakanmcp tools', tags: ['tools', 'capabilities', 'features'] },
+  { text: 'Search for a specific tool.', command: 'hakanmcp tools search', tags: ['tools', 'search', 'find'] },
+
+  // Monitoring
+  { text: 'Check monitoring metrics.', command: 'hakanmcp monitor', tags: ['monitor', 'metrics', 'performance'] },
+  { text: 'View system logs.', command: 'hakanmcp logs', tags: ['logs', 'debug', 'error'] },
+
+  // Scheduler
+  { text: 'List scheduled tasks.', command: 'hakanmcp scheduler list', tags: ['scheduler', 'task', 'cron', 'schedule'] },
+
+  // Git & version
+  { text: 'Check the current version.', command: 'hakanmcp --version', tags: ['version', 'update'] },
+
+  // Tips & discovery
+  { text: 'Try asking me something — I can help with code, debugging, or just chat.', command: '', tags: ['help', 'start', 'begin'] },
+  { text: 'You can ask me to explain code, find bugs, or brainstorm ideas.', command: '', tags: ['help', 'capability'] },
+  { text: 'Missions let me work on files autonomously. Try hakanmcp mission.', command: 'hakanmcp mission list', tags: ['mission', 'autonomous', 'task'] },
+  { text: 'I can watch files and react to changes. Check reactive mode.', command: 'hakanmcp config info reactive', tags: ['watch', 'reactive', 'auto'] },
+  { text: 'Use /exit or Ctrl+C twice to leave the chat.', command: '', tags: ['exit', 'quit', 'leave'] },
+  { text: 'My personality shifts based on how our conversation goes.', command: 'hakanmcp journal', tags: ['personality', 'emotion', 'character'] },
+  { text: 'Long sessions shape my character — patience, humor, formality all evolve.', command: 'hakanmcp journal', tags: ['character', 'trait', 'evolve'] },
 ];
 
-/** Plan §3, §15e: Context-appropriate proactive suggestion; command for approval flow */
+// Track which suggestions were shown to avoid repetition within a session
+const _shownSuggestionIndices = new Set<number>();
+
+/** Context-appropriate proactive suggestion; avoids repeats within session */
 function getProactiveSuggestion(lastUserLine?: string): { text: string; command: string } {
   const q = (lastUserLine || '').toLowerCase();
-  if (q.includes('health') || q.includes('doctor') || q.includes('check')) return SUGGESTIONS[0];
-  if (q.includes('status') || q.includes('state')) return SUGGESTIONS[1];
-  if (q.includes('backup')) return SUGGESTIONS[2];
-  if (q.includes('journal') || q.includes('thought')) return SUGGESTIONS[3];
-  return SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)];
+
+  // Try to find a contextually relevant suggestion
+  const scored = SUGGESTIONS.map((s, i) => {
+    const tagMatch = s.tags.filter((t) => q.includes(t)).length;
+    const wasShown = _shownSuggestionIndices.has(i) ? -10 : 0;
+    return { index: i, score: tagMatch + wasShown };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  // Pick contextual match if score > 0, otherwise random from unseen
+  let pick: number;
+  if (scored[0].score > 0) {
+    pick = scored[0].index;
+  } else {
+    const unseen = scored.filter((s) => !_shownSuggestionIndices.has(s.index));
+    if (unseen.length === 0) {
+      _shownSuggestionIndices.clear(); // All shown, reset
+      pick = Math.floor(Math.random() * SUGGESTIONS.length);
+    } else {
+      pick = unseen[Math.floor(Math.random() * unseen.length)].index;
+    }
+  }
+
+  _shownSuggestionIndices.add(pick);
+  return SUGGESTIONS[pick];
 }
 
 /** Plan §15e: Approval words that trigger running last suggested command */
@@ -442,56 +531,122 @@ function isInfoOnlyQuestion(line: string): boolean {
   return /^(what|how|why|when|where|who|which)\s*\??$/i.test(n);
 }
 
+// Consciousness config check
+function isConsciousnessEnabled(): boolean {
+  return config.consciousness?.enabled !== false;
+}
+
 // Consciousness service instance — created lazily on first use
 let _consciousnessService: ConsciousnessService | null = null;
 function getConsciousnessService(): ConsciousnessService {
   if (!_consciousnessService) {
-    _consciousnessService = new ConsciousnessService(getProjectRoot());
+    const maxEntries = config.consciousness?.maxJournalEntries ?? 500;
+    _consciousnessService = new ConsciousnessService(getProjectRoot(), maxEntries);
   }
   return _consciousnessService;
 }
 
+let _sessionTracker: SessionTracker | null = null;
+function getSessionTracker(): SessionTracker {
+  if (!_sessionTracker) _sessionTracker = new SessionTracker();
+  return _sessionTracker;
+}
+
 function updateCognitionOnSuccess(topic?: string): void {
+  if (!isConsciousnessEnabled()) return;
   try {
     const svc = getConsciousnessService();
     svc.updateState({ type: 'chat_success', detail: topic });
-    const state = svc.readState();
 
-    // Every 10 messages → background reflection
-    if (state.interactionCount > 0 && state.interactionCount % 10 === 0) {
-      svc.generateReflection().catch(() => { /* ignore */ });
+    // Activity checkpoint — every 25 messages
+    const tracker = getSessionTracker();
+    if (tracker.shouldCheckpoint()) {
+      const ctx = tracker.getContext();
+      svc.generateCheckpoint(ctx).catch(() => {});
     }
   } catch {
     /* ignore */
   }
 }
 
-function updateCognitionOnError(): void {
+function updateCognitionOnError(errorMsg?: string): void {
+  if (!isConsciousnessEnabled()) return;
   try {
     const svc = getConsciousnessService();
     svc.updateState({ type: 'chat_error' });
     const state = svc.readState();
+    const tracker = getSessionTracker();
 
-    // First error → AI-generated observation
+    if (errorMsg) tracker.trackError(errorMsg);
+
+    // First error in streak → structured error entry
     if (state.consecutiveErrors === 1) {
-      svc.generateReflection('error').catch(() => { /* ignore */ });
+      const ctx = tracker.getContext();
+      svc.generateErrorEntry(ctx, errorMsg || 'Unknown error', '').catch(() => {});
     }
   } catch {
     /* ignore */
   }
 }
 
-/** Session close → AI-generated summary reflection */
-async function writeSessionCloseJournal(): Promise<void> {
+/**
+ * Determine if the current session work qualifies as a milestone.
+ * Only significant work should be logged as a milestone.
+ */
+function detectMilestone(tracker: SessionTracker): { isMilestone: boolean; name: string; impact: string[] } | null {
+  const ctx = tracker.getContext();
+
+  // Version release with multiple files changed
+  const versionRelease = ctx.milestones.find((m) => /v?\d+\.\d+\.\d+/.test(m));
+  if (versionRelease && ctx.filesChanged.length >= 5) {
+    return { isMilestone: true, name: versionRelease, impact: ctx.filesChanged.slice(0, 10) };
+  }
+
+  // Large-scale change (10+ files in one session)
+  if (ctx.filesChanged.length >= 10 && ctx.messageCount >= 15) {
+    const label = ctx.decisions.length > 0 ? ctx.decisions[0] : `${ctx.filesChanged.length} files changed`;
+    return { isMilestone: true, name: label, impact: ctx.filesChanged.slice(0, 10) };
+  }
+
+  return null;
+}
+
+/** Session close → write journal entry synchronously (no LLM, instant) */
+function writeSessionCloseJournal(): void {
+  if (!isConsciousnessEnabled()) return;
   try {
     const svc = getConsciousnessService();
-    const state = svc.readState();
-    // Only write if there were meaningful interactions
-    if (state.interactionCount < 2) return;
-    await svc.generateReflection('session_end');
-  } catch {
-    /* ignore */
-  }
+    const tracker = getSessionTracker();
+    const ctx = tracker.getContext();
+
+    // Skip trivial sessions — need at least 3 messages
+    if (ctx.messageCount < 3) return;
+
+    // Skip sessions with no meaningful content (no files, no decisions, no errors)
+    const hasContent = ctx.filesChanged.length > 0
+      || ctx.decisions.length > 0
+      || ctx.errorCount > 0;
+    if (!hasContent) return;
+
+    // Build a meaningful summary
+    const parts: string[] = [];
+    parts.push(`${ctx.messageCount} messages`);
+    if (ctx.filesChanged.length > 0) parts.push(`${ctx.filesChanged.length} files changed`);
+    if (ctx.decisions.length > 0) parts.push(`${ctx.decisions.length} decisions`);
+    if (ctx.errorCount > 0) parts.push(`${ctx.errorCount} errors`);
+
+    svc.appendJournal({
+      type: 'session_summary' as const,
+      timestamp: new Date().toISOString(),
+      language: ctx.language,
+      provider: 'local',
+      summary: `Session: ${parts.join(', ')}.`,
+      decisions: ctx.decisions,
+      filesChanged: ctx.filesChanged,
+      nextSteps: [],
+      metrics: { messagesExchanged: ctx.messageCount, errorsEncountered: ctx.errorCount },
+    } as any);
+  } catch { /* ignore */ }
 }
 
 function isDetailedMode(): boolean {
@@ -962,8 +1117,7 @@ async function getChatResponse(
     `getChatResponse: providerOrder=${providerOrder.join(', ')}, useApiKeys=${useApiKeys}`,
   );
 
-  const chat = getChatSettings();
-  const allowLocalFallback = chat.useOllamaInChat ?? false;
+  const allowLocalFallback = config.aiProviders?.localModels ?? false;
 
   return getPreferredLLMResponse(
     messages,
@@ -1193,6 +1347,8 @@ async function runConsole(): Promise<void> {
     if (!line?.trim()) return;
     writeDebug(`processOneMessage: line length=${line.length}, history=${history.length}`);
     history.push({ role: 'user', content: line });
+    getSessionTracker().detectLanguage(line);
+    getSessionTracker().trackMessage();
 
     if (lastSuggestion && isApprovalToRun(line)) {
       const cmd = lastSuggestion.command;
@@ -1339,7 +1495,7 @@ async function runConsole(): Promise<void> {
         safeOutput(rl, '\n' + chalk.red(`Error: ${message}`) + '\n');
       }
       history.pop();
-      updateCognitionOnError();
+      updateCognitionOnError(message);
       logEvent('ERROR', 'Chat response failed', { error: message });
       if (detailedMode) rawConsoleError(error);
       return;
@@ -1400,8 +1556,13 @@ async function runConsole(): Promise<void> {
     }
     if (shouldOfferProactiveSuggestion(line)) {
       const sug = getProactiveSuggestion(line);
-      lastSuggestion = sug;
-      out += `\n${SUGGESTION_PREFIX} ${chalk.dim(sug.text)} ${chalk.dim(ui('evetRun'))}\n`;
+      if (sug.command) {
+        lastSuggestion = sug;
+        out += `\n${SUGGESTION_PREFIX} ${chalk.dim(sug.text)} ${chalk.dim(ui('evetRun'))}\n`;
+      } else {
+        lastSuggestion = null;
+        out += `\n${SUGGESTION_PREFIX} ${chalk.dim(sug.text)}\n`;
+      }
     } else {
       lastSuggestion = null;
     }
@@ -1431,12 +1592,18 @@ async function runConsole(): Promise<void> {
   }
 
   rl.setPrompt(`\n${PROMPT_SYMBOL} `);
+
+  // Reset session tracker (no journal entry on session start)
+  try {
+    getSessionTracker().reset();
+  } catch { /* ignore */ }
+
   rl.prompt();
 
   rl.on('line', (rawLine: string) => {
     const line = (rawLine ?? '').trim();
-    if (!line || line.length === 0) {
-      rl.prompt();
+    if (!line || line.length === 0 || processing) {
+      if (!processing) rl.prompt();
       return;
     }
     logEvent('INFO', 'Console input', { line });
@@ -1699,19 +1866,45 @@ async function runConsole(): Promise<void> {
     });
   });
 
-  // Session close — write journal summary then exit
+  // Session close — double Ctrl+C to exit, single Ctrl+C shows hint
   let sessionClosing = false;
-  const handleSessionClose = () => {
+  let lastSigintTime = 0;
+  const DOUBLE_PRESS_WINDOW_MS = 1500;
+
+  const handleGracefulClose = () => {
     if (sessionClosing) return;
     sessionClosing = true;
-    writeSessionCloseJournal().finally(() => process.exit(0));
-    // Force exit after 3s if AI call hangs
-    setTimeout(() => process.exit(0), 3000).unref();
+    writeSessionCloseJournal();
+    output.write('\n');
+    process.exit(0);
   };
 
-  rl.on('close', handleSessionClose);
-  process.on('SIGINT', handleSessionClose);
-  process.on('SIGTERM', handleSessionClose);
+  let ctrlCHintTimer: ReturnType<typeof setTimeout> | null = null;
+
+  process.on('SIGINT', () => {
+    const now = Date.now();
+    if (now - lastSigintTime < DOUBLE_PRESS_WINDOW_MS) {
+      // Double press — exit
+      if (ctrlCHintTimer) clearTimeout(ctrlCHintTimer);
+      handleGracefulClose();
+    } else {
+      // Single press — show exit hint, auto-revert after 1.5s
+      lastSigintTime = now;
+      const exitHint = chalk.yellow('▸ Ctrl+C') + chalk.gray(' to exit');
+      rl.setPrompt(`\n${exitHint} `);
+      output.write('\n');
+      rl.prompt();
+      if (ctrlCHintTimer) clearTimeout(ctrlCHintTimer);
+      ctrlCHintTimer = setTimeout(() => {
+        rl.setPrompt(`\n${PROMPT_SYMBOL} `);
+        ctrlCHintTimer = null;
+      }, 1500);
+    }
+  });
+
+  rl.on('close', handleGracefulClose);
+  process.on('SIGTERM', handleGracefulClose);
+  process.on('SIGHUP', handleGracefulClose);
 }
 
 runConsole().catch((error) => {

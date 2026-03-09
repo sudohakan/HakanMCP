@@ -1,0 +1,94 @@
+# ─── HakanMCP Configuration ───────────────────────────────────────
+# Runtime config — overrides DEFAULT_CONFIG in src/config.ts
+# Edit via: hakanmcp config set <category> <key> <value>
+
+serverName: hakan-mcp
+logLevel: info
+cacheTtl: 300
+retryCount: 3
+gitbookUrl: https://example.com/api-docs
+postmanDir: postman
+
+# ─── Ollama (disabled) ────────────────────────────────────────────
+ollamaUrl: http://localhost:11434
+ollamaModel: llama3
+ollamaTimeout: 36000000
+ollamaUpgradeTolerance: 0.15
+
+# ─── AI Providers ─────────────────────────────────────────────────
+aiProviders:
+  localModels: false
+  agenticEnabled: true
+  agenticMaxIterations: 15
+
+# ─── Backup ──────────────────────────────────────────────────────
+backup:
+  enabled: true
+  localPath: ./backups
+  retentionHours: 48
+  compressionEnabled: true
+  includeNodeModules: false
+  intervalHours: 1
+
+# ─── GitHub ──────────────────────────────────────────────────────
+# Set owner/repo to your GitHub username and repo name
+github:
+  enabled: true
+  owner: 'hakanmcp'
+  repo: 'hakanmcp'
+  branch: main
+  private: true
+
+# ─── Monitoring ───────────────────────────────────────────────────
+monitoring:
+  enabled: true
+  checkInterval: 300000
+  # peerInstance: /peer      # Peer instance path (usually for Docker)
+
+# ─── Scheduler ────────────────────────────────────────────────────
+scheduler:
+  enabled: true
+  maxConcurrentTasks: 3
+  taskHistoryRetentionDays: 30
+  persistencePath: ./scheduler-state.json
+
+# ─── Watch Mode ──────────────────────────────────────────────────
+watch:
+  enabled: true
+  paths: ['.']
+  debounceMs: 1000
+
+# ─── Reactive Mode ───────────────────────────────────────────────
+reactive:
+  enabled: true
+
+# ─── Consciousness ───────────────────────────────────────────────
+consciousness:
+  enabled: true
+  maxJournalEntries: 500
+  reflection:
+    maxLength: 200
+    maxEntriesInPrompt: 3
+    style: auto
+
+# ─── Self-Improvement ───────────────────────────────────────────
+selfImprovement:
+  enabled: false
+  autoCommit: false
+  requireApproval: true
+  maxChangesPerDay: 10
+  allowedOperations:
+    - optimize
+    - refactor
+    - fix
+    - test
+    - docs
+  restrictedPaths:
+    - node_modules
+    - .git
+    - dist
+    - .env
+
+# ─── System ───────────────────────────────────────────────────────
+system:
+  commandTimeout: 120

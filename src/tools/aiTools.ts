@@ -556,7 +556,7 @@ function buildCliPrompt(messages: ChatMessage[]): string {
 export async function getPreferredLLMResponse(
   messages: ChatMessage[],
   preferredModel?: string,
-  priority: Array<'codex' | 'claude' | 'gemini' | 'cursor'> = (config.aiProviders?.apiPriority as Array<'codex' | 'claude' | 'gemini'>) ?? ['codex', 'claude', 'gemini'],
+  priority: Array<'codex' | 'claude' | 'gemini' | 'cursor'> = ['codex', 'claude', 'gemini'],
   allowLocalFallback = true,
   options: GetChatResponseOptions = {},
 ): Promise<{ text: string; provider: string; diagnostics: string[] }> {
@@ -571,7 +571,7 @@ export async function getPreferredLLMResponse(
   if (basePath) setCooldownsBasePath(basePath);
 
   const cfgProviders = config.aiProviders;
-  const defaultCliOrder: ChatProviderId[] = (cfgProviders?.cliPriority as ChatProviderId[] | undefined) ?? ['codex', 'claude', 'gemini', 'cursor'];
+  const defaultCliOrder: ChatProviderId[] = ['codex', 'claude', 'gemini', 'cursor'];
   const cliOrder: ChatProviderId[] = options.providerOrder ?? getWarmedCliOrder(defaultCliOrder);
   const disableLocal = localModelsDisabled();
   const diagnostics: string[] = [];
@@ -871,7 +871,7 @@ export async function getPreferredLLMResponse(
  */
 export function resolveAgenticProvider(): { callFn: AgenticCallFn; label: string } {
   const cfgProv = config.aiProviders;
-  const apiOrder = (cfgProv?.apiPriority as Array<'codex' | 'claude' | 'gemini'>) ?? ['codex', 'claude', 'gemini'];
+  const apiOrder: Array<'codex' | 'claude' | 'gemini'> = ['codex', 'claude', 'gemini'];
 
   for (const provider of apiOrder) {
     if (provider === 'codex') {
@@ -922,7 +922,7 @@ async function handleAgenticChat(
   }
 
   // Resolve provider — use config apiPriority with cooldown/availability checks
-  const agenticApiOrder = (config.aiProviders?.apiPriority as Array<'codex' | 'claude' | 'gemini'>) ?? ['codex', 'claude', 'gemini'];
+  const agenticApiOrder: Array<'codex' | 'claude' | 'gemini'> = ['codex', 'claude', 'gemini'];
   const providers: Array<{
     id: 'codex' | 'claude' | 'gemini';
     label: string;
@@ -1105,7 +1105,7 @@ export const aiTools = [
         .parse(args);
       const { model, message, messages } = parsed;
       const allowLocalFallback =
-        parsed.allowLocalFallback ?? currentConfig.aiProviders?.ollamaForTools ?? true;
+        parsed.allowLocalFallback ?? true;
 
       let chatMessages: ChatMessage[];
 
@@ -1135,8 +1135,8 @@ export const aiTools = [
       const agenticEnabled = parsed.agentic ?? currentConfig.aiProviders?.agenticEnabled ?? false;
       const agenticMaxIter = parsed.maxIterations ?? currentConfig.aiProviders?.agenticMaxIterations;
       if (agenticEnabled) {
-        const cliPri = (currentConfig.aiProviders?.cliPriority as string[] | undefined) ?? ['codex', 'claude', 'gemini', 'cursor'];
-        const apiPri = (currentConfig.aiProviders?.apiPriority as string[] | undefined) ?? ['codex', 'claude', 'gemini'];
+        const cliPri: string[] = ['codex', 'claude', 'gemini', 'cursor'];
+        const apiPri: string[] = ['codex', 'claude', 'gemini'];
 
         // Find which API provider would be selected (first with a key)
         let firstApiProvider: string | null = null;

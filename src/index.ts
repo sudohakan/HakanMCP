@@ -421,19 +421,13 @@ async function main() {
   const stopToolHealthCheck = scheduleDailyHealthCheck(healthCheckTools, PROJECT_ROOT);
   logger.info('Tool health check scheduler active', { frequency: 'daily' });
 
-  // Start consciousness reflection scheduler
-  let consciousnessTimer: ReturnType<typeof setInterval> | null = null;
+  // Consciousness service — periodic timer removed in Journal v2.
+  // Reflections are now event-driven (session start/end, errors, checkpoints, milestones).
   if (config.consciousness?.enabled !== false) {
-    const intervalHours = config.consciousness?.reflectionIntervalHours ?? 4;
     const maxEntries = config.consciousness?.maxJournalEntries ?? 500;
     const consciousnessService = new ConsciousnessService(PROJECT_ROOT, maxEntries);
     consciousnessService.ensureDir();
-    consciousnessTimer = setInterval(() => {
-      consciousnessService.generateReflection().catch((err) => {
-        logger.warn('Consciousness reflection failed', err);
-      });
-    }, intervalHours * 60 * 60 * 1000);
-    logger.info('Consciousness reflection scheduler started', { intervalHours });
+    logger.info('Consciousness service initialized (event-driven mode)');
   }
 
   // Graceful shutdown
@@ -446,7 +440,6 @@ async function main() {
       conversationManager.shutdown();
       backupService.stop();
       schedulerManager.shutdown();
-      if (consciousnessTimer) clearInterval(consciousnessTimer);
       stopToolHealthCheck();
 
       // Dynamic imports for cleanup modules that depend on native deps

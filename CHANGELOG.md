@@ -5,6 +5,40 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-03-10
+
+### Added
+
+- Expanded character system with 4 new traits (humor, patience, assertiveness, formality) and AI-driven emotion analysis
+- Consciousness config guard — `consciousness.enabled` now actually controls the entire consciousness subsystem
+- Session journal improvements: minimum message threshold, meaningfulness check before writing
+- Config-driven self-improvement: `autoCommit`, `requireApproval`, `maxChangesPerDay` read from config.yaml
+- `watch` and `reactive` added to Zod config schema (fixes values being silently stripped)
+- `git pull`, `git fetch`, `git checkout` added to doctor safe command list
+- Auto-copy `config.yaml.example` → `config.yaml` and `.env.example` → `.env` on first run
+- `config.yaml.example` tracked in git as setup template
+- Config change rule added to project CLAUDE.md
+
+### Changed
+
+- Help menu overhauled: removed icons, individual command lines, `padEnd(40)` alignment
+- Status board expanded: selfImprovement (4 rows), consciousness (5 rows), watch/reactive/scheduler
+- Merged `useOllamaInChat` into `config.aiProviders.localModels` (single flag)
+- CONFIG_INFO output updated to reflect all new config fields
+
+### Fixed
+
+- Watch, reactive, and scheduler always showing `false` in status board (Zod stripping + wrong key)
+- Backup showing `false` despite being enabled in config
+- `monitoring.peerInstance` missing from config.yaml.example
+- `gitbookUrl` was comment-only in config.yaml.example, now a proper key
+- Removed unused `AUTONOMY_*` env vars from `.env.example`
+
+### Removed
+
+- `character.yaml` file (character config now embedded in consciousnessService)
+- `useOllamaInChat` config key (merged into `localModels`)
+
 ## [1.2.0] - 2026-03-09
 
 ### Security
@@ -298,6 +332,10 @@ This release marks the official rebranding from **Claude Flow** to **HakanMCP** 
 | Guidance Control Plane | v3.0.0-alpha.100 | 2026-01 | WASM policy kernel, ContinueGate |
 | AgentDB v3 | v3.1.0-alpha.55 | 2026-02 | 8 controllers, MutationGuard |
 | **Mission Agent MVP** | **v1.0.0** | **2026-03-08** | **Mission Agent CLI, 4 operating modes** |
+| **Journal v2 & Config** | **v1.3.0** | **2026-03-10** | **Character system, consciousness guard, config overhaul** |
 
+[1.3.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.3.0
+[1.2.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.2.0
+[1.1.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.1.0
 [1.0.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.0.0
 [3.5.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v3.5.0

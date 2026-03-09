@@ -124,4 +124,5 @@ __pycache__/
 *.seed
 *.tmp
 *.temp
+*.bak
 output/

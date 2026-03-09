@@ -15,7 +15,7 @@ import ora from 'ora';
 import gradient from 'gradient-string';
 import chalkAnimation from 'chalk-animation';
 import type { ChatMessage } from '../src/tools/aiProviders.js';
-import { getCharacterProfile } from '../src/utils/characterProfile.js';
+import { getEffectiveCharacter, getCharacterProfile } from '../src/utils/characterProfile.js';
 import { runInit } from '../src/cli/initCommand.js';
 import { runStart } from '../src/cli/startCommand.js';
 import { runStop } from '../src/cli/stopCommand.js';
@@ -790,15 +790,20 @@ async function runDoctor(fix = false): Promise<void> {
       },
     });
   } else {
-    const srcNewest = getNewestMtime(path.join(PROJECT_ROOT, 'src'), '.ts');
+    // Check all TypeScript source directories against dist
+    const srcDirs = ['src', 'scripts', 'bin'].map((d) => path.join(PROJECT_ROOT, d));
+    const newestSrc = Math.max(...srcDirs.map((d) => getNewestMtime(d, '.ts')));
     const distMtime = fs.statSync(distIndex).mtimeMs;
-    if (srcNewest > distMtime) {
+    if (newestSrc > distMtime) {
+      const staleDirs = srcDirs
+        .filter((d) => getNewestMtime(d, '.ts') > distMtime)
+        .map((d) => path.basename(d));
       checks.push({
         label: 'Build (dist/)',
         status: 'fail',
-        detail: 'Stale (src newer than dist)',
+        detail: `Stale (${staleDirs.join(', ')} newer than dist)`,
         repairAction: {
-          description: 'Rebuilding...',
+          description: 'Rebuilding project...',
           fn: () => { execSync('npm run build', { cwd: PROJECT_ROOT, stdio: 'pipe', timeout: 120_000 }); },
         },
       });
@@ -1067,6 +1072,9 @@ Rules:
           'npm test',
           'npm ci',
           'npx tsc',
+          'git pull',
+          'git fetch',
+          'git checkout',
         ];
         function isSafeCommand(cmd: string): boolean {
           const trimmed = cmd.trim();
@@ -1170,7 +1178,8 @@ Rules:
       }
       case 'Build (dist/)': {
         if (!fs.existsSync(distIndex)) return { label, status: 'fail', detail: 'Still not built' };
-        const srcN = getNewestMtime(path.join(PROJECT_ROOT, 'src'), '.ts');
+        const reDirs = ['src', 'scripts', 'bin'].map((d) => path.join(PROJECT_ROOT, d));
+        const srcN = Math.max(...reDirs.map((d) => getNewestMtime(d, '.ts')));
         const distM = fs.statSync(distIndex).mtimeMs;
         return { label, status: srcN <= distM ? 'ok' : 'fail', detail: srcN <= distM ? 'Up to date' : 'Still stale' };
       }
@@ -1226,13 +1235,9 @@ async function runStatus(): Promise<void> {
   try {
     const { config: cfg } = await import('../src/config.js');
     serverName = cfg.serverName || serverName;
-    const fb = cfg.aiProviders?.fallbackOrder ?? ['cli', 'api', 'ollama', 'codexmini'];
-    const cli = cfg.aiProviders?.cliPriority ?? ['codex', 'claude', 'gemini', 'cursor'];
-    const api = cfg.aiProviders?.apiPriority ?? ['codex', 'claude', 'gemini'];
     const agentic = cfg.aiProviders?.agenticEnabled ?? false;
-    aiProviderLine = fb.join('-') + (agentic ? ` ${chalk.hex(THEME.success)('(agentic)')}` : '');
-    aiProviderLine += `\n  ${chalk.hex(THEME.primary)('CLI Priority')}  ${chalk.hex('#F1F2F6')(cli.join('-'))}`;
-    aiProviderLine += `\n  ${chalk.hex(THEME.primary)('API Priority')}  ${chalk.hex('#F1F2F6')(api.join('-'))}`;
+    const local = cfg.aiProviders?.localModels ?? false;
+    aiProviderLine = (agentic ? 'agentic' : 'standard') + (local ? ' + ollama' : '');
   } catch { /* ignore */ }
 
   let body = '';
@@ -1425,22 +1430,17 @@ function runConfigYamlHelp(): void {
       ['ollamaTimeout', 'number', 'Ollama timeout (ms)'],
       ['ollamaUpgradeTolerance', '0-1', 'Model upgrade tolerance'],
       ['retryCount', 'number', 'Retry attempts'],
-      ['mongoDbUrl', 'url', 'MongoDB connection string'],
     ]},
     { title: 'github.*', paths: [
       ['github.enabled', 'true|false', 'GitHub integration'],
       ['github.owner', 'string', 'Repo owner'],
       ['github.repo', 'string', 'Repo name'],
       ['github.branch', 'string', 'Default branch'],
-      ['github.autoBackup', 'true|false', 'Auto push backups'],
-      ['github.backupInterval', 'number', 'Backup interval (s)'],
       ['github.private', 'true|false', 'Repo visibility'],
     ]},
     { title: 'monitoring.*', paths: [
       ['monitoring.enabled', 'true|false', 'Health monitoring'],
       ['monitoring.checkInterval', 'number', 'Check interval (ms)'],
-      ['monitoring.autoHeal', 'true|false', 'Auto-restart on fail'],
-      ['monitoring.notifyOnError', 'true|false', 'Error alerts'],
     ]},
     { title: 'backup.*', paths: [
       ['backup.enabled', 'true|false', 'Local backup'],
@@ -1452,45 +1452,25 @@ function runConfigYamlHelp(): void {
     ]},
     { title: 'aiProviders.*', paths: [
       ['aiProviders.localModels', 'true|false', 'Enable Ollama'],
-      ['aiProviders.ollamaForTools', 'true|false', 'Ollama for MCP tools'],
       ['aiProviders.agenticEnabled', 'true|false', 'Agentic mode'],
       ['aiProviders.agenticMaxIterations', '1-50', 'Max agentic iterations'],
     ]},
     { title: 'scheduler.*', paths: [
       ['scheduler.enabled', 'true|false', 'Task scheduler'],
-      ['scheduler.maxConcurrentTasks', 'number', 'Parallel task limit'],
-      ['scheduler.taskHistoryRetentionDays', 'number', 'History retention (days)'],
-    ]},
-    { title: 'conversations.*', paths: [
-      ['conversations.maxMessages', '10-1000', 'Max messages'],
-      ['conversations.persistOnEveryMessage', 'true|false', 'Save per message'],
     ]},
     { title: 'consciousness.*', paths: [
-      ['consciousness.enabled', 'true|false', 'Self-reflection'],
-      ['consciousness.reflectionIntervalHours', 'number', 'Reflection interval (h)'],
+      ['consciousness.enabled', 'true|false', 'Journal & emotion system'],
       ['consciousness.maxJournalEntries', 'number', 'Max journal entries'],
     ]},
     { title: 'selfImprovement.*', paths: [
       ['selfImprovement.enabled', 'true|false', 'Auto-improvement'],
-      ['selfImprovement.autoCommit', 'true|false', 'Auto-commit'],
-      ['selfImprovement.requireApproval', 'true|false', 'Require approval'],
-      ['selfImprovement.maxChangesPerDay', 'number', 'Daily change limit'],
     ]},
-    { title: 'cli.* / api.*', paths: [
-      ['cli.dailyLimit', 'number', 'CLI daily request limit'],
-      ['cli.weeklyLimit', 'number', 'CLI weekly request limit'],
-      ['api.dailyLimit', 'number', 'API daily request limit'],
-      ['api.weeklyLimit', 'number', 'API weekly request limit'],
-    ]},
-    { title: 'watch.* / schedule.* / assistant.* / reactive.*', paths: [
+    { title: 'Workspace (hakanmcp.config.yaml)', paths: [
       ['watch.enabled', 'true|false', 'File watch mode'],
       ['watch.debounceMs', 'number', 'Watch debounce (ms)'],
       ['schedule.enabled', 'true|false', 'Scheduled mode'],
       ['schedule.cron', 'string', 'Cron expression'],
-      ['schedule.interval', 'string', 'Interval (e.g. "every 30m")'],
       ['assistant.enabled', 'true|false', 'Assistant context'],
-      ['assistant.includeTargets', 'true|false', 'Include targets'],
-      ['assistant.maxTargetSize', 'number', 'Max target size (bytes)'],
       ['reactive.enabled', 'true|false', 'Reactive mode'],
     ]},
   ];
@@ -1725,71 +1705,88 @@ function showLogFile(filePath: string, label: string): void {
 }
 
 function runHelp(): void {
-  const icon = (s: string) => chalk.hex(THEME.primary)(`  ✦ `);
-  const cmd = (s: string) => chalk.hex('#F1F2F6')(s.padEnd(24));
+  const cmd = (s: string) => chalk.hex('#F1F2F6')(`    ${s.padEnd(40)}`);
   const desc = (s: string) => chalk.hex(THEME.textMuted)(s);
   const cat = (s: string) => chalk.hex(THEME.primary).bold(`  ${s}`);
 
   const sections = [
-    { title: 'System', items: [
+    { title: 'System & Diagnostics', items: [
       ['doctor [fix]', 'Health check / auto-repair'],
+      ['health', 'Alias for doctor'],
       ['status', 'Status dashboard (version, uptime, backup)'],
+      ['tools', 'List all registered MCP tools'],
     ]},
     { title: 'AI Providers', items: [
-      ['providers', 'Provider status, usage limits & cooldowns'],
-      ['providers set', 'Configure daily/weekly limits, Ollama settings'],
-      ['providers reset', 'Reset cooldowns & usage counters'],
-      ['providers update', 'Update CLI tools & Ollama models'],
+      ['providers [status]', 'Provider status, limits & cooldowns'],
+      ['providers set <type> <args>', 'Configure daily/weekly limits'],
+      ['providers reset [target] [provider]', 'Reset cooldowns & usage counters'],
+      ['providers update [provider]', 'Update CLI tools & Ollama models'],
     ]},
-    { title: 'Consciousness', items: [
+    { title: 'Configuration', items: [
+      ['config', 'Interactive settings UI'],
+      ['config info [category]', 'Detailed info about a config category'],
+      ['config chat set <cat> <key> <val>', 'Update a chat setting'],
+      ['config chat useOllama <on|off>', 'Toggle Ollama usage'],
+      ['config chat useApiKeys <on|off>', 'Toggle API key usage'],
+      ['config yaml help', 'Show all config.yaml paths & types'],
+      ['config yaml set <path> <value>', 'Update config.yaml value'],
+    ]},
+    { title: 'Journal & Consciousness', items: [
       ['journal [n]', 'Show last N journal entries (default: 5)'],
       ['journal reset', 'Clear journal & reset emotions'],
-      ['ralph', 'Ralph loop dashboard'],
-      ['ralph start', 'Start reflection loop (-n, -t, --dry-run)'],
+      ['ralph', 'Ralph Loop dashboard'],
+      ['ralph start [-n] [-t] [--dry-run]', 'Start a reflection loop'],
       ['ralph stop <id>', 'Stop a running loop'],
       ['ralph log <id>', 'Show loop output'],
     ]},
-    { title: 'Data & Config', items: [
-      ['backup [run]', 'Show backup status / run now'],
-      ['config', 'Show current configuration'],
-      ['config set <c> <k> <v>', 'Update config value'],
-      ['config chat', 'Chat-specific settings'],
-      ['config yaml [set]', 'Show/edit config.yaml paths & types'],
-      ['logs [tail|open]', 'Browse / tail / open log areas'],
-      ['tools', 'List all registered MCP tools'],
+    { title: 'Backup & Logs', items: [
+      ['backup', 'Backup status & info'],
+      ['backup run', 'Create a backup now'],
+      ['logs', 'Log overview'],
+      ['logs tail <name>', 'Tail a log file in real-time'],
+      ['logs show <area> <file>', 'View a specific log file'],
+      ['logs open <name> [file]', 'Open log directory or file'],
     ]},
     { title: 'Mission Agent', items: [
-      ['init [--force]', 'Initialize workspace (config + mission templates)'],
+      ['init [--force]', 'Initialize workspace (config + templates)'],
       ['start [--daemon]', 'Start mission agent'],
       ['stop', 'Stop running agent / watcher / scheduler'],
-      ['mission', 'Show current mission status'],
+      ['mission', 'Current mission status'],
       ['report [-n N]', 'Show recent reports'],
       ['watch', 'Start file watcher mode'],
-      ['scheduled', 'Start scheduled mode'],
       ['reactive', 'Start reactive mode (watch + scheduled)'],
+    ]},
+    { title: 'Scheduler', items: [
+      ['scheduled start', 'Start scheduled mode (cron/interval)'],
+      ['scheduled list', 'List all scheduled tasks'],
+      ['scheduled add <name> <cron> <task>', 'Add a new scheduled task'],
+      ['scheduled remove <id>', 'Remove a scheduled task'],
+      ['scheduled pause <id>', 'Pause a scheduled task'],
+      ['scheduled resume <id>', 'Resume a paused task'],
     ]},
     { title: 'Chat Commands (in /console)', items: [
       ['/help', 'Show this help'],
+      ['/clear', 'Clear chat history'],
+      ['/exit, /quit', 'Exit console'],
       ['/doctor [fix]', 'Health check / auto-repair'],
       ['/status', 'Status dashboard'],
-      ['/providers [sub]', 'Provider management'],
-      ['/journal [n]', 'Journal entries'],
       ['/tools', 'List MCP tools'],
-      ['/backup [run]', 'Backup management'],
+      ['/providers [sub]', 'Provider management'],
       ['/config [sub]', 'Configuration'],
       ['/logs [sub]', 'Log browser'],
+      ['/journal [n]', 'Journal entries'],
+      ['/journal reset', 'Clear journal & reset emotions'],
+      ['/backup [run]', 'Backup management'],
       ['/ralph [sub]', 'Ralph loop'],
       ['/init [--force]', 'Initialize workspace'],
-      ['/start [--daemon]', 'Start mission agent (daemon by default)'],
+      ['/start [--daemon]', 'Start mission agent'],
       ['/stop', 'Stop running agent'],
       ['/mission', 'Mission status'],
       ['/report [-n N]', 'Recent reports'],
       ['/watch', 'File watcher mode'],
-      ['/scheduled', 'Scheduled mode'],
-      ['/assistant', 'Mission-aware assistant info'],
+      ['/scheduled [sub]', 'Scheduler management'],
       ['/reactive', 'Reactive mode'],
-      ['/clear', 'Clear chat history'],
-      ['/exit', 'Exit console'],
+      ['/assistant', 'Mission-aware assistant info'],
     ]},
   ];
 
@@ -1798,7 +1795,7 @@ function runHelp(): void {
     if (idx > 0) lines.push('');
     lines.push(cat(section.title));
     for (const [name, description] of section.items) {
-      lines.push(`${icon('✦')}${cmd(name)}${desc(description)}`);
+      lines.push(`${cmd(name)}${desc(description)}`);
     }
   });
 
@@ -1850,11 +1847,69 @@ async function runJournal(countStr: string): Promise<void> {
   let body = '';
   entries.reverse().forEach((e, i) => {
     const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '?';
-    const thought = (e.thought || e.result || '').replace(/[\n\r]+/g, ' ').replace(/[#*_`~>]/g, '').trim();
     const typeLabel = e.type ? chalk.hex(THEME.textMuted)(` (${e.type})`) : '';
-    const provLabel = e.provider ? chalk.hex(THEME.textMuted)(` via ${e.provider}`) : '';
-    body += `  ${chalk.hex(THEME.primary)(`${i + 1}.`)} ${chalk.hex(THEME.textMuted)(`[${ts}]`)}${typeLabel}${provLabel}\n`;
-    body += `     ${chalk.hex('#F1F2F6')(thought)}\n\n`;
+    const provLabel = (e as any).provider ? chalk.hex(THEME.textMuted)(` via ${(e as any).provider}`) : '';
+    const langLabel = (e as any).language ? chalk.hex(THEME.textMuted)(` [${(e as any).language}]`) : '';
+
+    body += `  ${chalk.hex(THEME.primary)(`${i + 1}.`)} ${chalk.hex(THEME.textMuted)(`[${ts}]`)}${typeLabel}${provLabel}${langLabel}\n`;
+
+    switch (e.type) {
+      case 'session_summary': {
+        const ss = e as any;
+        body += `     ${chalk.hex('#F1F2F6')(ss.summary || '')}\n`;
+        if (ss.decisions?.length > 0) {
+          body += `     ${chalk.hex(THEME.primary)('Decisions:')} ${ss.decisions.join('; ')}\n`;
+        }
+        if (ss.filesChanged?.length > 0) {
+          body += `     ${chalk.hex(THEME.primary)('Files:')} ${ss.filesChanged.length} changed\n`;
+        }
+        if (ss.nextSteps?.length > 0) {
+          body += `     ${chalk.hex(THEME.primary)('Next:')} ${ss.nextSteps.join('; ')}\n`;
+        }
+        if (ss.metrics) {
+          body += `     ${chalk.hex(THEME.textMuted)(`${ss.metrics.messagesExchanged} msg, ${ss.metrics.errorsEncountered} err`)}\n`;
+        }
+        break;
+      }
+      case 'session_start': {
+        const ss = e as any;
+        body += `     ${chalk.hex('#F1F2F6')(ss.summary || '')}\n`;
+        if (ss.previousState?.lastSessionDate && ss.previousState.lastSessionDate !== 'none') {
+          body += `     ${chalk.hex(THEME.textMuted)(`Previous: ${new Date(ss.previousState.lastSessionDate).toLocaleString()}`)}\n`;
+        }
+        break;
+      }
+      case 'error': {
+        const ee = e as any;
+        body += `     ${chalk.hex('#FF6B6B')(ee.summary || '')}\n`;
+        if (ee.resolution) {
+          body += `     ${chalk.hex('#00D68F')('Fix:')} ${ee.resolution}\n`;
+        }
+        break;
+      }
+      case 'milestone': {
+        const me = e as any;
+        body += `     ${chalk.hex('#FFD700')('★')} ${chalk.hex('#F1F2F6')(me.summary || '')}\n`;
+        if (me.milestone) {
+          body += `     ${chalk.hex(THEME.primary)(me.milestone)}\n`;
+        }
+        break;
+      }
+      case 'checkpoint': {
+        const ce = e as any;
+        body += `     ${chalk.hex('#6C5CE7')('◆')} ${chalk.hex('#F1F2F6')(ce.summary || '')}\n`;
+        if (ce.filesChanged?.length > 0) {
+          body += `     ${chalk.hex(THEME.textMuted)(`${ce.filesChanged.length} files, ${ce.messagesSoFar || '?'} messages`)}\n`;
+        }
+        break;
+      }
+      default: {
+        // Backward compat: old entries with `thought` field
+        const thought = ((e as any).thought || (e as any).result || '').replace(/[\n\r]+/g, ' ').replace(/[#*_`~>]/g, '').trim();
+        body += `     ${chalk.hex('#F1F2F6')(thought)}\n`;
+      }
+    }
+    body += '\n';
   });
   // Prepend mood/emotion + character summary
   const cogPath = path.join(PROJECT_ROOT, 'logs', 'consciousness', 'cognition_state.json');
@@ -1864,17 +1919,21 @@ async function runJournal(countStr: string): Promise<void> {
       const em = cog.emotions;
       if (em) {
         // Character traits (short labels from Big Five)
-        const profile = getCharacterProfile(PROJECT_ROOT);
+        const profile = em ? getEffectiveCharacter(PROJECT_ROOT, em) : getCharacterProfile(PROJECT_ROOT);
         const traitLabels: string[] = [];
-        traitLabels.push(profile.openness >= 0.7 ? 'Curious' : profile.openness < 0.3 ? 'Practical' : 'Balanced');
-        traitLabels.push(profile.agreeableness >= 0.7 ? 'Warm' : profile.agreeableness < 0.3 ? 'Direct' : 'Moderate');
-        traitLabels.push(profile.conscientiousness >= 0.7 ? 'Organized' : profile.conscientiousness < 0.3 ? 'Flexible' : 'Steady');
-        traitLabels.push(profile.extraversion >= 0.6 ? 'Expressive' : profile.extraversion < 0.3 ? 'Reserved' : 'Moderate');
-        traitLabels.push(profile.emotionalStability >= 0.6 ? 'Steady' : profile.emotionalStability < 0.3 ? 'Sensitive' : 'Balanced');
+        traitLabels.push(profile.openness >= 0.75 ? 'Inventive' : profile.openness >= 0.55 ? 'Curious' : profile.openness >= 0.35 ? 'Balanced' : profile.openness >= 0.2 ? 'Practical' : 'Narrow');
+        traitLabels.push(profile.agreeableness >= 0.75 ? 'Warm' : profile.agreeableness >= 0.55 ? 'Friendly' : profile.agreeableness >= 0.35 ? 'Moderate' : profile.agreeableness >= 0.2 ? 'Direct' : 'Blunt');
+        traitLabels.push(profile.conscientiousness >= 0.75 ? 'Meticulous' : profile.conscientiousness >= 0.55 ? 'Organized' : profile.conscientiousness >= 0.35 ? 'Steady' : profile.conscientiousness >= 0.2 ? 'Loose' : 'Impulsive');
+        traitLabels.push(profile.extraversion >= 0.75 ? 'Enthusiastic' : profile.extraversion >= 0.55 ? 'Expressive' : profile.extraversion >= 0.35 ? 'Moderate' : profile.extraversion >= 0.2 ? 'Reserved' : 'Terse');
+        traitLabels.push(profile.emotionalStability >= 0.75 ? 'Unshakable' : profile.emotionalStability >= 0.55 ? 'Steady' : profile.emotionalStability >= 0.35 ? 'Balanced' : profile.emotionalStability >= 0.2 ? 'Reactive' : 'Volatile');
+        traitLabels.push(profile.humor >= 0.75 ? 'Witty' : profile.humor >= 0.55 ? 'Humorous' : profile.humor >= 0.35 ? 'Neutral' : profile.humor >= 0.2 ? 'Serious' : 'Dry');
+        traitLabels.push(profile.patience >= 0.75 ? 'Patient' : profile.patience >= 0.55 ? 'Calm' : profile.patience >= 0.35 ? 'Steady' : profile.patience >= 0.2 ? 'Hasty' : 'Impatient');
+        traitLabels.push(profile.assertiveness >= 0.75 ? 'Assertive' : profile.assertiveness >= 0.55 ? 'Confident' : profile.assertiveness >= 0.35 ? 'Moderate' : profile.assertiveness >= 0.2 ? 'Deferential' : 'Passive');
+        traitLabels.push(profile.formality >= 0.75 ? 'Formal' : profile.formality >= 0.55 ? 'Professional' : profile.formality >= 0.35 ? 'Casual' : profile.formality >= 0.2 ? 'Relaxed' : 'Chatty');
 
         // Mood description with emoji
         const moodDesc = em.mood > 0.6 ? 'positive' : em.mood > 0.2 ? 'calm' : em.mood > -0.2 ? 'neutral' : em.mood > -0.6 ? 'low' : 'frustrated';
-        const moodEmoji = em.mood > 0.6 ? '😊' : em.mood > 0.2 ? '😌' : em.mood > -0.2 ? '😐' : em.mood > -0.6 ? '😔' : '😤';
+        const moodIcon = em.mood > 0.6 ? chalk.hex('#00D68F')('▲') : em.mood > -0.2 ? chalk.hex('#6C5CE7')('●') : chalk.hex('#FF6B6B')('▼');
         const energyDesc = em.energy > 0.7 ? 'energetic' : em.energy > 0.4 ? 'alert' : 'tired';
         const curiosityDesc = em.curiosity > 0.7 ? 'very curious' : em.curiosity > 0.4 ? 'interested' : 'reflective';
 
@@ -1884,13 +1943,48 @@ async function runJournal(countStr: string): Promise<void> {
           return '█'.repeat(filled) + '░'.repeat(10 - filled);
         };
 
+        // Mood bar uses normalized 0-1 scale (mood is -1 to 1, so shift)
+        const moodNorm = (em.mood + 1) / 2;
+        const moodColor = em.mood > 0.3 ? '#00D68F' : em.mood > -0.3 ? '#6C5CE7' : '#FF6B6B';
+
+        // Formatted bar with label, color, and percentage
+        const fmtBar = (label: string, val: number, color: string, width = 8) => {
+          const filled = Math.round(val * width);
+          const barStr = '█'.repeat(filled) + '░'.repeat(width - filled);
+          const pct = `${Math.round(val * 100)}%`.padStart(4);
+          return `${chalk.hex(THEME.primary)(label.padEnd(13))} ${chalk.hex(color)(barStr)} ${chalk.hex(THEME.textMuted)(pct)}`;
+        };
+
+        // Two-column layout
+        const col1 = [
+          fmtBar('Mood', moodNorm, moodColor),
+          fmtBar('Energy', em.energy, '#6C5CE7'),
+          fmtBar('Curiosity', em.curiosity, '#FDCB6E'),
+        ];
+        const col2 = [
+          fmtBar('Satisfaction', em.satisfaction, '#00D68F'),
+          fmtBar('Frustration', em.frustration, '#FF6B6B'),
+          fmtBar('Focus', em.focus ?? 0.5, '#74B9FF'),
+        ];
+
+        const COL_GAP = '    ';
         let moodBody = '';
-        moodBody += `  ${chalk.hex(THEME.primary)('Character')}     ${chalk.hex('#F1F2F6')(traitLabels.join(' · '))}\n`;
-        moodBody += `  ${chalk.hex(THEME.primary)('Mood')}          ${moodEmoji} ${chalk.hex('#F1F2F6')(moodDesc)} · ${energyDesc} · ${curiosityDesc}\n`;
-        moodBody += `  ${chalk.hex(THEME.primary)('Energy')}        ${chalk.hex('#6C5CE7')(bar(em.energy))} ${Math.round(em.energy * 100)}%\n`;
-        moodBody += `  ${chalk.hex(THEME.primary)('Satisfaction')}  ${chalk.hex('#00D68F')(bar(em.satisfaction))} ${Math.round(em.satisfaction * 100)}%`;
-        moodBody += `    ${chalk.hex(THEME.primary)('Frustration')} ${chalk.hex('#FF6B6B')(bar(em.frustration))} ${Math.round(em.frustration * 100)}%\n`;
-        moodBody += `  ${chalk.hex(THEME.primary)('Interactions')}  ${chalk.hex('#F1F2F6')(String(cog.interactionCount || 0))} total · ${chalk.hex('#F1F2F6')(String(cog.consecutiveSuccesses || 0))} consecutive ok\n\n`;
+        moodBody += `  ${chalk.hex(THEME.primary)('Character')}  ${chalk.hex('#F1F2F6')(traitLabels.join(' · '))}\n`;
+        moodBody += `  ${chalk.hex(THEME.primary)('State')}      ${moodIcon} ${chalk.hex('#F1F2F6')(moodDesc)}`;
+        moodBody += `  ${chalk.hex(THEME.textMuted)('·')}  ${chalk.hex('#F1F2F6')(energyDesc)}`;
+        moodBody += `  ${chalk.hex(THEME.textMuted)('·')}  ${chalk.hex('#F1F2F6')(curiosityDesc)}\n\n`;
+
+        for (let i = 0; i < col1.length; i++) {
+          moodBody += `  ${col1[i]}${COL_GAP}${col2[i]}\n`;
+        }
+
+        const totalInt = cog.interactionCount || 0;
+        const consOk = cog.consecutiveSuccesses || 0;
+        const consErr = cog.consecutiveErrors || 0;
+        moodBody += `\n  ${chalk.hex(THEME.textMuted)(`${totalInt} interactions`)}`;
+        moodBody += `${COL_GAP}${chalk.hex(THEME.success)(`${consOk} consecutive ok`)}`;
+        if (consErr > 0) moodBody += `${COL_GAP}${chalk.hex(THEME.error)(`${consErr} consecutive err`)}`;
+        moodBody += '\n\n';
         body = moodBody + body;
       }
     } catch { /* ignore */ }
@@ -1910,34 +2004,32 @@ async function runJournalReset(): Promise<void> {
   const journalPath = path.join(consciousnessDir, 'journal.jsonl');
   const cogPath = path.join(consciousnessDir, 'cognition_state.json');
 
-  // Backup journal if it exists and has content
+  // Clear journal and backup
   try {
-    const content = fs.readFileSync(journalPath, 'utf8').trim();
-    if (content) {
-      const bakPath = journalPath + '.bak';
-      fs.copyFileSync(journalPath, bakPath);
-    }
     fs.writeFileSync(journalPath, '');
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
   }
-
-  // Reset cognition state
   try {
-    const cog = JSON.parse(fs.readFileSync(cogPath, 'utf8'));
-    cog.interactionCount = 0;
-    cog.consecutiveSuccesses = 0;
-    cog.consecutiveErrors = 0;
-    cog.recentTopics = [];
-    cog.emotions = { mood: 0.5, energy: 0.5, curiosity: 0.5, satisfaction: 0.5, frustration: 0.1 };
-    cog.lastUpdated = new Date().toISOString();
-    fs.writeFileSync(cogPath, JSON.stringify(cog, null, 2) + '\n');
+    fs.unlinkSync(journalPath + '.bak');
+  } catch { /* ignore if not exists */ }
+
+  // Reset cognition state (full wipe)
+  const freshState = {
+    emotions: { mood: 0.5, energy: 0.5, curiosity: 0.5, satisfaction: 0.5, frustration: 0.1, focus: 0.5 },
+    recentTopics: [] as string[],
+    interactionCount: 0,
+    consecutiveSuccesses: 0,
+    consecutiveErrors: 0,
+    lastUpdated: new Date().toISOString(),
+  };
+  try {
+    fs.writeFileSync(cogPath, JSON.stringify(freshState, null, 2) + '\n');
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
   }
 
-  const body = `  ${chalk.hex(THEME.success)('✓')} Journal cleared and emotions reset to defaults.\n` +
-    `  ${chalk.hex(THEME.textMuted)('Backup saved to journal.jsonl.bak')}`;
+  const body = `  ${chalk.hex(THEME.success)('✓')} Journal, session history and emotions fully reset.`;
   console.log(renderTextMenu('Journal Reset', body, undefined, 'journal'));
 }
 
@@ -2646,13 +2738,9 @@ async function runSettings(): Promise<void> {
     {
       title: 'AI Providers',
       rows: [
-        ['localModels', config.aiProviders?.localModels ?? false, 'Enable local Ollama models'],
-        ['ollamaForTools', config.aiProviders?.ollamaForTools ?? true, 'Allow Ollama as MCP tool backend'],
+        ['localModels', config.aiProviders?.localModels ?? false, 'Enable Ollama (tools + chat fallback)'],
         ['agenticEnabled', config.aiProviders?.agenticEnabled ?? false, 'Enable multi-step agentic mode'],
-        ['agenticMaxIterations', config.aiProviders?.agenticMaxIterations ?? 5, 'Max agentic loop iterations'],
-        ['fallbackOrder', (config.aiProviders?.fallbackOrder ?? ['cli', 'api', 'ollama', 'codexmini']).join('-'), 'Provider fallback chain'],
-        ['cliPriority', (config.aiProviders?.cliPriority ?? ['codex', 'claude', 'gemini', 'cursor']).join('-'), 'CLI tool priority order'],
-        ['apiPriority', (config.aiProviders?.apiPriority ?? ['codex', 'claude', 'gemini']).join('-'), 'API key priority order'],
+        ['agenticMaxIterations', config.aiProviders?.agenticMaxIterations ?? 15, 'Max agentic loop iterations'],
         [
           'codexKey',
           config.aiProviders?.codexKeyEncrypted
@@ -2686,15 +2774,7 @@ async function runSettings(): Promise<void> {
     {
       title: 'Chat (CLI)',
       rows: [
-        ['useOllamaInChat', chat.useOllamaInChat ?? false, 'Use Ollama as chat fallback'],
         ['useApiKeys', chat.useApiKeys !== false, 'Use API keys when CLI fails'],
-      ],
-    },
-    {
-      title: 'Usage Limits',
-      rows: [
-        ['API (daily/weekly)', `${config.api?.dailyLimit ?? 50}/${config.api?.weeklyLimit ?? 200}`, 'API request limits'],
-        ['CLI (daily/weekly)', `${config.cli?.dailyLimit ?? 50}/${config.cli?.weeklyLimit ?? 200}`, 'CLI request limits'],
       ],
     },
     {
@@ -2704,8 +2784,6 @@ async function runSettings(): Promise<void> {
         ['owner', config.github?.owner ?? '—', 'Repository owner'],
         ['repo', config.github?.repo ?? '—', 'Repository name'],
         ['branch', config.github?.branch ?? '—', 'Default branch'],
-        ['autoBackup', config.github?.autoBackup ?? false, 'Auto push backups to GitHub'],
-        ['backupInterval', config.github?.backupInterval ?? 24, 'Backup interval in seconds'],
         ['private', config.github?.private ?? true, 'Repository visibility'],
       ],
     },
@@ -2713,9 +2791,7 @@ async function runSettings(): Promise<void> {
       title: 'Monitoring',
       rows: [
         ['enabled', config.monitoring?.enabled ?? false, 'Health monitoring on/off'],
-        ['checkInterval', config.monitoring?.checkInterval ?? 300000, 'Check interval in seconds'],
-        ['autoHeal', config.monitoring?.autoHeal ?? false, 'Auto-restart on failure'],
-        ['notifyOnError', config.monitoring?.notifyOnError ?? true, 'Send alerts on errors'],
+        ['checkInterval', config.monitoring?.checkInterval ?? 300000, 'Check interval in ms'],
       ],
     },
     {
@@ -2738,19 +2814,13 @@ async function runSettings(): Promise<void> {
       ],
     },
     {
-      title: 'Conversations',
-      rows: [
-        ['maxMessages', 100, 'Max messages per conversation'],
-        ['persistOnEveryMessage', false, 'Save after each message'],
-      ],
-    },
-    {
       title: 'Consciousness',
       rows: [
-        ['enabled', config.consciousness?.enabled ?? false, 'Self-reflection system on/off'],
-        ['reflectionIntervalHours', config.consciousness?.reflectionIntervalHours ?? 24, 'Hours between reflections'],
-        ['maxJournalEntries', config.consciousness?.maxJournalEntries ?? 100, 'Max journal entries to keep'],
-        ['reflection.style', (config.consciousness as any)?.reflection?.style ?? 'brief', 'Reflection style (auto/brief/detailed)'],
+        ['enabled', config.consciousness?.enabled ?? false, 'Journal & emotion system on/off'],
+        ['maxJournalEntries', config.consciousness?.maxJournalEntries ?? 500, 'Max journal entries to keep'],
+        ['reflection.maxLength', (config.consciousness as any)?.reflection?.maxLength ?? 200, 'Max reflection text length'],
+        ['reflection.maxEntriesInPrompt', (config.consciousness as any)?.reflection?.maxEntriesInPrompt ?? 3, 'Journal entries in AI prompt'],
+        ['reflection.style', (config.consciousness as any)?.reflection?.style ?? 'auto', 'Style: auto/emotional/mixed/minimal'],
       ],
     },
     {
@@ -2765,16 +2835,14 @@ async function runSettings(): Promise<void> {
     {
       title: 'Watch',
       rows: [
-        ['enabled', (config as any).watch?.enabled ?? false, 'File watch mode on/off'],
-        ['debounceMs', (config as any).watch?.debounceMs ?? 1000, 'Watch debounce delay (ms)'],
+        ['enabled', config.watch?.enabled ?? false, 'File watch mode on/off'],
+        ['debounceMs', config.watch?.debounceMs ?? 1000, 'Watch debounce delay (ms)'],
       ],
     },
     {
       title: 'Schedule',
       rows: [
-        ['enabled', (config as any).schedule?.enabled ?? false, 'Scheduled mode on/off'],
-        ['cron', (config as any).schedule?.cron ?? '—', 'Cron expression'],
-        ['interval', (config as any).schedule?.interval ?? '—', 'Interval (e.g. "every 30m")'],
+        ['enabled', config.scheduler?.enabled ?? false, 'Scheduled mode on/off'],
       ],
     },
     {
@@ -2788,7 +2856,7 @@ async function runSettings(): Promise<void> {
     {
       title: 'Reactive',
       rows: [
-        ['enabled', (config as any).reactive?.enabled ?? false, 'Reactive mode on/off'],
+        ['enabled', config.reactive?.enabled ?? false, 'Reactive mode on/off'],
       ],
     },
   ];
@@ -2820,13 +2888,14 @@ async function runSettings(): Promise<void> {
   }
   const hint = [
     'config set <category> <key> <value>     Toggle/set a setting',
+    'config info <category>                  Detailed info about a category',
     'config chat useOllama <on|off>          Ollama in chat',
     'config chat useApiKeys <on|off>         API keys in chat',
     'config yaml                             Show all yaml paths & types',
     'config yaml set <path> <value>          Edit config.yaml directly',
     'Categories: general | ollama | ai | chat | github | monitoring | backup',
-    '            scheduler | conversations | consciousness | self',
-    '            watch | schedule | assistant | reactive',
+    '            scheduler | consciousness | self | watch | schedule',
+    '            assistant | reactive',
   ].join('\n');
   console.log(renderListBox('Config', body, hint, 'config'));
 }
@@ -2864,20 +2933,15 @@ const SETTINGS_CONFIG_MAP: Record<string, Record<string, string>> = {
   ollama: { model: 'ollamaModel', timeout: 'ollamaTimeout', upgradeTolerance: 'ollamaUpgradeTolerance' },
   ai: {
     localModels: 'aiProviders.localModels',
-    ollamaForTools: 'aiProviders.ollamaForTools',
     agenticEnabled: 'aiProviders.agenticEnabled',
     agenticMaxIterations: 'aiProviders.agenticMaxIterations',
-    fallbackOrder: 'aiProviders.fallbackOrder',
-    cliPriority: 'aiProviders.cliPriority',
-    apiPriority: 'aiProviders.apiPriority',
   },
-  github: { enabled: 'github.enabled', autoBackup: 'github.autoBackup', backupInterval: 'github.backupInterval', private: 'github.private' },
-  monitoring: { enabled: 'monitoring.enabled', checkInterval: 'monitoring.checkInterval', autoHeal: 'monitoring.autoHeal', notifyOnError: 'monitoring.notifyOnError' },
+  github: { enabled: 'github.enabled', private: 'github.private' },
+  monitoring: { enabled: 'monitoring.enabled', checkInterval: 'monitoring.checkInterval' },
   backup: { enabled: 'backup.enabled', maxBackups: 'backup.maxBackups', retentionHours: 'backup.retentionHours', compressionEnabled: 'backup.compressionEnabled', intervalHours: 'backup.intervalHours' },
-  scheduler: { enabled: 'scheduler.enabled', maxConcurrentTasks: 'scheduler.maxConcurrentTasks', taskHistoryRetentionDays: 'scheduler.taskHistoryRetentionDays' },
-  conversations: { maxMessages: 'conversations.maxMessages', persistOnEveryMessage: 'conversations.persistOnEveryMessage' },
-  consciousness: { enabled: 'consciousness.enabled', reflectionIntervalHours: 'consciousness.reflectionIntervalHours', maxJournalEntries: 'consciousness.maxJournalEntries' },
-  self: { enabled: 'selfImprovement.enabled', autoCommit: 'selfImprovement.autoCommit', requireApproval: 'selfImprovement.requireApproval', maxChangesPerDay: 'selfImprovement.maxChangesPerDay' },
+  scheduler: { enabled: 'scheduler.enabled' },
+  consciousness: { enabled: 'consciousness.enabled', maxJournalEntries: 'consciousness.maxJournalEntries' },
+  self: { enabled: 'selfImprovement.enabled' },
   watch: { enabled: 'watch.enabled', debounceMs: 'watch.debounceMs' },
   schedule: { enabled: 'schedule.enabled', cron: 'schedule.cron', interval: 'schedule.interval' },
   assistant: { enabled: 'assistant.enabled', includeTargets: 'assistant.includeTargets', maxTargetSize: 'assistant.maxTargetSize' },
@@ -2916,19 +2980,323 @@ async function runSettingsSet(category: string, key: string, value: string): Pro
 
   const lower = value?.toLowerCase();
   const isBooleanValue = ['on', 'off', 'true', 'false', '1', '0'].includes(lower);
-  // Array fields: dash-separated input → JSON array (e.g. "cli-api-ollama" → '["cli","api","ollama"]')
-  const arrayFields = ['fallbackOrder', 'cliPriority', 'apiPriority'];
-  const isArrayField = arrayFields.includes(key);
   let valStr: string;
   if (isBooleanValue) {
     valStr = (lower === 'on' || lower === 'true' || lower === '1') ? 'true' : 'false';
-  } else if (isArrayField && !value.startsWith('[')) {
-    valStr = JSON.stringify(value.split('-'));
   } else {
     valStr = value;
   }
 
   await runConfigSet(configPath, valStr);
+}
+
+const CONFIG_INFO: Record<string, { title: string; description: string }> = {
+  general: {
+    title: 'General',
+    description: [
+      'Core server settings that affect the entire HakanMCP instance.',
+      '',
+      'serverName    Unique identifier for this MCP server instance. Used in logs,',
+      '              backup filenames, and multi-server scenarios to distinguish',
+      '              this instance from others.',
+      '',
+      'logLevel      Controls log verbosity. Options: debug | info | warn | error.',
+      '              "debug" logs every tool call, AI request, and internal state.',
+      '              "info" logs major operations and results.',
+      '              "warn" and "error" only log problems.',
+      '',
+      'cacheTtl      How long (seconds) cached results are valid before re-fetching.',
+      '              Applies to tool responses, config lookups, and provider status.',
+      '              Lower values = fresher data, higher values = fewer API calls.',
+      '',
+      'retryCount    Number of retry attempts when an operation fails (network errors,',
+      '              timeouts, transient API failures). Each retry uses exponential',
+      '              backoff. Set to 0 to disable retries.',
+    ].join('\n'),
+  },
+  ollama: {
+    title: 'Ollama',
+    description: [
+      'Local LLM inference via Ollama. Used as a fallback provider or primary',
+      'when no API keys are configured.',
+      '',
+      'ollamaUrl             Ollama API endpoint. Default: http://localhost:11434.',
+      '                      Change if running Ollama on a remote machine or',
+      '                      different port.',
+      '',
+      'ollamaModel           Default model for local inference (e.g., llama3,',
+      '                      qwen3, mistral). Must be pulled first: ollama pull <model>.',
+      '',
+      'ollamaTimeout         Request timeout in milliseconds. Increase for slower',
+      '                      hardware or larger models. Default: 36000000 (10 hours).',
+      '',
+      'ollamaUpgradeTolerance  Controls automatic model upgrades. When a newer model',
+      '                      version is available, upgrades if the quality difference',
+      '                      exceeds this threshold (0-1). Set to 0 for always upgrade.',
+    ].join('\n'),
+  },
+  ai: {
+    title: 'AI Providers',
+    description: [
+      'Controls how HakanMCP routes AI requests across multiple providers.',
+      '',
+      'localModels           Enable/disable Ollama as a provider. When true, local',
+      '                      models are included in the fallback chain.',
+      '',
+      'agenticEnabled        Enable multi-step agentic mode. When true, the AI can',
+      '                      chain multiple tool calls in a single conversation turn',
+      '                      (analyze → act → validate loop).',
+      '',
+      'agenticMaxIterations  Maximum tool-call iterations per agentic turn.',
+      '                      Prevents runaway loops. Default: 15.',
+    ].join('\n'),
+  },
+  chat: {
+    title: 'Chat (CLI)',
+    description: [
+      'Settings specific to the interactive chat session (hakanmcp chat).',
+      '',
+      'useApiKeys            When true, API keys (Codex/Claude/Gemini) are used',
+      '                      as fallback when CLI providers fail. If you only want',
+      '                      CLI-based access, set to off.',
+      '                      Toggle: config chat useApiKeys on|off',
+      '',
+      'NOTE: Ollama usage in chat is now controlled by aiProviders.localModels.',
+      'When localModels=true, Ollama is available as a fallback in both MCP',
+      'tools and interactive chat.',
+    ].join('\n'),
+  },
+  github: {
+    title: 'GitHub',
+    description: [
+      'GitHub integration for repository management and sync.',
+      '',
+      'enabled               Master switch for GitHub integration. When false, no',
+      '                      GitHub operations occur regardless of other settings.',
+      '',
+      'owner / repo          Target GitHub repository (owner/repo format).',
+      '                      Example: owner=hakan repo=hakanmcp-backup.',
+      '',
+      'branch                Default branch for sync. Default: main.',
+      '',
+      'private               Repository visibility. When true, creates/maintains',
+      '                      a private repository.',
+    ].join('\n'),
+  },
+  monitoring: {
+    title: 'Monitoring',
+    description: [
+      'Health monitoring system that watches server state via Guardian loop.',
+      '',
+      'enabled               Master switch for health monitoring. When enabled,',
+      '                      the server periodically checks its own health status.',
+      '',
+      'checkInterval         Milliseconds between health checks. Default: 300000 (5 min).',
+      '                      Lower values catch issues faster but use more resources.',
+    ].join('\n'),
+  },
+  backup: {
+    title: 'Backup',
+    description: [
+      'Automatic local backup system for project data and configuration.',
+      '',
+      'enabled               Master switch. When true, backups run automatically',
+      '                      at the configured interval.',
+      '',
+      'localPath             Directory where backup archives are stored.',
+      '                      Relative to project root. Default: ./backups.',
+      '',
+      'maxBackups            Maximum number of backup files to keep. Oldest backups',
+      '                      are deleted when this limit is reached.',
+      '',
+      'retentionHours        Delete backups older than this many hours, regardless',
+      '                      of maxBackups limit.',
+      '',
+      'compressionEnabled    Compress backup archives with gzip. Reduces storage',
+      '                      at the cost of slightly slower backup/restore.',
+      '',
+      'intervalHours         Hours between automatic backup runs.',
+    ].join('\n'),
+  },
+  scheduler: {
+    title: 'Scheduler',
+    description: [
+      'Task scheduler for running deferred and periodic operations.',
+      '',
+      'enabled               Master switch. When true, the scheduler accepts and',
+      '                      executes scheduled tasks via MCP tools.',
+      '',
+      'maxConcurrentTasks    Maximum number of tasks that can run in parallel.',
+      '                      Higher values use more resources. Default: 3.',
+      '',
+      'taskHistoryRetentionDays  Number of days to keep completed task history.',
+      '                      Older records are automatically pruned. Default: 30.',
+    ].join('\n'),
+  },
+  consciousness: {
+    title: 'Consciousness',
+    description: [
+      'AI journaling and emotional state system. Tracks emotions, generates',
+      'structured journal entries, and dynamically shifts character traits.',
+      '',
+      'enabled               Master switch. When true, the consciousness system',
+      '                      is active: emotions are tracked, journal entries',
+      '                      are generated, and character traits dynamically',
+      '                      shift based on emotional state.',
+      '                      When false, chat runs without emotional context.',
+      '',
+      'maxJournalEntries     Maximum journal entries to keep in journal.jsonl.',
+      '                      Oldest entries are pruned when limit is reached.',
+      '',
+      'reflection.style      Journal generation style: auto | emotional | mixed | minimal.',
+      '                      "auto" adapts based on current emotional state.',
+      '                      "minimal" produces brief factual entries.',
+      '',
+      'Journal entries are event-driven: session start/end, errors, milestones,',
+      'and every 25 messages (checkpoint). Character traits from character.yaml',
+      'shift dynamically based on emotions (frustration, curiosity, energy, focus).',
+    ].join('\n'),
+  },
+  self: {
+    title: 'Self-improvement',
+    description: [
+      'AI-driven code improvement system. Propose → approve → apply workflow',
+      'with safety constraints.',
+      '',
+      'enabled               Master switch. When true, self-improvement MCP',
+      '                      tools are available for AI assistants.',
+      '',
+      'autoCommit            Auto-commit changes after successful apply.',
+      '                      Default: false (manual commit required).',
+      '',
+      'requireApproval       Require explicit approval before applying.',
+      '                      Default: true (recommended for safety).',
+      '',
+      'maxChangesPerDay      Maximum changes allowed per day. Default: 10.',
+      '                      Prevents runaway self-modification.',
+      '',
+      'allowedOperations     Whitelist: optimize, refactor, fix, test, docs.',
+      '',
+      'restrictedPaths       Paths that can never be modified.',
+      '                      Default: node_modules, .git, dist, .env.',
+    ].join('\n'),
+  },
+  watch: {
+    title: 'Watch',
+    description: [
+      'File watch mode — monitors filesystem changes and triggers AI actions.',
+      '',
+      'When enabled, HakanMCP watches specified paths for file changes and',
+      'automatically runs configured actions (e.g., lint, test, analyze) when',
+      'files are modified, created, or deleted.',
+      '',
+      'enabled               Master switch for watch mode.',
+      '',
+      'paths                 Glob patterns for files/directories to watch.',
+      '                      Example: ["src/**/*.ts", "tests/**/*.ts"]',
+      '',
+      'debounceMs            Milliseconds to wait after a change before triggering.',
+      '                      Prevents rapid-fire actions during batch saves.',
+      '                      Default: 1000.',
+      '',
+      'NOTE: Watch mode is configured per-workspace via hakanmcp.config.yaml,',
+      'not the global config.yaml. Use "hakanmcp watch" to start watch mode.',
+    ].join('\n'),
+  },
+  schedule: {
+    title: 'Schedule',
+    description: [
+      'Scheduled mode — runs AI actions on a time-based schedule.',
+      '',
+      'When enabled, HakanMCP executes configured actions at specified intervals',
+      'or cron schedules. Useful for periodic health checks, code analysis,',
+      'or automated maintenance tasks.',
+      '',
+      'enabled               Master switch for scheduled mode.',
+      '',
+      'cron                  Cron expression for scheduling. Uses standard cron',
+      '                      syntax (e.g., "0 */6 * * *" for every 6 hours).',
+      '',
+      'interval              Human-readable interval (e.g., "every 30m", "every 2h").',
+      '                      Alternative to cron for simpler scheduling.',
+      '',
+      'NOTE: Configured per-workspace via hakanmcp.config.yaml.',
+      'Use "hakanmcp scheduled" to start scheduled mode.',
+    ].join('\n'),
+  },
+  assistant: {
+    title: 'Assistant',
+    description: [
+      'Assistant context injection — controls what project context is included',
+      'when AI assistants interact with the MCP server.',
+      '',
+      'enabled               Master switch. When true, the MCP server includes',
+      '                      relevant project files as context in tool responses.',
+      '                      When false, tools return raw results without context.',
+      '',
+      'includeTargets        When true, includes target file contents in tool',
+      '                      context (e.g., the file being analyzed or modified).',
+      '',
+      'maxTargetSize         Maximum file size (bytes) for included targets.',
+      '                      Files larger than this are excluded from context.',
+      '                      Default: 8192 (8 KB).',
+      '',
+      'NOTE: Configured per-workspace via hakanmcp.config.yaml.',
+    ].join('\n'),
+  },
+  reactive: {
+    title: 'Reactive',
+    description: [
+      'Reactive mode — combines watch + scheduled modes into a unified',
+      'event-driven system.',
+      '',
+      'When enabled, HakanMCP reacts to both filesystem events (watch) and',
+      'time-based triggers (schedule) in a single process. This is the',
+      'recommended mode for production use instead of running watch and',
+      'scheduled separately.',
+      '',
+      'enabled               Master switch for reactive mode.',
+      '',
+      'modes                 Array of reactive mode configurations, each',
+      '                      specifying triggers (file changes, timers) and',
+      '                      actions to execute.',
+      '',
+      'NOTE: Configured per-workspace via hakanmcp.config.yaml.',
+      'Use "hakanmcp reactive" to start reactive mode.',
+    ].join('\n'),
+  },
+};
+
+function runConfigInfo(category?: string): void {
+  if (!category) {
+    const cats = Object.keys(CONFIG_INFO).map((k) => `  ${chalk.hex('#F1F2F6')(k.padEnd(18))} ${chalk.hex(THEME.textMuted)(CONFIG_INFO[k].title)}`).join('\n');
+    const body = `\n  Available categories:\n\n${cats}\n`;
+    const hint = 'config info <category>     Show detailed info for a category';
+    console.log(renderListBox('Config Info', body, hint, 'config'));
+    return;
+  }
+  const key = category.toLowerCase();
+  const info = CONFIG_INFO[key];
+  if (!info) {
+    const closest = Object.keys(CONFIG_INFO).find((k) => k.startsWith(key));
+    console.log(
+      renderTextMenu(
+        'Config Info',
+        `  ${chalk.hex(THEME.error)('✗')} Unknown category: ${category}${closest ? `. Did you mean ${chalk.bold.white(closest)}?` : ''}`,
+        'config info     List all categories',
+        'config',
+      ),
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const lines = info.description.split('\n').map((l) => `  ${chalk.hex('#F1F2F6')(l)}`).join('\n');
+  const body = `\n${lines}\n`;
+  const hint = [
+    `config set ${key} <key> <value>     Change a ${info.title} setting`,
+    'config info                        List all categories',
+  ].join('\n');
+  console.log(renderListBox(`Config Info: ${info.title}`, body, hint, 'config'));
 }
 
 async function runChat(verbose: boolean): Promise<void> {
@@ -3040,9 +3408,13 @@ async function main(): Promise<void> {
     .description('Use API keys (Codex/Gemini/Claude) in CLI chat when CLI fails (on/off)')
     .action((val: string) => runSettingsChatUseApiKeys(val));
   configCmd
+    .command('info [category]')
+    .description('Detailed info about a config category')
+    .action((cat?: string) => runConfigInfo(cat));
+  configCmd
     .command('set <category> <key> <value>')
     .description(
-      'Set a setting (category: general|ollama|ai|github|monitoring|backup|scheduler|conversations|consciousness|self|chat)',
+      'Set a setting (category: general|ollama|ai|github|monitoring|backup|scheduler|consciousness|self|chat)',
     )
     .action((cat: string, key: string, val: string) => runSettingsSet(cat, key, val));
 

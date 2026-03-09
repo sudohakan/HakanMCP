@@ -2803,13 +2803,23 @@ async function runSettings(): Promise<void> {
     },
     {
       title: 'GitHub',
-      rows: [
-        ['enabled', config.github?.enabled ?? false, 'GitHub integration on/off'],
-        ['owner', config.github?.owner ?? '—', 'Repository owner'],
-        ['repo', config.github?.repo ?? '—', 'Repository name'],
-        ['branch', config.github?.branch ?? '—', 'Default branch'],
-        ['private', config.github?.private ?? true, 'Repository visibility'],
-      ],
+      rows: (() => {
+        // Auto-detect owner/repo from git remote, fallback to config
+        let detectedOwner = config.github?.owner ?? '—';
+        let detectedRepo = config.github?.repo ?? '—';
+        try {
+          const remoteUrl = execSync('git remote get-url origin', { cwd: PROJECT_ROOT, encoding: 'utf8', timeout: 5000 }).trim();
+          const m = remoteUrl.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
+          if (m) { detectedOwner = m[1]; detectedRepo = m[2]; }
+        } catch { /* git not available or no remote */ }
+        return [
+          ['enabled', config.github?.enabled ?? false, 'GitHub integration on/off'],
+          ['owner', detectedOwner, 'Repository owner (auto-detected from git remote)'],
+          ['repo', detectedRepo, 'Repository name (auto-detected from git remote)'],
+          ['branch', config.github?.branch ?? '—', 'Default branch'],
+          ['private', config.github?.private ?? true, 'Repository visibility'],
+        ];
+      })(),
     },
     {
       title: 'Monitoring',
@@ -3105,8 +3115,8 @@ const CONFIG_INFO: Record<string, { title: string; description: string }> = {
       'enabled               Master switch for GitHub integration. When false, no',
       '                      GitHub operations occur regardless of other settings.',
       '',
-      'owner / repo          Target GitHub repository (owner/repo format).',
-      '                      Example: owner=hakan repo=hakanmcp-backup.',
+      'owner / repo          Target GitHub repository. Auto-detected from git remote',
+      '                      origin URL. Set manually only to override auto-detection.',
       '',
       'branch                Default branch for sync. Default: main.',
       '',

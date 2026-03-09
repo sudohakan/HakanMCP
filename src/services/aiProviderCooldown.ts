@@ -400,19 +400,17 @@ function saveUsage(map: Partial<Record<UsageKey, CliUsageEntry>>): void {
   }
 }
 
-function getLimitsConfig(provider?: CliProviderId): { daily: number; weekly: number } {
-  const providerOverride = provider ? (config.cli as Record<string, unknown> | undefined)?.[provider] as { dailyLimit?: number; weeklyLimit?: number } | undefined : undefined;
+function getLimitsConfig(_provider?: CliProviderId): { daily: number; weekly: number } {
   return {
-    daily: providerOverride?.dailyLimit ?? config.cli?.dailyLimit ?? DEFAULT_DAILY_LIMIT,
-    weekly: providerOverride?.weeklyLimit ?? config.cli?.weeklyLimit ?? DEFAULT_WEEKLY_LIMIT,
+    daily: DEFAULT_DAILY_LIMIT,
+    weekly: DEFAULT_WEEKLY_LIMIT,
   };
 }
 
-function getApiLimitsConfig(provider?: AiProviderId): { daily: number; weekly: number } {
-  const providerOverride = provider ? (config.api as Record<string, unknown> | undefined)?.[provider] as { dailyLimit?: number; weeklyLimit?: number } | undefined : undefined;
+function getApiLimitsConfig(_provider?: AiProviderId): { daily: number; weekly: number } {
   return {
-    daily: providerOverride?.dailyLimit ?? config.api?.dailyLimit ?? DEFAULT_DAILY_LIMIT,
-    weekly: providerOverride?.weeklyLimit ?? config.api?.weeklyLimit ?? DEFAULT_WEEKLY_LIMIT,
+    daily: DEFAULT_DAILY_LIMIT,
+    weekly: DEFAULT_WEEKLY_LIMIT,
   };
 }
 

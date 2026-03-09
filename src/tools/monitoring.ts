@@ -678,7 +678,8 @@ export const monitoringTools = [
         })
         .parse(args);
 
-      if (!config.monitoring?.autoHeal) {
+      // autoHeal hardcoded to false (removed from config)
+      if (true) {
         return {
           content: [
             {

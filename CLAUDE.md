@@ -149,6 +149,14 @@ Feature tools (`db`, `mongo`, `git`) require optional native dependencies — th
 - Periodically audit for dead code, unused placeholders, and orphaned files — remove them promptly
 - Empty directories without a clear documented purpose should be removed
 
+## Config Change Rule
+
+When modifying config schema (`src/config.ts`), config.yaml defaults, or adding/removing config fields:
+1. Update `CONFIG_INFO` in `bin/hakanmcp.ts` — the `config info <category>` descriptions must reflect current fields
+2. Update the status board display in `runStatus()` if the field is user-visible
+3. Ensure `config.yaml` has the new field with a sensible default
+4. If a config field exists in schema but is never read at runtime, either wire it up or remove it
+
 ## Build & Run
 
 ```bash

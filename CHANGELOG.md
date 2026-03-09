@@ -5,6 +5,31 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-09
+
+### Security
+
+- Fixed command injection vulnerability in AI auto-repair (CodeQL: `js/command-line-injection`)
+- Fixed cleartext logging of sensitive environment variables in doctor, quick_status, status_board
+- Replaced weak SHA-256 password hashing with HMAC-SHA256 in dbPoolManager
+- Fixed incomplete string sanitization (backslash escaping) in aiProviderCooldown and triggerEngine
+- Fixed incomplete URL substring sanitization in aiProviders test
+- Fixed 14 TOCTOU race conditions across 8 files (existsSync → try-catch pattern)
+- Fixed 19 insecure temporary file creation issues (mkdtempSync + 0o600 permissions)
+- Fixed 3 indirect command injection vulnerabilities (execFileAsync replacing shell interpolation)
+- Added URL protocol validation for outbound network requests in postman and aiProviders
+- Added field truncation and path traversal prevention in consciousnessService
+
+### Fixed
+
+- ConversationManager storage path moved to `.hakanmcp/conversations/`
+- Sessions save path corrected (getProjectRoot instead of os.homedir)
+- Agentic label now shows provider brand colors in chat UI
+
+### Changed
+
+- Repository cleanliness rules added to project CLAUDE.md
+
 ## [1.1.0] - 2026-03-09
 
 ### Added

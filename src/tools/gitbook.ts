@@ -1,0 +1,263 @@
+import { z } from 'zod';
+import { JSDOM } from 'jsdom';
+import fetch from 'node-fetch';
+import NodeCache from 'node-cache';
+
+import { config } from '../config.js';
+import { logger } from '../utils/logger.js';
+
+// Cache setup
+const cache = new NodeCache({ stdTTL: config.cacheTtl });
+const BASE = config.gitbookUrl;
+
+logger.info('GitBook initialized', { base: BASE, cacheTtl: config.cacheTtl });
+
+// Helper functions
+async function fetchHtml(pth: string) {
+  const base = BASE.replace(/\/$/, '');
+  const rel = (pth || '').replace(/^\//, '');
+  const url = pth?.startsWith('http') ? pth : `${base}/${rel}`;
+
+  // Check cache first
+  const cached = cache.get<string>(url);
+  if (cached) {
+    logger.debug('Cache hit', { url });
+    return { html: cached, url };
+  }
+
+  logger.debug('Cache miss', { url });
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} - ${url}`);
+  const html = await res.text();
+
+  // Store in cache
+  cache.set(url, html);
+
+  return { html, url };
+}
+
+function dedupeLinks<T extends { href: string; text: string }>(arr: T[]) {
+  return arr.filter((v, i, a) => a.findIndex((x) => x.href === v.href && x.text === v.text) === i);
+}
+
+// Tool Definitions
+export const gitbookTools = [
+  {
+    name: 'gb_getPage',
+    description: 'Returns the plain text of the GitBook page (path or full URL).',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+    handler: async (args: unknown) => {
+      const { path } = z.object({ path: z.string() }).parse(args);
+      const { html, url } = await fetchHtml(path);
+      const dom = new JSDOM(html);
+      const text = dom.window.document.body.textContent || '';
+      return { content: [{ type: 'text', text }], meta: { url } };
+    },
+  },
+  {
+    name: 'gb_listLinks',
+    description: 'Lists the internal links (href + text) on the page.',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+    handler: async (args: unknown) => {
+      const { path } = z.object({ path: z.string() }).parse(args);
+      const { html, url } = await fetchHtml(path);
+      const dom = new JSDOM(html);
+      const host = new URL(BASE).host;
+      const links = dedupeLinks(
+        Array.from(dom.window.document.querySelectorAll('a'))
+          .map((a) => ({ href: (a as HTMLAnchorElement).href, text: (a.textContent || '').trim() }))
+          .filter((l) => l.href.includes(host)),
+      );
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ base: url, links }, null, 2),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'gb_find',
+    description: 'Searches for keyword/regex within the page.',
+    inputSchema: {
+      type: 'object',
+      properties: { path: { type: 'string' }, pattern: { type: 'string' } },
+      required: ['path', 'pattern'],
+    },
+    handler: async (args: unknown) => {
+      const { path, pattern } = z.object({ path: z.string(), pattern: z.string() }).parse(args);
+      const { html, url } = await fetchHtml(path);
+      const dom = new JSDOM(html);
+      const text = dom.window.document.body.textContent || '';
+      const re = new RegExp(pattern, 'i');
+      const matches = text
+        .split('\n')
+        .map((s) => s.trim())
+        .filter((s) => s && re.test(s))
+        .slice(0, 50);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ url, matches }, null, 2),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'gb_headings',
+    description: 'Lists H1-H3 headers on the GitBook page.',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+    handler: async (args: unknown) => {
+      const { path } = z.object({ path: z.string() }).parse(args);
+      const { html, url } = await fetchHtml(path);
+      const dom = new JSDOM(html);
+      const nodes = Array.from(dom.window.document.querySelectorAll('h1,h2,h3')) as HTMLElement[];
+      const headings = nodes.map((h) => ({
+        level: Number(h.tagName.substring(1)),
+        text: (h.textContent || '').trim(),
+      }));
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(headings, null, 2),
+          },
+        ],
+        meta: { url },
+      };
+    },
+  },
+  {
+    name: 'gb_outline',
+    description: 'Returns the page title tree (level, text, id).',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+    handler: async (args: unknown) => {
+      const { path } = z.object({ path: z.string() }).parse(args);
+      const { html, url } = await fetchHtml(path);
+      const dom = new JSDOM(html);
+      const nodes = Array.from(dom.window.document.querySelectorAll('h1,h2,h3')) as HTMLElement[];
+      const headings = nodes.map((h) => ({
+        level: Number(h.tagName.substring(1)),
+        text: (h.textContent || '').trim(),
+        id: h.getAttribute('id') || '',
+      }));
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(headings, null, 2),
+          },
+        ],
+        meta: { url },
+      };
+    },
+  },
+  {
+    name: 'gb_getMetadata',
+    description:
+      'Returns the metadata information (title, description, keywords) of the GitBook page.',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+    handler: async (args: unknown) => {
+      const { path } = z.object({ path: z.string() }).parse(args);
+      const { html, url } = await fetchHtml(path);
+      const dom = new JSDOM(html);
+      const doc = dom.window.document;
+
+      const metadata = {
+        title: doc.querySelector('title')?.textContent || '',
+        description: doc.querySelector('meta[name="description"]')?.getAttribute('content') || '',
+        keywords: doc.querySelector('meta[name="keywords"]')?.getAttribute('content') || '',
+        author: doc.querySelector('meta[name="author"]')?.getAttribute('content') || '',
+        ogTitle: doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || '',
+        ogDescription:
+          doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || '',
+        ogImage: doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || '',
+      };
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ url, metadata }, null, 2),
+          },
+        ],
+        meta: { url },
+      };
+    },
+  },
+  {
+    name: 'gb_searchContent',
+    description: 'It searches for content on a GitBook page and returns it along with its context.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        searchTerm: { type: 'string' },
+        contextLines: { type: 'number', description: 'Number of rows around the match' },
+      },
+      required: ['path', 'searchTerm'],
+    },
+    handler: async (args: unknown) => {
+      const { path, searchTerm, contextLines } = z
+        .object({
+          path: z.string(),
+          searchTerm: z.string(),
+          contextLines: z.number().default(2),
+        })
+        .parse(args);
+
+      const { html, url } = await fetchHtml(path);
+      const dom = new JSDOM(html);
+      const text = dom.window.document.body.textContent || '';
+      const lines = text
+        .split('\n')
+        .map((s) => s.trim())
+        .filter((s) => s);
+
+      const results: Array<{
+        lineNumber: number;
+        matchedLine: string;
+        context: string[];
+        contextRange: string;
+      }> = [];
+      const searchLower = searchTerm.toLowerCase();
+
+      lines.forEach((line, index) => {
+        if (line.toLowerCase().includes(searchLower)) {
+          const start = Math.max(0, index - contextLines);
+          const end = Math.min(lines.length, index + contextLines + 1);
+          const context = lines.slice(start, end);
+
+          results.push({
+            lineNumber: index + 1,
+            matchedLine: line,
+            context: context,
+            contextRange: `${start + 1}-${end}`,
+          });
+        }
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                url,
+                searchTerm,
+                matchCount: results.length,
+                matches: results.slice(0, 20), // Limit to 20 matches
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+];

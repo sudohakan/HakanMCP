@@ -1,0 +1,145 @@
+{
+  "name": "hakanmcp",
+  "version": "1.0.0",
+  "description": "HakanMCP — Unified AI Agent Orchestration & MCP Tool Platform",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "type": "module",
+  "bin": {
+    "hakanmcp": "./dist/bin/cli.js"
+  },
+  "homepage": "https://github.com/sudohakan/HakanMCP#readme",
+  "bugs": {
+    "url": "https://github.com/sudohakan/HakanMCP/issues"
+  },
+  "files": [
+    "dist/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prepublishOnly": "npm run build",
+    "prepack": "npm run build",
+    "build": "tsc -p tsconfig.build.json && node dist/scripts/generate-tool-manifest.js",
+    "start": "node --no-warnings dist/src/index.js",
+    "dev": "node --no-warnings --loader ts-node/esm src/index.ts",
+    "lint": "eslint \"{src,tests,scripts,bin}/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"{src,tests,scripts,bin}/**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"{src,tests,scripts,bin}/**/*.{ts,tsx,js,json,md}\"",
+    "test": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest",
+    "test:smoke": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --runInBand tests/config.test.ts tests/aiProviders.test.ts tests/logger.test.ts",
+    "test:watch": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --watch",
+    "test:coverage": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --coverage",
+    "check:quick": "npm run build && npm run test:smoke",
+    "console:chat": "node --no-warnings --loader ts-node/esm scripts/console_chat.ts",
+    "status:board": "node --no-warnings --loader ts-node/esm scripts/status_board.ts",
+    "status:quick": "node --no-warnings --loader ts-node/esm scripts/quick_status.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "@types/express": "^5.0.6",
+    "@types/node-cron": "^3.0.11",
+    "boxen": "^8.0.1",
+    "chalk": "^5.6.2",
+    "chalk-animation": "^2.0.3",
+    "chokidar": "^4.0.3",
+    "cli-table3": "^0.6.5",
+    "commander": "^14.0.3",
+    "csv-parse": "^6.1.0",
+    "csv-stringify": "^6.6.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "glob": "^13.0.0",
+    "gradient-string": "^3.0.0",
+    "gray-matter": "^4.0.3",
+    "handlebars": "^4.7.8",
+    "js-yaml": "^4.1.0",
+    "jsdom": "^22.1.0",
+    "node-cache": "^5.1.2",
+    "node-cron": "^4.2.1",
+    "node-fetch": "^3.3.2",
+    "ora": "^9.3.0",
+    "semver": "^7.6.0",
+    "winston": "^3.18.3",
+    "winston-daily-rotate-file": "^5.0.0",
+    "xml2js": "^0.6.2",
+    "zod": "^4.1.13"
+  },
+  "optionalDependencies": {
+    "agentdb": "^3.0.0-alpha.9",
+    "mongodb": "^6.0.0",
+    "mssql": "^12.1.1",
+    "mysql2": "^3.6.5",
+    "pg": "^8.11.3",
+    "simple-git": "^3.21.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/chalk-animation": "^1.6.3",
+    "@types/gradient-string": "^1.1.6",
+    "@types/jest": "^30.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/jsdom": "^21.1.1",
+    "@types/mssql": "^9.1.8",
+    "@types/node": "^24.10.1",
+    "@types/pg": "^8.10.9",
+    "@types/xml2js": "^0.4.14",
+    "@typescript-eslint/eslint-plugin": "^8.17.0",
+    "@typescript-eslint/parser": "^8.17.0",
+    "adm-zip": "^0.5.16",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.16.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.1",
+    "jest": "^30.2.0",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.4.2",
+    "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sudohakan/HakanMCP.git"
+  },
+  "keywords": [
+    "hakanmcp",
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "agent-orchestration",
+    "cli",
+    "developer-tools",
+    "automation"
+  ],
+  "author": "sudohakan",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "overrides": {
+    "minimatch": "^10.2.1",
+    "tar": "^7.5.8"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "tests/**/*.{ts,tsx,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "bin/**/*.{ts,tsx,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
+}

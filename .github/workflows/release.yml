@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          # Strip leading 'v' from tag to get version number
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Extract the changelog section for this version
+          # Matches from "## [X.Y.Z]" to the next "## [" or end of file
+          BODY=$(awk -v ver="$VERSION" '
+            BEGIN { found=0; body="" }
+            /^## \[/ {
+              if (found) exit
+              if (index($0, "[" ver "]")) { found=1; next }
+            }
+            found { body = body $0 "\n" }
+            END { print body }
+          ' CHANGELOG.md)
+
+          # Fallback if no changelog entry found
+          if [ -z "$BODY" ]; then
+            BODY="Release ${GITHUB_REF_NAME}"
+            echo "No changelog entry found for version $VERSION, using fallback."
+          fi
+
+          # Write body to a temp file (avoids multiline output issues)
+          echo "$BODY" > /tmp/release-body.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: /tmp/release-body.md
+          draft: false
+          prerelease: false

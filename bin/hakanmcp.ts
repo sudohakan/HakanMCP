@@ -790,15 +790,20 @@ async function runDoctor(fix = false): Promise<void> {
       },
     });
   } else {
-    const srcNewest = getNewestMtime(path.join(PROJECT_ROOT, 'src'), '.ts');
+    // Check all TypeScript source directories against dist
+    const srcDirs = ['src', 'scripts', 'bin'].map((d) => path.join(PROJECT_ROOT, d));
+    const newestSrc = Math.max(...srcDirs.map((d) => getNewestMtime(d, '.ts')));
     const distMtime = fs.statSync(distIndex).mtimeMs;
-    if (srcNewest > distMtime) {
+    if (newestSrc > distMtime) {
+      const staleDirs = srcDirs
+        .filter((d) => getNewestMtime(d, '.ts') > distMtime)
+        .map((d) => path.basename(d));
       checks.push({
         label: 'Build (dist/)',
         status: 'fail',
-        detail: 'Stale (src newer than dist)',
+        detail: `Stale (${staleDirs.join(', ')} newer than dist)`,
         repairAction: {
-          description: 'Rebuilding...',
+          description: 'Rebuilding project...',
           fn: () => { execSync('npm run build', { cwd: PROJECT_ROOT, stdio: 'pipe', timeout: 120_000 }); },
         },
       });
@@ -1170,7 +1175,8 @@ Rules:
       }
       case 'Build (dist/)': {
         if (!fs.existsSync(distIndex)) return { label, status: 'fail', detail: 'Still not built' };
-        const srcN = getNewestMtime(path.join(PROJECT_ROOT, 'src'), '.ts');
+        const reDirs = ['src', 'scripts', 'bin'].map((d) => path.join(PROJECT_ROOT, d));
+        const srcN = Math.max(...reDirs.map((d) => getNewestMtime(d, '.ts')));
         const distM = fs.statSync(distIndex).mtimeMs;
         return { label, status: srcN <= distM ? 'ok' : 'fail', detail: srcN <= distM ? 'Up to date' : 'Still stale' };
       }
@@ -1850,11 +1856,69 @@ async function runJournal(countStr: string): Promise<void> {
   let body = '';
   entries.reverse().forEach((e, i) => {
     const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '?';
-    const thought = (e.thought || e.result || '').replace(/[\n\r]+/g, ' ').replace(/[#*_`~>]/g, '').trim();
     const typeLabel = e.type ? chalk.hex(THEME.textMuted)(` (${e.type})`) : '';
-    const provLabel = e.provider ? chalk.hex(THEME.textMuted)(` via ${e.provider}`) : '';
-    body += `  ${chalk.hex(THEME.primary)(`${i + 1}.`)} ${chalk.hex(THEME.textMuted)(`[${ts}]`)}${typeLabel}${provLabel}\n`;
-    body += `     ${chalk.hex('#F1F2F6')(thought)}\n\n`;
+    const provLabel = (e as any).provider ? chalk.hex(THEME.textMuted)(` via ${(e as any).provider}`) : '';
+    const langLabel = (e as any).language ? chalk.hex(THEME.textMuted)(` [${(e as any).language}]`) : '';
+
+    body += `  ${chalk.hex(THEME.primary)(`${i + 1}.`)} ${chalk.hex(THEME.textMuted)(`[${ts}]`)}${typeLabel}${provLabel}${langLabel}\n`;
+
+    switch (e.type) {
+      case 'session_summary': {
+        const ss = e as any;
+        body += `     ${chalk.hex('#F1F2F6')(ss.summary || '')}\n`;
+        if (ss.decisions?.length > 0) {
+          body += `     ${chalk.hex(THEME.primary)('Decisions:')} ${ss.decisions.join('; ')}\n`;
+        }
+        if (ss.filesChanged?.length > 0) {
+          body += `     ${chalk.hex(THEME.primary)('Files:')} ${ss.filesChanged.length} changed\n`;
+        }
+        if (ss.nextSteps?.length > 0) {
+          body += `     ${chalk.hex(THEME.primary)('Next:')} ${ss.nextSteps.join('; ')}\n`;
+        }
+        if (ss.metrics) {
+          body += `     ${chalk.hex(THEME.textMuted)(`${ss.metrics.messagesExchanged} msg, ${ss.metrics.errorsEncountered} err`)}\n`;
+        }
+        break;
+      }
+      case 'session_start': {
+        const ss = e as any;
+        body += `     ${chalk.hex('#F1F2F6')(ss.summary || '')}\n`;
+        if (ss.previousState?.lastSessionDate && ss.previousState.lastSessionDate !== 'none') {
+          body += `     ${chalk.hex(THEME.textMuted)(`Previous: ${new Date(ss.previousState.lastSessionDate).toLocaleString()}`)}\n`;
+        }
+        break;
+      }
+      case 'error': {
+        const ee = e as any;
+        body += `     ${chalk.hex('#FF6B6B')(ee.summary || '')}\n`;
+        if (ee.resolution) {
+          body += `     ${chalk.hex('#00D68F')('Fix:')} ${ee.resolution}\n`;
+        }
+        break;
+      }
+      case 'milestone': {
+        const me = e as any;
+        body += `     ${chalk.hex('#FFD700')('★')} ${chalk.hex('#F1F2F6')(me.summary || '')}\n`;
+        if (me.milestone) {
+          body += `     ${chalk.hex(THEME.primary)(me.milestone)}\n`;
+        }
+        break;
+      }
+      case 'checkpoint': {
+        const ce = e as any;
+        body += `     ${chalk.hex('#6C5CE7')('◆')} ${chalk.hex('#F1F2F6')(ce.summary || '')}\n`;
+        if (ce.filesChanged?.length > 0) {
+          body += `     ${chalk.hex(THEME.textMuted)(`${ce.filesChanged.length} files, ${ce.messagesSoFar || '?'} messages`)}\n`;
+        }
+        break;
+      }
+      default: {
+        // Backward compat: old entries with `thought` field
+        const thought = ((e as any).thought || (e as any).result || '').replace(/[\n\r]+/g, ' ').replace(/[#*_`~>]/g, '').trim();
+        body += `     ${chalk.hex('#F1F2F6')(thought)}\n`;
+      }
+    }
+    body += '\n';
   });
   // Prepend mood/emotion + character summary
   const cogPath = path.join(PROJECT_ROOT, 'logs', 'consciousness', 'cognition_state.json');
@@ -1874,7 +1938,7 @@ async function runJournal(countStr: string): Promise<void> {
 
         // Mood description with emoji
         const moodDesc = em.mood > 0.6 ? 'positive' : em.mood > 0.2 ? 'calm' : em.mood > -0.2 ? 'neutral' : em.mood > -0.6 ? 'low' : 'frustrated';
-        const moodEmoji = em.mood > 0.6 ? '😊' : em.mood > 0.2 ? '😌' : em.mood > -0.2 ? '😐' : em.mood > -0.6 ? '😔' : '😤';
+        const moodIcon = em.mood > 0.6 ? chalk.hex('#00D68F')('▲') : em.mood > -0.2 ? chalk.hex('#6C5CE7')('●') : chalk.hex('#FF6B6B')('▼');
         const energyDesc = em.energy > 0.7 ? 'energetic' : em.energy > 0.4 ? 'alert' : 'tired';
         const curiosityDesc = em.curiosity > 0.7 ? 'very curious' : em.curiosity > 0.4 ? 'interested' : 'reflective';
 
@@ -1884,13 +1948,48 @@ async function runJournal(countStr: string): Promise<void> {
           return '█'.repeat(filled) + '░'.repeat(10 - filled);
         };
 
+        // Mood bar uses normalized 0-1 scale (mood is -1 to 1, so shift)
+        const moodNorm = (em.mood + 1) / 2;
+        const moodColor = em.mood > 0.3 ? '#00D68F' : em.mood > -0.3 ? '#6C5CE7' : '#FF6B6B';
+
+        // Formatted bar with label, color, and percentage
+        const fmtBar = (label: string, val: number, color: string, width = 8) => {
+          const filled = Math.round(val * width);
+          const barStr = '█'.repeat(filled) + '░'.repeat(width - filled);
+          const pct = `${Math.round(val * 100)}%`.padStart(4);
+          return `${chalk.hex(THEME.primary)(label.padEnd(13))} ${chalk.hex(color)(barStr)} ${chalk.hex(THEME.textMuted)(pct)}`;
+        };
+
+        // Two-column layout
+        const col1 = [
+          fmtBar('Mood', moodNorm, moodColor),
+          fmtBar('Energy', em.energy, '#6C5CE7'),
+          fmtBar('Curiosity', em.curiosity, '#FDCB6E'),
+        ];
+        const col2 = [
+          fmtBar('Satisfaction', em.satisfaction, '#00D68F'),
+          fmtBar('Frustration', em.frustration, '#FF6B6B'),
+          fmtBar('Focus', em.focus ?? 0.5, '#74B9FF'),
+        ];
+
+        const COL_GAP = '    ';
         let moodBody = '';
-        moodBody += `  ${chalk.hex(THEME.primary)('Character')}     ${chalk.hex('#F1F2F6')(traitLabels.join(' · '))}\n`;
-        moodBody += `  ${chalk.hex(THEME.primary)('Mood')}          ${moodEmoji} ${chalk.hex('#F1F2F6')(moodDesc)} · ${energyDesc} · ${curiosityDesc}\n`;
-        moodBody += `  ${chalk.hex(THEME.primary)('Energy')}        ${chalk.hex('#6C5CE7')(bar(em.energy))} ${Math.round(em.energy * 100)}%\n`;
-        moodBody += `  ${chalk.hex(THEME.primary)('Satisfaction')}  ${chalk.hex('#00D68F')(bar(em.satisfaction))} ${Math.round(em.satisfaction * 100)}%`;
-        moodBody += `    ${chalk.hex(THEME.primary)('Frustration')} ${chalk.hex('#FF6B6B')(bar(em.frustration))} ${Math.round(em.frustration * 100)}%\n`;
-        moodBody += `  ${chalk.hex(THEME.primary)('Interactions')}  ${chalk.hex('#F1F2F6')(String(cog.interactionCount || 0))} total · ${chalk.hex('#F1F2F6')(String(cog.consecutiveSuccesses || 0))} consecutive ok\n\n`;
+        moodBody += `  ${chalk.hex(THEME.primary)('Character')}  ${chalk.hex('#F1F2F6')(traitLabels.join(' · '))}\n`;
+        moodBody += `  ${chalk.hex(THEME.primary)('State')}      ${moodIcon} ${chalk.hex('#F1F2F6')(moodDesc)}`;
+        moodBody += `  ${chalk.hex(THEME.textMuted)('·')}  ${chalk.hex('#F1F2F6')(energyDesc)}`;
+        moodBody += `  ${chalk.hex(THEME.textMuted)('·')}  ${chalk.hex('#F1F2F6')(curiosityDesc)}\n\n`;
+
+        for (let i = 0; i < col1.length; i++) {
+          moodBody += `  ${col1[i]}${COL_GAP}${col2[i]}\n`;
+        }
+
+        const totalInt = cog.interactionCount || 0;
+        const consOk = cog.consecutiveSuccesses || 0;
+        const consErr = cog.consecutiveErrors || 0;
+        moodBody += `\n  ${chalk.hex(THEME.textMuted)(`${totalInt} interactions`)}`;
+        moodBody += `${COL_GAP}${chalk.hex(THEME.success)(`${consOk} consecutive ok`)}`;
+        if (consErr > 0) moodBody += `${COL_GAP}${chalk.hex(THEME.error)(`${consErr} consecutive err`)}`;
+        moodBody += '\n\n';
         body = moodBody + body;
       }
     } catch { /* ignore */ }
@@ -1929,7 +2028,7 @@ async function runJournalReset(): Promise<void> {
     cog.consecutiveSuccesses = 0;
     cog.consecutiveErrors = 0;
     cog.recentTopics = [];
-    cog.emotions = { mood: 0.5, energy: 0.5, curiosity: 0.5, satisfaction: 0.5, frustration: 0.1 };
+    cog.emotions = { mood: 0.5, energy: 0.5, curiosity: 0.5, satisfaction: 0.5, frustration: 0.1, focus: 0.5 };
     cog.lastUpdated = new Date().toISOString();
     fs.writeFileSync(cogPath, JSON.stringify(cog, null, 2) + '\n');
   } catch (err: unknown) {

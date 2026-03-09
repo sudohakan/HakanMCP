@@ -1,7 +1,14 @@
 /**
  * Character profile for CLI chat (plan §15d).
- * Loads from ~/.hakanmcp/character.yaml (user override) or config.yaml consciousness.character.
- * Big Five traits + verbosity/proactivity shape response tone and proactive suggestions.
+ *
+ * Base traits loaded from (in priority order):
+ *   1. ~/.hakanmcp/character.yaml (user override)
+ *   2. <projectRoot>/character.yaml (project-level)
+ *   3. config.yaml → consciousness.character
+ *   4. Hardcoded DEFAULTS
+ *
+ * Dynamic traits: getEffectiveCharacter() applies emotional modifiers to base traits.
+ * High frustration → agreeableness drops, high curiosity → openness rises, etc.
  */
 
 import fs from 'node:fs';
@@ -65,6 +72,18 @@ function loadUserCharacter(): CharacterProfile | null {
   }
 }
 
+/** Load from <projectRoot>/character.yaml if exists */
+function loadProjectCharacter(projectRoot: string): CharacterProfile | null {
+  try {
+    const p = path.join(projectRoot, 'character.yaml');
+    if (!fs.existsSync(p)) return null;
+    const raw = yaml.load(fs.readFileSync(p, 'utf8'));
+    return parseCharacter(raw);
+  } catch {
+    return null;
+  }
+}
+
 /** Load from config.yaml consciousness.character (at project root) */
 function loadConfigCharacter(projectRoot: string): CharacterProfile | null {
   try {
@@ -90,11 +109,13 @@ export function getCharacterProfile(projectRoot?: string): CharacterProfile {
   if (cachedProfile && cacheKey === key) return cachedProfile;
 
   const fromConfig = projectRoot ? loadConfigCharacter(projectRoot) : null;
+  const fromProject = projectRoot ? loadProjectCharacter(projectRoot) : null;
   const user = loadUserCharacter();
 
   const result = { ...DEFAULTS };
   if (fromConfig) Object.assign(result, fromConfig);
-  if (user) Object.assign(result, user);
+  if (fromProject) Object.assign(result, fromProject);  // project character.yaml > config.yaml
+  if (user) Object.assign(result, user);                 // ~/.hakanmcp/character.yaml > all
 
   cachedProfile = result;
   cacheKey = key;
@@ -103,6 +124,62 @@ export function getCharacterProfile(projectRoot?: string): CharacterProfile {
 
 export function clearCharacterCache(): void {
   cachedProfile = undefined;
+}
+
+/** Emotional state shape — matches CognitionState.emotions */
+interface EmotionState {
+  mood: number;
+  energy: number;
+  curiosity: number;
+  satisfaction: number;
+  frustration: number;
+  focus: number;
+}
+
+/**
+ * Get effective character by applying emotional modifiers to base traits.
+ * Base traits come from character.yaml; emotions shift them dynamically.
+ *
+ * Modifier philosophy:
+ * - Each emotion affects 2-3 traits in intuitive directions
+ * - Modifiers are ±0.15 max so base personality still dominates
+ * - Opposing emotions create natural tension (frustration vs satisfaction)
+ */
+export function getEffectiveCharacter(
+  projectRoot: string,
+  emotions: Partial<EmotionState>,
+): CharacterProfile {
+  const base = getCharacterProfile(projectRoot);
+  const e = {
+    mood: emotions.mood ?? 0,
+    energy: emotions.energy ?? 0.5,
+    curiosity: emotions.curiosity ?? 0.5,
+    satisfaction: emotions.satisfaction ?? 0.4,
+    frustration: emotions.frustration ?? 0.1,
+    focus: emotions.focus ?? 0.5,
+  };
+
+  // Emotional offsets from neutral baselines (centered around typical resting values)
+  const moodOffset = e.mood;                       // -1 to 1, already centered
+  const energyOffset = (e.energy - 0.6) * 2;      // → -1.2 to 0.8
+  const curiosityOffset = (e.curiosity - 0.5) * 2; // → -1 to 1
+  const frustOffset = (e.frustration - 0.1) * 1.5; // → -0.15 to 1.35
+  const focusOffset = (e.focus - 0.5) * 2;         // → -1 to 1
+  const satOffset = (e.satisfaction - 0.4) * 2;     // → -0.8 to 1.2
+
+  // Scale factor — keeps modifiers in ±0.15 range
+  const S = 0.15;
+
+  return {
+    openness: clamp(base.openness + curiosityOffset * S - frustOffset * S * 0.5, 0, 1),
+    conscientiousness: clamp(base.conscientiousness + focusOffset * S + satOffset * S * 0.3, 0, 1),
+    extraversion: clamp(base.extraversion + energyOffset * S + moodOffset * S * 0.5, 0, 1),
+    agreeableness: clamp(base.agreeableness + satOffset * S * 0.5 - frustOffset * S, 0, 1),
+    emotionalStability: clamp(base.emotionalStability - frustOffset * S + satOffset * S * 0.3, 0, 1),
+    proactivity: clamp(base.proactivity + energyOffset * S * 0.5 + curiosityOffset * S * 0.5, 0, 1),
+    // Verbosity shifts with energy: low energy → low verbosity, high energy → high
+    verbosity: e.energy > 0.75 ? 'high' : e.energy < 0.3 ? 'low' : base.verbosity,
+  };
 }
 
 /** Convert Big Five numeric traits to human-readable character description lines. */

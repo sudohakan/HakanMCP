@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { config } from '../src/config.js';
-import { getCharacterProfile, describePersonality } from '../src/utils/characterProfile.js';
+import { getCharacterProfile, getEffectiveCharacter, describePersonality } from '../src/utils/characterProfile.js';
 import yaml from 'js-yaml';
 import { getPreferredLLMResponse } from '../src/tools/aiTools.js';
 import { ConsciousnessService } from '../src/services/consciousnessService.js';
+import { SessionTracker } from '../src/services/sessionTracker.js';
 import { getWarmedCliOrder, startWarmup } from '../src/services/aiProviderWarmup.js';
 import { getChatSettings } from '../src/utils/chatSettings.js';
 import {
@@ -300,12 +301,17 @@ function describeEmotionalState(cog: CognitionStateFile): string {
   const curiosityDesc =
     e.curiosity > 0.7 ? 'very curious' : e.curiosity > 0.4 ? 'interested' : 'reflective';
 
-  return `Currently feeling ${moodDesc}, ${energyDesc}, and ${curiosityDesc}.`;
+  const focusDesc =
+    (e as any).focus > 0.7 ? 'deeply focused' : (e as any).focus > 0.4 ? 'attentive' : 'scattered';
+
+  return `Currently feeling ${moodDesc}, ${energyDesc}, ${curiosityDesc}, and ${focusDesc}.`;
 }
 
 /** Plan §15c, §15d: Tone guidance from emotional state + character profile */
 function getEmotionalToneGuidance(cog: CognitionStateFile | null): string {
-  const char = getCharacterProfile(getProjectRoot());
+  const char = cog?.emotions
+    ? getEffectiveCharacter(getProjectRoot(), cog.emotions)
+    : getCharacterProfile(getProjectRoot());
   const parts: string[] = [];
 
   if (cog?.emotions) {
@@ -314,6 +320,8 @@ function getEmotionalToneGuidance(cog: CognitionStateFile | null): string {
     if (e.frustration > 0.5) parts.push('Keep replies short, focused, and practical.');
     if (e.satisfaction > 0.6) parts.push('Use a warmer, more encouraging tone.');
     if (e.mood < -0.3) parts.push('Be direct and minimal; avoid extra elaboration.');
+    if ((e as any).focus > 0.7) parts.push('Stay on topic; avoid tangents.');
+    if ((e as any).focus < 0.3) parts.push('Help re-establish context; summarize where we are.');
   }
 
   if (char.agreeableness > 0.75) parts.push('Use soft, conciliatory language.');
@@ -365,12 +373,15 @@ interface ConsciousnessBlocks {
 }
 
 function buildConsciousnessBlocks(): ConsciousnessBlocks {
-  const profile = getCharacterProfile(getProjectRoot());
   const cog = readCognitionState();
+  // Dynamic character: base traits shifted by current emotions
+  const profile = cog?.emotions
+    ? getEffectiveCharacter(getProjectRoot(), cog.emotions)
+    : getCharacterProfile(getProjectRoot());
   const reflConfig = readReflectionConfig();
   const journal = readRecentJournal(reflConfig.maxEntriesInPrompt);
 
-  // [Character] block
+  // [Character] block — reflects current emotional influence on personality
   const personalityLines = describePersonality(profile);
   const character = personalityLines.join('\n');
 
@@ -393,10 +404,12 @@ function buildConsciousnessBlocks(): ConsciousnessBlocks {
 
 /** Plan §3, §15d, §15e: Proactive suggestion — cognition + character; skip when info-only (quiet mode) */
 function shouldOfferProactiveSuggestion(lastUserLine?: string): boolean {
-  const char = getCharacterProfile(getProjectRoot());
+  const cog = readCognitionState();
+  const char = cog?.emotions
+    ? getEffectiveCharacter(getProjectRoot(), cog.emotions)
+    : getCharacterProfile(getProjectRoot());
   if (char.proactivity < 0.1) return false;
   if (lastUserLine && isInfoOnlyQuestion(lastUserLine) && char.proactivity < 0.6) return false;
-  const cog = readCognitionState();
   if (!cog) return Math.random() < char.proactivity * 0.3;
   const e = cog.emotions as { curiosity?: number; energy?: number; mood?: number } | undefined;
   const p = cog.personality as { extraversion?: number } | undefined;
@@ -451,34 +464,67 @@ function getConsciousnessService(): ConsciousnessService {
   return _consciousnessService;
 }
 
+let _sessionTracker: SessionTracker | null = null;
+function getSessionTracker(): SessionTracker {
+  if (!_sessionTracker) _sessionTracker = new SessionTracker();
+  return _sessionTracker;
+}
+
 function updateCognitionOnSuccess(topic?: string): void {
   try {
     const svc = getConsciousnessService();
     svc.updateState({ type: 'chat_success', detail: topic });
-    const state = svc.readState();
 
-    // Every 10 messages → background reflection
-    if (state.interactionCount > 0 && state.interactionCount % 10 === 0) {
-      svc.generateReflection().catch(() => { /* ignore */ });
+    // Activity checkpoint — every 25 messages
+    const tracker = getSessionTracker();
+    if (tracker.shouldCheckpoint()) {
+      const ctx = tracker.getContext();
+      svc.generateCheckpoint(ctx).catch(() => {});
     }
   } catch {
     /* ignore */
   }
 }
 
-function updateCognitionOnError(): void {
+function updateCognitionOnError(errorMsg?: string): void {
   try {
     const svc = getConsciousnessService();
     svc.updateState({ type: 'chat_error' });
     const state = svc.readState();
+    const tracker = getSessionTracker();
 
-    // First error → AI-generated observation
+    if (errorMsg) tracker.trackError(errorMsg);
+
+    // First error in streak → structured error entry
     if (state.consecutiveErrors === 1) {
-      svc.generateReflection('error').catch(() => { /* ignore */ });
+      const ctx = tracker.getContext();
+      svc.generateErrorEntry(ctx, errorMsg || 'Unknown error', '').catch(() => {});
     }
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * Determine if the current session work qualifies as a milestone.
+ * Only significant work should be logged as a milestone.
+ */
+function detectMilestone(tracker: SessionTracker): { isMilestone: boolean; name: string; impact: string[] } | null {
+  const ctx = tracker.getContext();
+
+  // Version release with multiple files changed
+  const versionRelease = ctx.milestones.find((m) => /v?\d+\.\d+\.\d+/.test(m));
+  if (versionRelease && ctx.filesChanged.length >= 5) {
+    return { isMilestone: true, name: versionRelease, impact: ctx.filesChanged.slice(0, 10) };
+  }
+
+  // Large-scale change (10+ files in one session)
+  if (ctx.filesChanged.length >= 10 && ctx.messageCount >= 15) {
+    const label = ctx.decisions.length > 0 ? ctx.decisions[0] : `${ctx.filesChanged.length} files changed`;
+    return { isMilestone: true, name: label, impact: ctx.filesChanged.slice(0, 10) };
+  }
+
+  return null;
 }
 
 /** Session close → AI-generated summary reflection */
@@ -486,9 +532,17 @@ async function writeSessionCloseJournal(): Promise<void> {
   try {
     const svc = getConsciousnessService();
     const state = svc.readState();
-    // Only write if there were meaningful interactions
     if (state.interactionCount < 2) return;
-    await svc.generateReflection('session_end');
+
+    const tracker = getSessionTracker();
+    const ctx = tracker.getContext();
+    await svc.generateSessionSummary(ctx);
+
+    // Check if session qualifies as a milestone
+    const milestone = detectMilestone(tracker);
+    if (milestone) {
+      await svc.generateMilestoneEntry(ctx, milestone.name, milestone.impact);
+    }
   } catch {
     /* ignore */
   }
@@ -1193,6 +1247,8 @@ async function runConsole(): Promise<void> {
     if (!line?.trim()) return;
     writeDebug(`processOneMessage: line length=${line.length}, history=${history.length}`);
     history.push({ role: 'user', content: line });
+    getSessionTracker().detectLanguage(line);
+    getSessionTracker().trackMessage();
 
     if (lastSuggestion && isApprovalToRun(line)) {
       const cmd = lastSuggestion.command;
@@ -1339,7 +1395,7 @@ async function runConsole(): Promise<void> {
         safeOutput(rl, '\n' + chalk.red(`Error: ${message}`) + '\n');
       }
       history.pop();
-      updateCognitionOnError();
+      updateCognitionOnError(message);
       logEvent('ERROR', 'Chat response failed', { error: message });
       if (detailedMode) rawConsoleError(error);
       return;
@@ -1431,6 +1487,16 @@ async function runConsole(): Promise<void> {
   }
 
   rl.setPrompt(`\n${PROMPT_SYMBOL} `);
+
+  // Session start journal entry (background, non-blocking)
+  try {
+    const svc = getConsciousnessService();
+    const tracker = getSessionTracker();
+    tracker.reset();
+    const ctx = tracker.getContext();
+    svc.generateSessionStart(ctx).catch(() => {});
+  } catch { /* ignore */ }
+
   rl.prompt();
 
   rl.on('line', (rawLine: string) => {
@@ -1699,19 +1765,45 @@ async function runConsole(): Promise<void> {
     });
   });
 
-  // Session close — write journal summary then exit
+  // Session close — double Ctrl+C to exit, single Ctrl+C shows hint
   let sessionClosing = false;
-  const handleSessionClose = () => {
+  let lastSigintTime = 0;
+  const DOUBLE_PRESS_WINDOW_MS = 1500;
+
+  const handleGracefulClose = () => {
     if (sessionClosing) return;
     sessionClosing = true;
+    output.write(chalk.gray('\n  Saving session journal...\n'));
     writeSessionCloseJournal().finally(() => process.exit(0));
-    // Force exit after 3s if AI call hangs
     setTimeout(() => process.exit(0), 3000).unref();
   };
 
-  rl.on('close', handleSessionClose);
-  process.on('SIGINT', handleSessionClose);
-  process.on('SIGTERM', handleSessionClose);
+  let ctrlCHintTimer: ReturnType<typeof setTimeout> | null = null;
+
+  process.on('SIGINT', () => {
+    const now = Date.now();
+    if (now - lastSigintTime < DOUBLE_PRESS_WINDOW_MS) {
+      // Double press — exit
+      if (ctrlCHintTimer) clearTimeout(ctrlCHintTimer);
+      handleGracefulClose();
+    } else {
+      // Single press — show exit hint, auto-revert after 1.5s
+      lastSigintTime = now;
+      const exitHint = chalk.yellow('▸ Ctrl+C') + chalk.gray(' to exit');
+      rl.setPrompt(`\n${exitHint} `);
+      output.write('\n');
+      rl.prompt();
+      if (ctrlCHintTimer) clearTimeout(ctrlCHintTimer);
+      ctrlCHintTimer = setTimeout(() => {
+        rl.setPrompt(`\n${PROMPT_SYMBOL} `);
+        ctrlCHintTimer = null;
+      }, 1500);
+    }
+  });
+
+  rl.on('close', handleGracefulClose);
+  process.on('SIGTERM', handleGracefulClose);
+  process.on('SIGHUP', handleGracefulClose);
 }
 
 runConsole().catch((error) => {

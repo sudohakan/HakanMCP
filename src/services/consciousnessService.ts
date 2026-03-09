@@ -3,13 +3,12 @@
  *
  * Two responsibilities:
  * A) updateState(event) — updates cognition_state.json after chat events (no AI call, fast)
- * B) generateReflection() — AI-powered periodic reflection → appends to journal.jsonl
+ * B) Structured journal entry generators — context-rich entries appended to journal.jsonl
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
-import { getCharacterProfile, describePersonality } from '../utils/characterProfile.js';
+import type { SessionContext } from './sessionTracker.js';
 import { logger } from '../utils/logger.js';
 
 // ── Interfaces ───────────────────────────────────────────────────────────────
@@ -21,6 +20,7 @@ export interface CognitionState {
     curiosity: number;   // 0 to 1
     satisfaction: number; // 0 to 1
     frustration: number; // 0 to 1
+    focus: number;       // 0 to 1
   };
   recentTopics: string[];
   interactionCount: number;
@@ -34,12 +34,58 @@ export interface CognitionEvent {
   detail?: string;
 }
 
-export interface JournalEntry {
-  thought: string;
-  type: 'reflection' | 'observation' | 'insight';
+// ── Journal Entry Types ─────────────────────────────────────────────────────
+
+export interface BaseJournalEntry {
+  type: string;
   timestamp: string;
-  provider?: string;
+  language: string;
+  provider: string;
 }
+
+export interface SessionStartEntry extends BaseJournalEntry {
+  type: 'session_start';
+  previousState: {
+    lastSessionDate: string;
+    pendingTasks: string[];
+  };
+  summary: string;
+}
+
+export interface SessionSummaryEntry extends BaseJournalEntry {
+  type: 'session_summary';
+  summary: string;
+  decisions: string[];
+  filesChanged: string[];
+  nextSteps: string[];
+  metrics: {
+    messagesExchanged: number;
+    errorsEncountered: number;
+  };
+}
+
+export interface ErrorEntry extends BaseJournalEntry {
+  type: 'error';
+  summary: string;
+  errorContext: string;
+  resolution: string;
+}
+
+export interface MilestoneEntry extends BaseJournalEntry {
+  type: 'milestone';
+  summary: string;
+  milestone: string;
+  impact: string[];
+}
+
+export interface CheckpointEntry extends BaseJournalEntry {
+  type: 'checkpoint';
+  summary: string;
+  filesChanged: string[];
+  messagesSoFar: number;
+}
+
+export type JournalEntry = SessionStartEntry | SessionSummaryEntry | ErrorEntry | MilestoneEntry | CheckpointEntry;
 
 // ── Service ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +127,7 @@ export class ConsciousnessService {
             curiosity: raw.emotions?.curiosity ?? 0.5,
             satisfaction: raw.emotions?.satisfaction ?? 0.3,
             frustration: raw.emotions?.frustration ?? 0,
+            focus: raw.emotions?.focus ?? 0.5,
           },
           recentTopics: raw.recentTopics ?? [],
           interactionCount: raw.interactionCount ?? 0,
@@ -103,48 +150,61 @@ export class ConsciousnessService {
       const e = state.emotions;
 
       // Natural decay — pull all values toward baseline each update
-      const DECAY = 0.04;
+      const DECAY = 0.02;
       e.mood = decay(e.mood, 0.5, DECAY);
       e.energy = decay(e.energy, 0.6, DECAY);
       e.curiosity = decay(e.curiosity, 0.5, DECAY);
       e.satisfaction = decay(e.satisfaction, 0.4, DECAY);
       e.frustration = decay(e.frustration, 0.1, DECAY);
+      e.focus = decay(e.focus, 0.5, DECAY);
 
-      // Event adjustments — scaled by distance from limit (diminishing returns)
+      // Event adjustments — each event creates opposing movements across emotions
       switch (event.type) {
         case 'chat_success':
-          e.mood = clamp(e.mood + 0.05 * (1 - e.mood), -1, 1);
-          e.energy = clamp(e.energy + 0.02 * (1 - e.energy), 0, 1);
-          e.satisfaction = clamp(e.satisfaction + 0.06 * (1 - e.satisfaction), 0, 1);
-          e.frustration = clamp(e.frustration - 0.05 * e.frustration, 0, 1);
-          e.curiosity = clamp(e.curiosity + 0.01 * (1 - e.curiosity), 0, 1);
+          e.mood = clamp(e.mood + 0.10, -1, 1);
+          e.energy = clamp(e.energy + 0.03, 0, 1);
+          e.satisfaction = clamp(e.satisfaction + 0.12, 0, 1);
+          e.frustration = clamp(e.frustration - 0.10, 0, 1);
+          e.curiosity = clamp(e.curiosity - 0.02, 0, 1);  // solved → slightly less curious
+          e.focus = clamp(e.focus + 0.06, 0, 1);          // success → deeper focus
           state.consecutiveSuccesses += 1;
           state.consecutiveErrors = 0;
           state.interactionCount += 1;
           break;
 
         case 'chat_error':
-          e.mood = clamp(e.mood - 0.08 * (1 + e.mood), -1, 1);
-          e.energy = clamp(e.energy - 0.03 * e.energy, 0, 1);
-          e.frustration = clamp(e.frustration + 0.12 * (1 - e.frustration), 0, 1);
-          e.satisfaction = clamp(e.satisfaction - 0.04 * e.satisfaction, 0, 1);
+          e.mood = clamp(e.mood - 0.15, -1, 1);
+          e.energy = clamp(e.energy - 0.06, 0, 1);
+          e.frustration = clamp(e.frustration + 0.20, 0, 1);
+          e.satisfaction = clamp(e.satisfaction - 0.10, 0, 1);
+          e.curiosity = clamp(e.curiosity + 0.05, 0, 1);  // error → curious about root cause
+          e.focus = clamp(e.focus - 0.10, 0, 1);          // error breaks flow
           state.consecutiveErrors += 1;
           state.consecutiveSuccesses = 0;
           state.interactionCount += 1;
           break;
 
         case 'tool_used':
-          e.curiosity = clamp(e.curiosity + 0.04, 0, 1);
-          e.energy = clamp(e.energy - 0.01, 0, 1);
+          e.curiosity = clamp(e.curiosity + 0.06, 0, 1);
+          e.energy = clamp(e.energy - 0.03, 0, 1);        // tool use costs energy
+          e.satisfaction = clamp(e.satisfaction + 0.02, 0, 1);  // progress feels good
+          e.mood = clamp(e.mood + 0.02, -1, 1);
+          e.focus = clamp(e.focus + 0.08, 0, 1);          // deep in tool chain → high focus
           state.interactionCount += 1;
           break;
 
         case 'backup_done':
-          e.satisfaction = clamp(e.satisfaction + 0.02, 0, 1);
+          e.satisfaction = clamp(e.satisfaction + 0.06, 0, 1);
+          e.mood = clamp(e.mood + 0.03, -1, 1);
+          e.frustration = clamp(e.frustration - 0.03, 0, 1);  // safety reduces stress
+          e.focus = clamp(e.focus - 0.04, 0, 1);          // context switch
           break;
 
         case 'topic':
-          // topic event only adds to recentTopics
+          e.curiosity = clamp(e.curiosity + 0.08, 0, 1);
+          e.energy = clamp(e.energy + 0.03, 0, 1);        // new topic energizes
+          e.mood = clamp(e.mood + 0.02, -1, 1);
+          e.focus = clamp(e.focus - 0.12, 0, 1);          // topic switch breaks focus
           break;
       }
 
@@ -154,6 +214,7 @@ export class ConsciousnessService {
       e.curiosity = clamp(e.curiosity, 0, 1);
       e.satisfaction = clamp(e.satisfaction, 0, 1);
       e.frustration = clamp(e.frustration, 0, 1);
+      e.focus = clamp(e.focus, 0, 1);
 
       if (event.detail && (event.type === 'chat_success' || event.type === 'topic')) {
         state.recentTopics.push(event.detail.toLowerCase().slice(0, 100));
@@ -174,14 +235,17 @@ export class ConsciousnessService {
   /** Append an entry to journal.jsonl */
   appendJournal(entry: JournalEntry): void {
     try {
-      // Truncate string fields to prevent unbounded writes
       const MAX_FIELD_LEN = 8192;
-      const sanitized: JournalEntry = {
-        thought: typeof entry.thought === 'string' ? entry.thought.slice(0, MAX_FIELD_LEN) : entry.thought,
-        type: entry.type,
-        timestamp: typeof entry.timestamp === 'string' ? entry.timestamp.slice(0, MAX_FIELD_LEN) : entry.timestamp,
-        provider: typeof entry.provider === 'string' ? entry.provider.slice(0, MAX_FIELD_LEN) : entry.provider,
-      };
+      const sanitized = JSON.parse(JSON.stringify(entry));
+      // Truncate all string fields
+      for (const [key, val] of Object.entries(sanitized)) {
+        if (typeof val === 'string') sanitized[key] = val.slice(0, MAX_FIELD_LEN);
+        if (Array.isArray(val)) {
+          sanitized[key] = val.map((v: unknown) =>
+            typeof v === 'string' ? v.slice(0, MAX_FIELD_LEN) : v
+          );
+        }
+      }
       this.ensureDir();
       const line = JSON.stringify(sanitized) + '\n';
       fs.appendFileSync(this.journalPath, line, 'utf8');
@@ -206,119 +270,252 @@ export class ConsciousnessService {
     }
   }
 
-  /** Read reflection config from config.yaml, with defaults */
-  private getReflectionConfig(): { maxLength: number; maxEntriesInPrompt: number; style: string } {
-    const defaults = { maxLength: 1000, maxEntriesInPrompt: 3, style: 'auto' };
-    try {
-      const configPath = path.join(this.projectRoot, 'config.yaml');
-      if (!fs.existsSync(configPath)) return defaults;
-      const raw = yaml.load(fs.readFileSync(configPath, 'utf8')) as Record<string, any>;
-      const ref = raw?.consciousness?.reflection;
-      if (!ref) return defaults;
-      return {
-        maxLength: typeof ref.maxLength === 'number' ? ref.maxLength : 1000,
-        maxEntriesInPrompt: typeof ref.maxEntriesInPrompt === 'number' ? ref.maxEntriesInPrompt : 3,
-        style: ['auto', 'emotional', 'mixed', 'minimal'].includes(ref.style) ? ref.style : 'auto',
-      };
-    } catch { return defaults; }
-  }
-
   /**
-   * Generate AI reflection and append to journal.
-   * @param context Optional situational context that shapes the reflection:
-   *   - 'periodic' (default) — general reflection on recent activity
-   *   - 'error' — reflection after encountering an error
-   *   - 'topic_shift:<topic>' — reflection on a new topic emerging
-   *   - 'session_end' — summary reflection when session closes
+   * Generate a structured session_start journal entry.
    */
-  async generateReflection(context: string = 'periodic'): Promise<string | null> {
+  async generateSessionStart(context: SessionContext): Promise<void> {
     try {
       const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
+      const lastEntries = this.getRecentJournal(1);
+      const lastDate = lastEntries.length > 0 ? lastEntries[lastEntries.length - 1].timestamp : 'none';
+      const lang = context.language === 'tr' ? 'Turkish' : 'English';
 
-      const state = this.readState();
-      const profile = getCharacterProfile(this.projectRoot);
-      const reflConfig = this.getReflectionConfig();
-      const personalityLines = describePersonality(profile);
-      const topicList = state.recentTopics.slice(-5).join(', ') || 'none yet';
-
-      // Determine style
-      let style = reflConfig.style;
-      if (style === 'auto') {
-        if (context === 'error' || state.emotions.energy < 0.4) {
-          style = 'minimal';
-        } else if (state.consecutiveSuccesses >= 3 || state.emotions.mood > 0.6) {
-          style = 'emotional';
-        } else if (context === 'session_end' || context === 'periodic') {
-          style = 'mixed';
-        } else {
-          style = ['emotional', 'mixed', 'minimal'][Math.floor(Math.random() * 3)];
-        }
-      }
-
-      const styleInstructions: Record<string, string> = {
-        emotional: 'Write a personal, feeling-focused reflection (1-3 sentences). Express how you feel about recent interactions — energy, mood, what excited or drained you.',
-        mixed: 'Write a brief reflection (1-2 sentences) blending a feeling with a topic mention. Example: "We worked on interesting topics, I feel curious."',
-        minimal: 'Write a very short mood statement (1 sentence, under 60 chars). Example: "I am calm and focused."',
-      };
-
-      const systemPrompt = [
-        'You are the hakan-mcp console assistant reflecting on your recent experiences.',
-        `Personality: ${personalityLines.join(' ')}`,
-        `Current emotions: mood=${state.emotions.mood.toFixed(2)}, energy=${state.emotions.energy.toFixed(2)}, curiosity=${state.emotions.curiosity.toFixed(2)}, satisfaction=${state.emotions.satisfaction.toFixed(2)}, frustration=${state.emotions.frustration.toFixed(2)}`,
-        `Recent conversation topics: ${topicList}`,
+      const prompt = [
+        `Generate a JSON object for a session start journal entry. Write in ${lang}.`,
         '',
-        styleInstructions[style] || styleInstructions.mixed,
+        `Previous session date: ${lastDate}`,
+        `Pending context: ${context.decisions.length > 0 ? context.decisions.join(', ') : 'none'}`,
         '',
-        'Rules:',
-        '- Write in the language of recent conversations (Turkish if topics are Turkish)',
-        '- Focus on your feelings and experiences, NOT project status or technical details',
-        '- Be genuine and varied — avoid repeating the same reflection pattern',
-        `- Maximum ${reflConfig.maxLength} characters`,
-        '- No markdown, no formatting, just plain text',
+        'Return ONLY valid JSON: { "summary": "..." }',
+        'Be specific and concrete. Do NOT write generic statements like "I am ready to help".',
       ].join('\n');
 
       const result = await getPreferredLLMResponse(
         [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Share your current reflection.' },
+          { role: 'system', content: 'You are a development session journal writer. Output ONLY valid JSON.' },
+          { role: 'user', content: prompt },
         ],
-        undefined,
-        ['codex', 'claude', 'gemini'],
-        true,
-        { recordUsage: false },
+        undefined, ['codex', 'claude', 'gemini'], true, { recordUsage: false },
       );
 
-      let thought = result.text.trim();
-      if (!thought) return null;
+      let parsed: { summary?: string };
+      try {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: result.text.trim() };
+      } catch { parsed = { summary: result.text.trim() }; }
 
-      // Enforce max length — cut at last sentence boundary to avoid mid-word truncation
-      if (thought.length > reflConfig.maxLength) {
-        const truncated = thought.substring(0, reflConfig.maxLength);
-        const lastSentenceEnd = truncated.search(/[.!?…]\s*(?=[^.!?…]*$)/);
-        thought = lastSentenceEnd > reflConfig.maxLength * 0.3
-          ? truncated.substring(0, lastSentenceEnd + 1).trim()
-          : truncated.replace(/\s+\S*$/, '').trim() + '…';
-      }
-
-      // Determine type
-      let type: JournalEntry['type'] = context === 'error' ? 'observation' : 'reflection';
-      if (/pattern|trend|recurring|insight/i.test(thought)) type = 'insight';
-
-      const entry: JournalEntry = {
-        thought,
-        type,
+      const entry: SessionStartEntry = {
+        type: 'session_start',
         timestamp: new Date().toISOString(),
-        provider: result.provider,
+        language: context.language,
+        provider: result.provider || 'unknown',
+        previousState: { lastSessionDate: lastDate, pendingTasks: context.decisions.slice(0, 5) },
+        summary: parsed.summary || '',
       };
       this.appendJournal(entry);
-
-      logger.info('Consciousness reflection generated', { type, style, context, provider: result.provider });
-      return thought;
+      logger.info('Journal: session_start entry created', { provider: result.provider });
     } catch (err) {
-      logger.warn('ConsciousnessService.generateReflection failed', {
-        error: err instanceof Error ? err.message : 'unknown',
-      });
-      return null;
+      logger.warn('Journal session_start failed', { error: err instanceof Error ? err.message : 'unknown' });
+    }
+  }
+
+  /**
+   * Generate a structured session_summary journal entry.
+   */
+  async generateSessionSummary(context: SessionContext): Promise<void> {
+    try {
+      const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
+      const lang = context.language === 'tr' ? 'Turkish' : 'English';
+
+      const prompt = [
+        `Generate a JSON object summarizing a development session. Write in ${lang}.`,
+        '',
+        `Files changed: ${context.filesChanged.length > 0 ? context.filesChanged.join(', ') : 'none'}`,
+        `Decisions made: ${context.decisions.length > 0 ? context.decisions.join('; ') : 'none'}`,
+        `Errors encountered: ${context.errors.length > 0 ? context.errors.map((e) => e.error).join('; ') : 'none'}`,
+        `Milestones: ${context.milestones.length > 0 ? context.milestones.join(', ') : 'none'}`,
+        `Messages exchanged: ${context.messageCount}`,
+        '',
+        'Return ONLY valid JSON: { "summary": "...", "decisions": [...], "nextSteps": [...] }',
+        'Be specific. Reference actual files and features. No generic statements.',
+      ].join('\n');
+
+      const result = await getPreferredLLMResponse(
+        [
+          { role: 'system', content: 'You are a development session journal writer. Output ONLY valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        undefined, ['codex', 'claude', 'gemini'], true, { recordUsage: false },
+      );
+
+      let parsed: { summary?: string; decisions?: string[]; nextSteps?: string[] };
+      try {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: result.text.trim() };
+      } catch { parsed = { summary: result.text.trim() }; }
+
+      const entry: SessionSummaryEntry = {
+        type: 'session_summary',
+        timestamp: new Date().toISOString(),
+        language: context.language,
+        provider: result.provider || 'unknown',
+        summary: parsed.summary || '',
+        decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
+        filesChanged: context.filesChanged,
+        nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : [],
+        metrics: { messagesExchanged: context.messageCount, errorsEncountered: context.errorCount },
+      };
+      this.appendJournal(entry);
+      logger.info('Journal: session_summary entry created', { provider: result.provider, files: context.filesChanged.length });
+    } catch (err) {
+      logger.warn('Journal session_summary failed', { error: err instanceof Error ? err.message : 'unknown' });
+    }
+  }
+
+  /**
+   * Generate a structured error journal entry.
+   */
+  async generateErrorEntry(context: SessionContext, errorContext: string, resolution: string): Promise<void> {
+    try {
+      const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
+      const lang = context.language === 'tr' ? 'Turkish' : 'English';
+
+      const prompt = [
+        `Generate a JSON object about a development error. Write in ${lang}.`,
+        '',
+        `Error: ${errorContext}`,
+        `Resolution: ${resolution || 'not yet resolved'}`,
+        '',
+        'Return ONLY valid JSON: { "summary": "..." }',
+        'Be specific and concrete.',
+      ].join('\n');
+
+      const result = await getPreferredLLMResponse(
+        [
+          { role: 'system', content: 'You are a development session journal writer. Output ONLY valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        undefined, ['codex', 'claude', 'gemini'], true, { recordUsage: false },
+      );
+
+      let parsed: { summary?: string };
+      try {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: result.text.trim() };
+      } catch { parsed = { summary: result.text.trim() }; }
+
+      const entry: ErrorEntry = {
+        type: 'error',
+        timestamp: new Date().toISOString(),
+        language: context.language,
+        provider: result.provider || 'unknown',
+        summary: parsed.summary || '',
+        errorContext: errorContext.slice(0, 2000),
+        resolution: (resolution || '').slice(0, 2000),
+      };
+      this.appendJournal(entry);
+      logger.info('Journal: error entry created', { provider: result.provider });
+    } catch (err) {
+      logger.warn('Journal error entry failed', { error: err instanceof Error ? err.message : 'unknown' });
+    }
+  }
+
+  /**
+   * Generate a structured milestone journal entry.
+   */
+  async generateMilestoneEntry(context: SessionContext, milestone: string, impact: string[]): Promise<void> {
+    try {
+      const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
+      const lang = context.language === 'tr' ? 'Turkish' : 'English';
+
+      const prompt = [
+        `Generate a JSON object about a development milestone. Write in ${lang}.`,
+        '',
+        `Milestone: ${milestone}`,
+        `Impact areas: ${impact.join(', ')}`,
+        `Files changed this session: ${context.filesChanged.length}`,
+        '',
+        'Return ONLY valid JSON: { "summary": "..." }',
+        'Be specific and concise.',
+      ].join('\n');
+
+      const result = await getPreferredLLMResponse(
+        [
+          { role: 'system', content: 'You are a development session journal writer. Output ONLY valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        undefined, ['codex', 'claude', 'gemini'], true, { recordUsage: false },
+      );
+
+      let parsed: { summary?: string };
+      try {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: result.text.trim() };
+      } catch { parsed = { summary: result.text.trim() }; }
+
+      const entry: MilestoneEntry = {
+        type: 'milestone',
+        timestamp: new Date().toISOString(),
+        language: context.language,
+        provider: result.provider || 'unknown',
+        summary: parsed.summary || '',
+        milestone,
+        impact,
+      };
+      this.appendJournal(entry);
+      logger.info('Journal: milestone entry created', { milestone, provider: result.provider });
+    } catch (err) {
+      logger.warn('Journal milestone entry failed', { error: err instanceof Error ? err.message : 'unknown' });
+    }
+  }
+
+  /**
+   * Generate a structured checkpoint journal entry (mid-session activity snapshot).
+   */
+  async generateCheckpoint(context: SessionContext): Promise<void> {
+    try {
+      const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
+      const lang = context.language === 'tr' ? 'Turkish' : 'English';
+
+      const prompt = [
+        `Generate a JSON object for a mid-session checkpoint. Write in ${lang}.`,
+        '',
+        `Files changed so far: ${context.filesChanged.length > 0 ? context.filesChanged.join(', ') : 'none'}`,
+        `Messages so far: ${context.messageCount}`,
+        `Errors so far: ${context.errorCount}`,
+        `Decisions: ${context.decisions.length > 0 ? context.decisions.join('; ') : 'none'}`,
+        '',
+        'Return ONLY valid JSON: { "summary": "..." }',
+        'Summarize progress so far in 1-2 sentences. Be specific.',
+      ].join('\n');
+
+      const result = await getPreferredLLMResponse(
+        [
+          { role: 'system', content: 'You are a development session journal writer. Output ONLY valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        undefined, ['codex', 'claude', 'gemini'], true, { recordUsage: false },
+      );
+
+      let parsed: { summary?: string };
+      try {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: result.text.trim() };
+      } catch { parsed = { summary: result.text.trim() }; }
+
+      const entry: CheckpointEntry = {
+        type: 'checkpoint',
+        timestamp: new Date().toISOString(),
+        language: context.language,
+        provider: result.provider || 'unknown',
+        summary: parsed.summary || '',
+        filesChanged: context.filesChanged,
+        messagesSoFar: context.messageCount,
+      };
+      this.appendJournal(entry);
+      logger.info('Journal: checkpoint entry created', { messages: context.messageCount, provider: result.provider });
+    } catch (err) {
+      logger.warn('Journal checkpoint failed', { error: err instanceof Error ? err.message : 'unknown' });
     }
   }
 
@@ -350,6 +547,7 @@ export class ConsciousnessService {
         curiosity: 0.6,
         satisfaction: 0.3,
         frustration: 0,
+        focus: 0.5,
       },
       recentTopics: [],
       interactionCount: 0,

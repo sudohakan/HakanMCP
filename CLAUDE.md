@@ -1,6 +1,6 @@
 # HakanMCP — Claude Code Configuration
 
-> Unified MCP Server + Mission Agent CLI. v1.0.0, ESM, Node >= 20.
+> Unified MCP Server + Mission Agent CLI. v1.3.0, ESM, Node >= 20.
 
 ## Project Overview
 
@@ -154,8 +154,16 @@ Feature tools (`db`, `mongo`, `git`) require optional native dependencies — th
 When modifying config schema (`src/config.ts`), config.yaml defaults, or adding/removing config fields:
 1. Update `CONFIG_INFO` in `bin/hakanmcp.ts` — the `config info <category>` descriptions must reflect current fields
 2. Update the status board display in `runStatus()` if the field is user-visible
-3. Ensure `config.yaml` has the new field with a sensible default
+3. Ensure `config.yaml.example` has the new field with a sensible default
 4. If a config field exists in schema but is never read at runtime, either wire it up or remove it
+5. If the field is overridable via `.env`, ensure it exists in both `.env.example` and `config.yaml.example`
+
+## CLI Change Rule
+
+When adding, removing, or renaming CLI commands or subcommands:
+1. Update the help menu in `bin/hakanmcp.ts` (`showHelp()` function) — every command must appear
+2. Update the CLI Commands table in this file (`CLAUDE.md`)
+3. If a command has category-level info (e.g. `config info`), update the corresponding `CONFIG_INFO` or similar constant
 
 ## Build & Run
 

@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import util from 'util';
 import { config } from '../config.js';
 
 const execAsync = util.promisify(exec);
+const execFileAsync = util.promisify(execFile);
 
 /**
  * GitHub Integration Tools
@@ -130,7 +131,7 @@ export const githubTools = [
         }
 
         // Add new remote
-        await execAsync(`git remote add origin ${remoteUrl}`);
+        await execFileAsync('git', ['remote', 'add', 'origin', remoteUrl]);
 
         return {
           content: [

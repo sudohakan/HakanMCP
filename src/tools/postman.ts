@@ -381,6 +381,17 @@ export const postmanTools = [
             headers['Content-Type'] = 'application/x-www-form-urlencoded';
           }
 
+          // Validate URL protocol before making request
+          try {
+            const parsedUrl = new URL(url);
+            if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+              throw new Error(`Unsafe URL protocol: ${parsedUrl.protocol} — only http: and https: are allowed`);
+            }
+          } catch (urlErr) {
+            if (urlErr instanceof Error && urlErr.message.includes('Unsafe URL protocol')) throw urlErr;
+            throw new Error(`Invalid URL: ${url}`);
+          }
+
           const response = await fetch(url, { method, headers, body });
           const responseText = await response.text();
 

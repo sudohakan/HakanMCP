@@ -4,6 +4,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 /** Rejects strings containing shell metacharacters to prevent command injection. \\ allowed (Windows path separator). */
 const SHELL_UNSAFE = /[;|&$`'"\n\r<>]/;
@@ -55,7 +56,7 @@ export function atomicWriteFileSync(
   content: string,
   options?: { createBackup?: boolean },
 ): void {
-  const tmpPath = filePath + '.tmp';
+  const tmpPath = filePath + '.tmp.' + randomBytes(6).toString('hex');
   const backupPath = filePath + '.bak';
 
   if (options?.createBackup && fs.existsSync(filePath)) {
@@ -74,7 +75,7 @@ export function atomicWriteFileSync(
       message: msg,
     });
     try {
-      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      fs.unlinkSync(tmpPath);
     } catch {
       /* ignore cleanup failure */
     }

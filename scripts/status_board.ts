@@ -2,6 +2,15 @@ import fs from 'node:fs';
 import { config, validateConfig, validateEnvironmentConfig } from '../src/config.js';
 import { readRecentRoutes } from '../src/services/aiRouteLogger.js';
 
+function maskSensitiveErrors(errors: string[]): string[] {
+  return errors.map((err) =>
+    err.replace(
+      /([A-Z_]*(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)[A-Z_]*)=([^\s|]+)/gi,
+      '$1=***',
+    ),
+  );
+}
+
 interface SchedulerState {
   tasks?: Array<{
     id: string;
@@ -53,7 +62,7 @@ function summarizeScheduler(state: SchedulerState): string[] {
 
 function main(): void {
   const cfgErrors = validateConfig(config, { strict: false });
-  const envErrors = validateEnvironmentConfig(config, { strict: false });
+  const envErrors = maskSensitiveErrors(validateEnvironmentConfig(config, { strict: false }));
   const schedState = loadSchedulerState();
 
   const peerPath = config.monitoring?.peerInstance;

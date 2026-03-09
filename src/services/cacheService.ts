@@ -80,7 +80,7 @@ export class MultiLevelCache<T = unknown> {
 
   private async writeDisk(key: string, entry: CacheEntry<T>): Promise<void> {
     try {
-      await fs.promises.writeFile(this.diskPath(key), JSON.stringify(entry));
+      await fs.promises.writeFile(this.diskPath(key), JSON.stringify(entry), { mode: 0o600 });
     } catch {
       // ignore disk errors
     }

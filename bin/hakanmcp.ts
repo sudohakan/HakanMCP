@@ -1060,10 +1060,27 @@ Rules:
           true,
         );
 
+        const SAFE_COMMAND_PREFIXES = [
+          'npm install',
+          'npm run build',
+          'npm run lint',
+          'npm test',
+          'npm ci',
+          'npx tsc',
+        ];
+        function isSafeCommand(cmd: string): boolean {
+          const trimmed = cmd.trim();
+          return SAFE_COMMAND_PREFIXES.some((prefix) => trimmed === prefix || trimmed.startsWith(prefix + ' '));
+        }
+
         const jsonMatch = aiResult?.match(/\[[\s\S]*?\]/);
         if (jsonMatch) {
           const commands: string[] = JSON.parse(jsonMatch[0]);
           for (const cmd of commands.slice(0, 5)) {
+            if (!isSafeCommand(cmd)) {
+              body += `  ${icons.repair} ${chalk.hex(THEME.warning)(`Skipped unsafe: ${cmd}`)}\n`;
+              continue;
+            }
             try {
               execSync(cmd, { cwd: PROJECT_ROOT, stdio: 'pipe', timeout: 120_000 });
               repairCount++;
@@ -1894,17 +1911,19 @@ async function runJournalReset(): Promise<void> {
   const cogPath = path.join(consciousnessDir, 'cognition_state.json');
 
   // Backup journal if it exists and has content
-  if (fs.existsSync(journalPath)) {
+  try {
     const content = fs.readFileSync(journalPath, 'utf8').trim();
     if (content) {
       const bakPath = journalPath + '.bak';
       fs.copyFileSync(journalPath, bakPath);
     }
     fs.writeFileSync(journalPath, '');
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
   }
 
   // Reset cognition state
-  if (fs.existsSync(cogPath)) {
+  try {
     const cog = JSON.parse(fs.readFileSync(cogPath, 'utf8'));
     cog.interactionCount = 0;
     cog.consecutiveSuccesses = 0;
@@ -1913,6 +1932,8 @@ async function runJournalReset(): Promise<void> {
     cog.emotions = { mood: 0.5, energy: 0.5, curiosity: 0.5, satisfaction: 0.5, frustration: 0.1 };
     cog.lastUpdated = new Date().toISOString();
     fs.writeFileSync(cogPath, JSON.stringify(cog, null, 2) + '\n');
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
   }
 
   const body = `  ${chalk.hex(THEME.success)('✓')} Journal cleared and emotions reset to defaults.\n` +

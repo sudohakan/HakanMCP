@@ -152,7 +152,7 @@ function saveProviderStatus(map: Partial<Record<AvailabilityKey, ProviderAvailab
     const p = getStatusPath();
     const dir = path.dirname(p);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(p, JSON.stringify(map, null, 2), 'utf8');
+    fs.writeFileSync(p, JSON.stringify(map, null, 2), { encoding: 'utf8', mode: 0o600 });
   } catch {
     /* ignore */
   }
@@ -245,7 +245,7 @@ function saveCooldowns(map: Partial<Record<string, CooldownEntry>>): void {
     const p = getCooldownsPath();
     const dir = path.dirname(p);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(p, JSON.stringify(map, null, 2), 'utf8');
+    fs.writeFileSync(p, JSON.stringify(map, null, 2), { encoding: 'utf8', mode: 0o600 });
   } catch {
     /* ignore */
   }
@@ -394,7 +394,7 @@ function saveUsage(map: Partial<Record<UsageKey, CliUsageEntry>>): void {
     const p = getUsagePath();
     const dir = path.dirname(p);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(p, JSON.stringify(map, null, 2), 'utf8');
+    fs.writeFileSync(p, JSON.stringify(map, null, 2), { encoding: 'utf8', mode: 0o600 });
   } catch {
     /* ignore */
   }
@@ -1227,7 +1227,8 @@ async function getInstalledVersion(provider: string): Promise<string | null> {
 async function getInstalledNpmVersion(pkg: string): Promise<string | null> {
   try {
     const { stdout } = await execAsync(`npm ls -g ${pkg} --depth=0`, { timeout: 30000, maxBuffer: 2048 });
-    const m = stdout.match(new RegExp(`${pkg.replace(/[/]/g, '\\/')}@(\\d+\\.\\d+\\.\\d+(?:-[\\w.]+)?)`));
+    const escapedPkg = pkg.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+    const m = stdout.match(new RegExp(`${escapedPkg}@(\\d+\\.\\d+\\.\\d+(?:-[\\w.]+)?)`));
     return m ? m[1] : null;
   } catch {
     return null;

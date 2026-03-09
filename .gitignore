@@ -50,6 +50,8 @@ coverage/
 .nyc_output/
 test-output/
 test-reports/
+test-warmup-output/
+test-cooldown-output/
 tests/logs/
 tests/results/
 *.lcov

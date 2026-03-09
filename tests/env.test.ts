@@ -1,13 +1,23 @@
 import { envTools } from '../src/tools/env';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 describe('Environment Tools', () => {
-  const testEnvFile = '/tmp/test.env';
+  let testEnvDir: string;
+  let testEnvFile: string;
+
+  beforeEach(() => {
+    testEnvDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hakan-mcp-env-test-'));
+    testEnvFile = path.join(testEnvDir, 'test.env');
+  });
 
   afterEach(() => {
-    // Cleanup test env file
-    if (fs.existsSync(testEnvFile)) {
-      fs.unlinkSync(testEnvFile);
+    // Cleanup test env directory
+    try {
+      fs.rmSync(testEnvDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
     }
   });
 

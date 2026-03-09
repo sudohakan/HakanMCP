@@ -122,11 +122,11 @@ export class ConsciousnessService {
         const raw = JSON.parse(fs.readFileSync(this.statePath, 'utf8'));
         return {
           emotions: {
-            mood: raw.emotions?.mood ?? 0.5,
-            energy: raw.emotions?.energy ?? 0.5,
-            curiosity: raw.emotions?.curiosity ?? 0.5,
-            satisfaction: raw.emotions?.satisfaction ?? 0.3,
-            frustration: raw.emotions?.frustration ?? 0,
+            mood: raw.emotions?.mood ?? 0,
+            energy: raw.emotions?.energy ?? 0.6,
+            curiosity: raw.emotions?.curiosity ?? 0.55,
+            satisfaction: raw.emotions?.satisfaction ?? 0.35,
+            frustration: raw.emotions?.frustration ?? 0.05,
             focus: raw.emotions?.focus ?? 0.5,
           },
           recentTopics: raw.recentTopics ?? [],
@@ -142,79 +142,38 @@ export class ConsciousnessService {
     return this.defaultState();
   }
 
-  /** Update cognition state based on event */
+  /** Update cognition state — decay + counters (sync), then LLM emotion analysis (async) */
   updateState(event: CognitionEvent): void {
     try {
       this.ensureDir();
       const state = this.readState();
       const e = state.emotions;
 
-      // Natural decay — pull all values toward baseline each update
-      const DECAY = 0.02;
-      e.mood = decay(e.mood, 0.5, DECAY);
-      e.energy = decay(e.energy, 0.6, DECAY);
+      // Slow decay — emotions linger and accumulate over many interactions
+      const DECAY = 0.015;
+      e.mood = decay(e.mood, 0, DECAY);
+      e.energy = decay(e.energy, 0.55, DECAY);
       e.curiosity = decay(e.curiosity, 0.5, DECAY);
       e.satisfaction = decay(e.satisfaction, 0.4, DECAY);
       e.frustration = decay(e.frustration, 0.1, DECAY);
       e.focus = decay(e.focus, 0.5, DECAY);
 
-      // Event adjustments — each event creates opposing movements across emotions
+      // Update counters
       switch (event.type) {
         case 'chat_success':
-          e.mood = clamp(e.mood + 0.10, -1, 1);
-          e.energy = clamp(e.energy + 0.03, 0, 1);
-          e.satisfaction = clamp(e.satisfaction + 0.12, 0, 1);
-          e.frustration = clamp(e.frustration - 0.10, 0, 1);
-          e.curiosity = clamp(e.curiosity - 0.02, 0, 1);  // solved → slightly less curious
-          e.focus = clamp(e.focus + 0.06, 0, 1);          // success → deeper focus
           state.consecutiveSuccesses += 1;
           state.consecutiveErrors = 0;
           state.interactionCount += 1;
           break;
-
         case 'chat_error':
-          e.mood = clamp(e.mood - 0.15, -1, 1);
-          e.energy = clamp(e.energy - 0.06, 0, 1);
-          e.frustration = clamp(e.frustration + 0.20, 0, 1);
-          e.satisfaction = clamp(e.satisfaction - 0.10, 0, 1);
-          e.curiosity = clamp(e.curiosity + 0.05, 0, 1);  // error → curious about root cause
-          e.focus = clamp(e.focus - 0.10, 0, 1);          // error breaks flow
           state.consecutiveErrors += 1;
           state.consecutiveSuccesses = 0;
           state.interactionCount += 1;
           break;
-
         case 'tool_used':
-          e.curiosity = clamp(e.curiosity + 0.06, 0, 1);
-          e.energy = clamp(e.energy - 0.03, 0, 1);        // tool use costs energy
-          e.satisfaction = clamp(e.satisfaction + 0.02, 0, 1);  // progress feels good
-          e.mood = clamp(e.mood + 0.02, -1, 1);
-          e.focus = clamp(e.focus + 0.08, 0, 1);          // deep in tool chain → high focus
           state.interactionCount += 1;
           break;
-
-        case 'backup_done':
-          e.satisfaction = clamp(e.satisfaction + 0.06, 0, 1);
-          e.mood = clamp(e.mood + 0.03, -1, 1);
-          e.frustration = clamp(e.frustration - 0.03, 0, 1);  // safety reduces stress
-          e.focus = clamp(e.focus - 0.04, 0, 1);          // context switch
-          break;
-
-        case 'topic':
-          e.curiosity = clamp(e.curiosity + 0.08, 0, 1);
-          e.energy = clamp(e.energy + 0.03, 0, 1);        // new topic energizes
-          e.mood = clamp(e.mood + 0.02, -1, 1);
-          e.focus = clamp(e.focus - 0.12, 0, 1);          // topic switch breaks focus
-          break;
       }
-
-      // Final clamp all values
-      e.mood = clamp(e.mood, -1, 1);
-      e.energy = clamp(e.energy, 0, 1);
-      e.curiosity = clamp(e.curiosity, 0, 1);
-      e.satisfaction = clamp(e.satisfaction, 0, 1);
-      e.frustration = clamp(e.frustration, 0, 1);
-      e.focus = clamp(e.focus, 0, 1);
 
       if (event.detail && (event.type === 'chat_success' || event.type === 'topic')) {
         state.recentTopics.push(event.detail.toLowerCase().slice(0, 100));
@@ -225,10 +184,88 @@ export class ConsciousnessService {
 
       state.lastUpdated = new Date().toISOString();
       fs.writeFileSync(this.statePath, JSON.stringify(state, null, 2), 'utf8');
+
+      // Fire-and-forget: ask LLM to analyze emotional impact
+      if (event.type === 'chat_success' || event.type === 'chat_error') {
+        this.analyzeEmotions(event).catch(() => {});
+      }
     } catch (err) {
       logger.warn('ConsciousnessService.updateState failed', {
         error: err instanceof Error ? err.message : 'unknown',
       });
+    }
+  }
+
+  /**
+   * Ask LLM to determine emotional deltas based on conversation context.
+   * Reads current emotions, sends context to AI, applies returned deltas.
+   * Very small deltas only (clamped to ±0.05 per emotion) for slow, gradual evolution.
+   */
+  private async analyzeEmotions(event: CognitionEvent): Promise<void> {
+    try {
+      const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
+      const state = this.readState();
+      const e = state.emotions;
+
+      const recentTopics = state.recentTopics.slice(-5).join(', ') || 'general conversation';
+      const eventDesc = event.type === 'chat_success'
+        ? `User interaction succeeded${event.detail ? `: ${event.detail.slice(0, 100)}` : ''}`
+        : `User interaction failed with error`;
+
+      const prompt = [
+        'You are an emotion analyzer for an AI assistant. Given the current emotional state and what just happened, determine how each emotion should shift.',
+        '',
+        `Current emotions: mood=${e.mood.toFixed(2)} (-1..1), energy=${e.energy.toFixed(2)} (0..1), curiosity=${e.curiosity.toFixed(2)} (0..1), satisfaction=${e.satisfaction.toFixed(2)} (0..1), frustration=${e.frustration.toFixed(2)} (0..1), focus=${e.focus.toFixed(2)} (0..1)`,
+        `Recent topics: ${recentTopics}`,
+        `Consecutive successes: ${state.consecutiveSuccesses}, Consecutive errors: ${state.consecutiveErrors}`,
+        `Event: ${eventDesc}`,
+        '',
+        'Return ONLY valid JSON with very small deltas (each between -0.05 and +0.05):',
+        '{"mood":0.0,"energy":0.0,"curiosity":0.0,"satisfaction":0.0,"frustration":0.0,"focus":0.0}',
+        '',
+        'Rules:',
+        '- Deltas must be very small (max ±0.05). Character evolves slowly over dozens of messages, not instantly.',
+        '- Consider the cumulative state: if already frustrated, a new error hurts more',
+        '- Success after failures should bring relief (frustration down, mood up)',
+        '- Varied topics increase curiosity, repeated topics increase focus',
+        '- Long sessions reduce energy gradually',
+      ].join('\n');
+
+      const result = await getPreferredLLMResponse(
+        [
+          { role: 'system', content: 'Output ONLY valid JSON. No explanation.' },
+          { role: 'user', content: prompt },
+        ],
+        undefined, ['codex', 'claude', 'gemini'], true, { recordUsage: false },
+      );
+
+      let deltas: Record<string, number>;
+      try {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        deltas = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+      } catch { return; }
+
+      // Re-read state (may have changed during async call)
+      const freshState = this.readState();
+      const fe = freshState.emotions;
+      const MAX_DELTA = 0.05;
+
+      // Apply LLM-suggested deltas, clamped to ±MAX_DELTA
+      for (const key of ['mood', 'energy', 'curiosity', 'satisfaction', 'frustration', 'focus'] as const) {
+        const d = deltas[key];
+        if (typeof d === 'number' && isFinite(d)) {
+          const clamped = clamp(d, -MAX_DELTA, MAX_DELTA);
+          const min = key === 'mood' ? -1 : 0;
+          fe[key] = clamp(fe[key] + clamped, min, 1);
+        }
+      }
+
+      freshState.lastUpdated = new Date().toISOString();
+      fs.writeFileSync(this.statePath, JSON.stringify(freshState, null, 2), 'utf8');
+      logger.info('Emotion analysis applied', { deltas, provider: result.provider });
+    } catch (err) {
+      // Silent fail — emotions just won't update this cycle
+      logger.debug('analyzeEmotions failed', { error: err instanceof Error ? err.message : 'unknown' });
     }
   }
 
@@ -275,20 +312,37 @@ export class ConsciousnessService {
    */
   async generateSessionStart(context: SessionContext): Promise<void> {
     try {
+      const lastEntries = this.getRecentJournal(3);
+      // Filter out session_start entries themselves — they don't count as meaningful context
+      const meaningfulEntries = lastEntries.filter((e) => e.type !== 'session_start');
+      const lastDate = meaningfulEntries.length > 0 ? meaningfulEntries[meaningfulEntries.length - 1].timestamp : 'none';
+
+      // Skip if no meaningful prior context — avoids empty "starting fresh" entries
+      const hasPriorContext = meaningfulEntries.length > 0 || context.decisions.length > 0;
+      if (!hasPriorContext) {
+        logger.info('Journal: session_start skipped (no prior context)');
+        return;
+      }
+
       const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
-      const lastEntries = this.getRecentJournal(1);
-      const lastDate = lastEntries.length > 0 ? lastEntries[lastEntries.length - 1].timestamp : 'none';
       const lang = context.language === 'tr' ? 'Turkish' : 'English';
+
+      // Build context from recent journal entries for continuity
+      const recentSummaries = lastEntries
+        .filter((e) => e.summary || (e as any).thought)
+        .map((e) => (e.summary || (e as any).thought || '').substring(0, 120))
+        .filter(Boolean);
 
       const prompt = [
         `Generate a JSON object for a session start journal entry. Write in ${lang}.`,
         '',
         `Previous session date: ${lastDate}`,
-        `Pending context: ${context.decisions.length > 0 ? context.decisions.join(', ') : 'none'}`,
+        recentSummaries.length > 0 ? `Recent context:\n${recentSummaries.map((s) => `- ${s}`).join('\n')}` : '',
+        context.decisions.length > 0 ? `Pending decisions: ${context.decisions.join(', ')}` : '',
         '',
         'Return ONLY valid JSON: { "summary": "..." }',
-        'Be specific and concrete. Do NOT write generic statements like "I am ready to help".',
-      ].join('\n');
+        'Summarize what was happening and what might continue. Be specific, not generic.',
+      ].filter(Boolean).join('\n');
 
       const result = await getPreferredLLMResponse(
         [
@@ -323,53 +377,55 @@ export class ConsciousnessService {
    * Generate a structured session_summary journal entry.
    */
   async generateSessionSummary(context: SessionContext): Promise<void> {
+    const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
+    const lang = context.language === 'tr' ? 'Turkish' : 'English';
+
+    const prompt = [
+      `Generate a JSON object summarizing a development session. Write in ${lang}.`,
+      '',
+      `Files changed: ${context.filesChanged.length > 0 ? context.filesChanged.join(', ') : 'none'}`,
+      `Decisions made: ${context.decisions.length > 0 ? context.decisions.join('; ') : 'none'}`,
+      `Errors encountered: ${context.errors.length > 0 ? context.errors.map((e) => e.error).join('; ') : 'none'}`,
+      `Milestones: ${context.milestones.length > 0 ? context.milestones.join(', ') : 'none'}`,
+      `Messages exchanged: ${context.messageCount}`,
+      '',
+      'Return ONLY valid JSON: { "summary": "...", "decisions": [...], "nextSteps": [...] }',
+      'Be specific. Reference actual files and features. No generic statements.',
+    ].join('\n');
+
+    // Race LLM call against 6s timeout to avoid blocking exit
+    const llmPromise = getPreferredLLMResponse(
+      [
+        { role: 'system', content: 'You are a development session journal writer. Output ONLY valid JSON.' },
+        { role: 'user', content: prompt },
+      ],
+      undefined, ['codex', 'claude', 'gemini'], true, { recordUsage: false },
+    );
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('LLM timeout (6s)')), 6000),
+    );
+
+    const result = await Promise.race([llmPromise, timeoutPromise]);
+
+    let parsed: { summary?: string; decisions?: string[]; nextSteps?: string[] };
     try {
-      const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
-      const lang = context.language === 'tr' ? 'Turkish' : 'English';
+      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: result.text.trim() };
+    } catch { parsed = { summary: result.text.trim() }; }
 
-      const prompt = [
-        `Generate a JSON object summarizing a development session. Write in ${lang}.`,
-        '',
-        `Files changed: ${context.filesChanged.length > 0 ? context.filesChanged.join(', ') : 'none'}`,
-        `Decisions made: ${context.decisions.length > 0 ? context.decisions.join('; ') : 'none'}`,
-        `Errors encountered: ${context.errors.length > 0 ? context.errors.map((e) => e.error).join('; ') : 'none'}`,
-        `Milestones: ${context.milestones.length > 0 ? context.milestones.join(', ') : 'none'}`,
-        `Messages exchanged: ${context.messageCount}`,
-        '',
-        'Return ONLY valid JSON: { "summary": "...", "decisions": [...], "nextSteps": [...] }',
-        'Be specific. Reference actual files and features. No generic statements.',
-      ].join('\n');
-
-      const result = await getPreferredLLMResponse(
-        [
-          { role: 'system', content: 'You are a development session journal writer. Output ONLY valid JSON.' },
-          { role: 'user', content: prompt },
-        ],
-        undefined, ['codex', 'claude', 'gemini'], true, { recordUsage: false },
-      );
-
-      let parsed: { summary?: string; decisions?: string[]; nextSteps?: string[] };
-      try {
-        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: result.text.trim() };
-      } catch { parsed = { summary: result.text.trim() }; }
-
-      const entry: SessionSummaryEntry = {
-        type: 'session_summary',
-        timestamp: new Date().toISOString(),
-        language: context.language,
-        provider: result.provider || 'unknown',
-        summary: parsed.summary || '',
-        decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
-        filesChanged: context.filesChanged,
-        nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : [],
-        metrics: { messagesExchanged: context.messageCount, errorsEncountered: context.errorCount },
-      };
-      this.appendJournal(entry);
-      logger.info('Journal: session_summary entry created', { provider: result.provider, files: context.filesChanged.length });
-    } catch (err) {
-      logger.warn('Journal session_summary failed', { error: err instanceof Error ? err.message : 'unknown' });
-    }
+    const entry: SessionSummaryEntry = {
+      type: 'session_summary',
+      timestamp: new Date().toISOString(),
+      language: context.language,
+      provider: result.provider || 'unknown',
+      summary: parsed.summary || '',
+      decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
+      filesChanged: context.filesChanged,
+      nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : [],
+      metrics: { messagesExchanged: context.messageCount, errorsEncountered: context.errorCount },
+    };
+    this.appendJournal(entry);
+    logger.info('Journal: session_summary entry created', { provider: result.provider, files: context.filesChanged.length });
   }
 
   /**
@@ -542,11 +598,11 @@ export class ConsciousnessService {
   private defaultState(): CognitionState {
     return {
       emotions: {
-        mood: 0.5,
-        energy: 0.7,
-        curiosity: 0.6,
-        satisfaction: 0.3,
-        frustration: 0,
+        mood: 0,           // neutral on -1..1 scale
+        energy: 0.6,
+        curiosity: 0.55,
+        satisfaction: 0.35,
+        frustration: 0.05,
         focus: 0.5,
       },
       recentTopics: [],

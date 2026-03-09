@@ -5,6 +5,22 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-09
+
+### Added
+
+- GitHub-based version checking via Releases API (replaces NPM registry check)
+- Startup health checks: version, build staleness, Node.js version, config validation
+- Dynamic status bar: Ready, Update available, Issue(s) detected, with actionable hints
+- Auto-update via `doctor fix`: pulls latest from GitHub, reinstalls, and rebuilds
+- `@types/semver` dev dependency for type-safe version comparison
+
+### Changed
+
+- `/doctor` version check now uses GitHub Releases API instead of NPM registry
+- Status bar shows "Checking..." during startup, then resolves to final state
+- `renderStatusBar()` accepts health result for dynamic rendering
+
 ## [1.0.0] - 2026-03-08
 
 ### HakanMCP v1.0.0 — Mission Agent MVP

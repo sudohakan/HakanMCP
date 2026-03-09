@@ -2,13 +2,14 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey)
-![Tools](https://img.shields.io/badge/tools-199-orange)
+![Tools](https://img.shields.io/badge/tools-131-orange)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 
 # HakanMCP
 
-Comprehensive MCP server with 199 tools for AI-powered development workflows.
+Comprehensive MCP server with 131 tools for AI-powered development workflows.
 
-Run autonomous AI agents with mission-based task execution, or use as a Model Context Protocol server for Claude Code.
+Run autonomous AI agents with mission-based task execution, or use as a Model Context Protocol server for Claude Code, Cursor, and other MCP-compatible clients.
 
 ---
 
@@ -20,6 +21,7 @@ Run autonomous AI agents with mission-based task execution, or use as a Model Co
 - [Architecture](#architecture)
 - [Configuration](#configuration)
 - [CLI Commands](#cli-commands)
+- [AI Provider System](#ai-provider-system)
 - [Project Structure](#project-structure)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
@@ -29,11 +31,14 @@ Run autonomous AI agents with mission-based task execution, or use as a Model Co
 
 ## Highlights
 
-- **199 MCP tools** covering databases, git, web, file ops, AI, security, monitoring, and more
+- **131 MCP tools** covering databases, git, web, file ops, AI, security, monitoring, and more
+- **Multi-provider AI** with automatic fallback chain -- Codex, Claude, Gemini, Cursor, Ollama
 - **Mission Agent CLI** for autonomous task execution driven by markdown mission files
 - **4 operating modes** -- Watch, Scheduled, Assistant, and Reactive -- for flexible automation
+- **Agentic mode** -- Multi-turn tool-use loops with automatic provider selection
 - **Lazy-loaded dependencies** -- only installs what you actually use
 - **Graceful error handling** -- process-level crash protection with clean shutdown
+- **Rate limit detection** -- automatic cooldown management across all providers
 
 ---
 
@@ -41,23 +46,33 @@ Run autonomous AI agents with mission-based task execution, or use as a Model Co
 
 ### As MCP Server (for Claude Code)
 
-Add to your `claude_desktop_config.json`:
+Add to your `claude_desktop_config.json` or via Claude Code CLI:
+
+```bash
+claude mcp add hakanmcp node /path/to/HakanMCP/dist/src/index.js
+```
+
+Or manually in config:
 
 ```json
 {
   "mcpServers": {
     "hakanmcp": {
       "command": "node",
-      "args": ["path/to/dist/src/index.js"]
+      "args": ["/path/to/HakanMCP/dist/src/index.js"]
     }
   }
 }
 ```
 
-Or register via CLI:
+### From Source
 
 ```bash
-claude mcp add hakanmcp node path/to/dist/src/index.js
+git clone https://github.com/sudohakan/HakanMCP.git
+cd HakanMCP
+npm install
+cp .env.example .env    # Add your API keys
+npm run build           # Compile TypeScript -> dist/
 ```
 
 ### As Mission Agent CLI
@@ -96,15 +111,17 @@ Requires **Node.js >= 20.0.0**.
 <details>
 <summary><strong>AI and Language Models</strong></summary>
 
-- **AI Chat** -- Multi-provider AI chat with conversation history
+- **AI Chat** -- Multi-provider AI chat with conversation history and stateful sessions
 - **AI Generate** -- Content generation via configurable AI providers
 - **AI Provider Chat** -- Direct provider-level chat (Claude, OpenAI, Gemini)
-- **AI History** -- Conversation history management
-- **AI List Models** -- Enumerate available models across providers
-- **AI Defence** -- AI safety and content filtering
-- **Consensus** -- Multi-model consensus reaching and history tracking
+- **AI History** -- Conversation history management with session tracking
+- **AI List Models** -- Enumerate available models across all providers
+- **AI Defence** -- AI safety, content filtering, and threat detection
+- **Agentic Mode** -- Multi-turn tool-use loops where the AI can call MCP tools autonomously
+- **Consensus** -- Multi-model consensus reaching across providers
 - **MoE Router** -- Mixture of Experts routing for intelligent task delegation
 - **Knowledge Graph** -- Entity, observation, and relation management with semantic search
+- **Consciousness Service** -- Periodic self-reflection and emotional state tracking
 
 </details>
 
@@ -117,25 +134,16 @@ Requires **Node.js >= 20.0.0**.
 - **SQLite** -- Lightweight local database operations
 - **MongoDB** -- Connect, find, insert, update, delete, aggregate, indexing, collection/database listing
 - **DB Monitoring** -- Connection pool stats, table schema inspection, backup and restore
-- **DB Query** -- Cross-database query execution with unified interface
+- **DB Pool Manager** -- Connection pooling with idle timeout, health checks, and automatic cleanup
 
 Database drivers are optional dependencies -- install only what you need:
 
 ```bash
-# PostgreSQL
-npm install pg
-
-# MySQL
-npm install mysql2
-
-# SQL Server
-npm install mssql
-
-# SQLite
-npm install sqlite3 sqlite
-
-# MongoDB
-npm install mongodb
+npm install pg        # PostgreSQL
+npm install mysql2    # MySQL
+npm install mssql     # SQL Server
+npm install sqlite3 sqlite  # SQLite
+npm install mongodb   # MongoDB
 ```
 
 </details>
@@ -146,11 +154,11 @@ npm install mongodb
 - **System Info** -- OS, CPU, memory, disk information
 - **Process Management** -- List, kill, and monitor system processes
 - **System Optimization** -- Analyze, cleanup, optimize, quick status, admin commands, log viewing
-- **Monitoring** -- Health checks, auto-healing, dependency updates, sync, rollback, self-recovery, comparison
+- **Monitoring** -- Health checks, auto-healing, dependency updates, sync, rollback, self-recovery
 - **Performance** -- Benchmarking and profiling tools
-- **Scheduled Tasks** -- System-level task scheduling
-- **Run Command** -- Shell command execution
-- **Uninstall App** -- Application removal
+- **Scheduled Tasks** -- Cron-based and interval-based task scheduling with overlap guard
+- **Backup Service** -- Automated backup with configurable retention, compression, and restore
+- **Tool Health Check** -- Daily automated verification of all registered tools
 
 </details>
 
@@ -159,10 +167,9 @@ npm install mongodb
 
 - **File Operations** -- Read, write, copy, move, delete, search, list directory, make directory
 - **Parser** -- CSV, JSON, XML, YAML, and other data format parsing and transformation
-- **Template Engine** -- Template compilation and rendering
-- **File Conversion** -- Convert between file formats
+- **Template Engine** -- Handlebars-based template compilation and rendering
 - **Backup** -- File and directory backup with restore support
-- **Cache** -- Entry management, statistics, and cache clearing
+- **Cache** -- Entry management, statistics, TTL-based expiration, and cache clearing
 - **Environment** -- Environment variable and .env file management
 
 </details>
@@ -179,9 +186,9 @@ npm install mongodb
 <details>
 <summary><strong>Security and Encryption</strong></summary>
 
-- **Encryption** -- File and value encryption/decryption
+- **Encryption** -- File and value encryption/decryption with AES-256
 - **AI Defence** -- Content safety filtering and threat detection
-- **Guidance** -- Security policy compilation, enforcement, and auditing
+- **Guidance Engine** -- Security policy compilation, enforcement, and auditing
 
 </details>
 
@@ -189,8 +196,8 @@ npm install mongodb
 <summary><strong>Workflow and Automation</strong></summary>
 
 - **Flows** -- Define, validate, run, replay, and version workflow pipelines with execution history
-- **Scheduler** -- Task scheduling with info retrieval
-- **Swarm** -- Multi-agent swarm creation, agent management, task routing, reconfiguration, and status
+- **Scheduler** -- Task scheduling with cron expressions and interval syntax
+- **Swarm** -- Multi-agent swarm creation, agent management, task routing, and reconfiguration
 - **Self Improvement** -- Propose and apply changes for self-optimization
 - **DX Tooling** -- Developer experience tool scaffolding
 - **RuVector** -- Pattern learning, search, add, and remove for rule-based vector operations
@@ -198,6 +205,7 @@ npm install mongodb
 - **HTTP** -- HTTP requests and file downloads
 - **API** -- Rate limit status, REST wrapper info, webhook handling
 - **MCP Client** -- Connect, disconnect, list connections, list tools, and call tools on remote MCP servers
+- **MCP Bridge** -- Proxy remote MCP server tools into agentic mode
 
 </details>
 
@@ -207,12 +215,23 @@ npm install mongodb
 
 ```
 hakanmcp
-├── MCP Server (199 tools for Claude Code)
+├── MCP Server (131 tools via Model Context Protocol)
+│   ├── Tool Registry (lazy-loaded, health-checked)
+│   ├── Agentic Loop (multi-turn tool-use with any API provider)
+│   └── MCP Bridge (proxy remote MCP server tools)
+│
+├── AI Provider System
+│   ├── CLI Chain: codex → claude → gemini → cursor
+│   ├── API Chain: codex → claude → gemini
+│   ├── Local Fallback: Ollama
+│   ├── Rate Limit Detection & Cooldown Management
+│   └── Provider Warmup (pre-resolve keys on startup)
+│
 └── Mission Agent CLI
-    ├── Watch Mode      -- File system monitoring -> AI actions
-    ├── Scheduled Mode  -- Cron/interval tasks -> periodic execution
-    ├── Assistant Mode  -- Interactive chat with mission context
-    └── Reactive Mode   -- Watch + Scheduled unified event bus
+    ├── Watch Mode      — File system monitoring → AI actions
+    ├── Scheduled Mode  — Cron/interval tasks → periodic execution
+    ├── Assistant Mode  — Interactive chat with mission context
+    └── Reactive Mode   — Watch + Scheduled unified event bus
 ```
 
 <details>
@@ -334,14 +353,26 @@ agent:
 
 ### Environment Variables
 
-Set your AI provider API key:
+Copy `.env.example` to `.env` and set your keys:
 
 ```bash
-# One of these (checked in order: Claude > OpenAI > Gemini)
-export ANTHROPIC_API_KEY=sk-ant-...
-export OPENAI_API_KEY=sk-...
-export GOOGLE_API_KEY=...
+cp .env.example .env
 ```
+
+```bash
+# GitHub (required for GitHub integration tools)
+GITHUB_TOKEN=ghp_...
+
+# AI API Keys (at least one recommended for chat/agentic mode)
+CODEX_API_KEY=sk-...           # OpenAI / Codex
+CLAUDE_CODE_API_KEY=sk-ant-... # Anthropic / Claude
+GEMINI_API_KEY=AI...           # Google / Gemini
+
+# GitBook documentation URL
+GITBOOK_URL=https://your-instance.gitbook.io/your-api
+```
+
+> See `.env.example` for the full list of supported environment variables.
 
 ---
 
@@ -366,6 +397,8 @@ export GOOGLE_API_KEY=...
 
 | Command | Description |
 |---------|-------------|
+| `/providers` | Show AI provider status and usage stats |
+| `/config` | Show current configuration |
 | `/init` | Initialize workspace from chat |
 | `/start` | Start mission agent |
 | `/stop` | Stop running agent |
@@ -379,19 +412,82 @@ export GOOGLE_API_KEY=...
 
 ---
 
+## AI Provider System
+
+HakanMCP supports multiple AI providers with automatic fallback:
+
+```
+Request → CLI Chain (codex → claude → gemini → cursor)
+              ↓ all CLIs failed
+          API Chain (codex → claude → gemini)
+              ↓ all APIs failed
+          Local Fallback (Ollama)
+```
+
+### Provider Priority
+
+Priority is configured in `config.yaml`:
+
+```yaml
+aiProviders:
+  cliPriority: [codex, claude, gemini, cursor]
+  apiPriority: [codex, claude, gemini]
+  fallbackOrder: [cli, api, ollama]
+```
+
+### Agentic Mode
+
+When enabled, HakanMCP uses multi-turn tool-use loops where the AI model can call any registered MCP tool:
+
+```yaml
+aiProviders:
+  agenticEnabled: true
+  agenticMaxIterations: 10
+```
+
+Agentic mode respects the CLI/API priority chain -- if higher-priority CLI providers are available, they are used before falling back to a lower-priority API provider.
+
+### Rate Limit Handling
+
+- Automatic detection of rate limit messages from all providers
+- Cooldown tracking with per-provider timers
+- Supports relative (`try again in 20s`), absolute (`resets at 4:16 PM`), and duration (`reset after 4h58m`) formats
+- Providers in cooldown are automatically skipped
+
+---
+
 <details>
 <summary><strong>Project Structure</strong></summary>
 
 ```
-your-project/
-  hakanmcp.config.yaml    # Agent configuration
-  PRIMARY_MISSION.md       # Main mission definition
-  .hakanmcp/               # Agent state directory
-    state.json             # Current execution state
-    history.json           # Execution history
-    learned.json           # Learned patterns
-  data/
-    reports/               # Generated mission reports
+HakanMCP/
+├── src/                    # TypeScript source code
+│   ├── index.ts            # MCP server entry point
+│   ├── config.ts           # Configuration loader
+│   ├── toolRegistry.ts     # Tool registration and discovery
+│   ├── tools/              # MCP tool implementations (131 tools)
+│   ├── services/           # Core services (agentic loop, backup, cache, etc.)
+│   ├── cli/                # CLI command handlers
+│   ├── mission/            # Mission system (loader, runner, state)
+│   ├── flows/              # Workflow pipeline engine
+│   ├── reactive/           # Event bus and cross-mode routing
+│   ├── scheduled/          # Cron/interval task executor
+│   ├── watch/              # File system watcher and trigger engine
+│   ├── types/              # Shared TypeScript type definitions
+│   └── utils/              # Utilities (logger, HTTP client, DB pool, etc.)
+├── scripts/                # Development and maintenance scripts
+├── bin/                    # CLI entry points
+├── agents/                 # Agent YAML definitions (architect, coder, reviewer, etc.)
+├── tests/                  # Jest test suite
+├── .github/workflows/      # CI/CD and release automation
+├── config.yaml             # Server configuration (gitignored)
+├── .env                    # API keys and secrets (gitignored)
+├── .env.example            # Environment variable template
+├── SETUP.md                # Installation guide
+├── CONTRIBUTING.md         # Development guidelines
+├── SECURITY.md             # Security policy
+├── CHANGELOG.md            # Version history
+└── LICENSE                 # MIT License
 ```
 
 </details>

@@ -67,8 +67,6 @@ const configSchema = z.object({
       repo: z.string(),
       branch: z.string(),
       token: z.string().optional(),
-      autoBackup: z.boolean(),
-      backupInterval: z.number().int().min(0),
       private: z.boolean(),
     })
     .optional(),
@@ -77,8 +75,6 @@ const configSchema = z.object({
       enabled: z.boolean(),
       peerInstance: z.string().optional(),
       checkInterval: z.number().int().min(0),
-      autoHeal: z.boolean(),
-      notifyOnError: z.boolean(),
       healthCheckEndpoints: z
         .array(
           z.object({
@@ -93,11 +89,11 @@ const configSchema = z.object({
   selfImprovement: z
     .object({
       enabled: z.boolean(),
-      autoCommit: z.boolean(),
-      requireApproval: z.boolean(),
+      autoCommit: z.boolean().default(false),
+      requireApproval: z.boolean().default(true),
+      maxChangesPerDay: z.number().int().min(1).max(100).default(10),
       allowedOperations: z.array(z.string()),
       restrictedPaths: z.array(z.string()),
-      maxChangesPerDay: z.number().int().min(0),
     })
     .optional(),
   backup: z
@@ -120,18 +116,10 @@ const configSchema = z.object({
       geminiKeyEncrypted: z.string().optional(),
       encryptionPasswordEnv: z.string().optional(),
       localModels: z.boolean().optional(),
-      /** Allow Ollama fallback for MCP tools (ai_chat, orchestrate). Scheduled tasks use their own config. */
-      ollamaForTools: z.boolean().optional(),
       /** Enable agentic tool-use loop for ai_chat by default. When true, ai_chat uses Claude API with tool calling. */
       agenticEnabled: z.boolean().optional(),
       /** Default max iterations for agentic loop (default: 10). */
       agenticMaxIterations: z.number().int().min(1).max(50).optional(),
-      /** Provider fallback phase order: cli -> api -> ollama -> codexmini */
-      fallbackOrder: z.array(z.enum(['cli', 'api', 'ollama', 'codexmini'])).optional(),
-      /** CLI tool priority within the cli phase */
-      cliPriority: z.array(z.enum(['codex', 'claude', 'gemini', 'cursor'])).optional(),
-      /** API key priority within the api phase */
-      apiPriority: z.array(z.enum(['codex', 'claude', 'gemini'])).optional(),
     })
     .optional(),
   scheduler: z
@@ -150,32 +138,22 @@ const configSchema = z.object({
       commandTimeout: z.number().int().min(5).max(3600).optional(),
     })
     .optional(),
-  cli: z
-    .object({
-      dailyLimit: z.number().int().min(0).optional(),
-      weeklyLimit: z.number().int().min(0).optional(),
-      language: z.string().optional(),
-    })
-    .optional(),
-  api: z
-    .object({
-      dailyLimit: z.number().int().min(0).optional(),
-      weeklyLimit: z.number().int().min(0).optional(),
-    })
-    .optional(),
-  dependencies: z.object({
-    autoInstall: z.boolean().default(false),
-    checkOnStartup: z.boolean().default(false),
-  }).optional(),
   consciousness: z.object({
     enabled: z.boolean(),
-    reflectionIntervalHours: z.number().min(1).max(24),
     maxJournalEntries: z.number().int().min(10).max(10000),
     reflection: z.object({
       maxLength: z.number().int().min(50).max(1000).default(200),
       maxEntriesInPrompt: z.number().int().min(1).max(10).default(3),
       style: z.enum(['auto', 'emotional', 'mixed', 'minimal']).default('auto'),
     }).optional(),
+  }).optional(),
+  watch: z.object({
+    enabled: z.boolean(),
+    paths: z.array(z.string()).optional(),
+    debounceMs: z.number().int().positive().optional(),
+  }).optional(),
+  reactive: z.object({
+    enabled: z.boolean(),
   }).optional(),
 });
 
@@ -186,7 +164,6 @@ export type SelfImprovementConfig = Config['selfImprovement'];
 export type BackupConfig = Config['backup'];
 export type AIProviderSecretConfig = Config['aiProviders'];
 export type SchedulerConfig = Config['scheduler'];
-export type DependenciesConfig = Config['dependencies'];
 export type ConsciousnessConfig = Config['consciousness'];
 
 const DEFAULT_CONFIG: Config = {
@@ -207,10 +184,6 @@ const DEFAULT_CONFIG: Config = {
     localModels: false,
     agenticEnabled: true,
     agenticMaxIterations: 15,
-    ollamaForTools: false,
-    fallbackOrder: ['cli', 'api', 'ollama', 'codexmini'],
-    cliPriority: ['codex', 'claude', 'gemini', 'cursor'],
-    apiPriority: ['codex', 'claude', 'gemini'],
   },
   backup: {
     enabled: false,
@@ -219,15 +192,6 @@ const DEFAULT_CONFIG: Config = {
     compressionEnabled: true,
     includeNodeModules: false,
     intervalHours: 1,
-  },
-  cli: {
-    dailyLimit: 1000000,
-    weeklyLimit: 1000000,
-    language: 'en',
-  },
-  api: {
-    dailyLimit: 1000000,
-    weeklyLimit: 1000000,
   },
 };
 

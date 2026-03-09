@@ -169,7 +169,7 @@ export const selfImprovementTools = [
         const report =
           `# Self-Improvement Change Log\n\n` +
           `**Total changes:** ${log.length}\n` +
-          `**Today's changes:** ${getTodayChangeCount()}/${config.selfImprovement?.maxChangesPerDay || 10}\n\n` +
+          `**Today's changes:** ${getTodayChangeCount()}/10\n\n` +
           `## Recent Changes\n\n` +
           recent
             .map(
@@ -233,7 +233,7 @@ export const selfImprovementTools = [
           content: [
             {
               type: 'text',
-              text: `❌ Operasyon '${operation}' is not allowed. Allowed:${config.selfImprovement?.allowedOperations.join(', ')}`,
+              text: `❌ Operation '${operation}' is not allowed. Allowed: ${config.selfImprovement?.allowedOperations.join(', ')}`,
             },
           ],
           isError: true,
@@ -256,7 +256,7 @@ export const selfImprovementTools = [
 
       // Check daily limit
       const todayCount = getTodayChangeCount();
-      const maxChanges = config.selfImprovement?.maxChangesPerDay || 10;
+      const maxChanges = config.selfImprovement?.maxChangesPerDay ?? 10;
 
       if (todayCount >= maxChanges) {
         return {
@@ -306,9 +306,7 @@ export const selfImprovementTools = [
           .join('\n')}\n` +
         `---\n\n` +
         `**Proposal saved to:** ${proposalPath}\n\n` +
-        (config.selfImprovement?.requireApproval
-          ? `⚠️ **Approval required!** Approve with \`self_applyChange\`: \`{"proposalId": "${proposalId}"}\``
-          : `✓ Automatic application is active. Apply with \`self_applyChange\`.`);
+        `⚠️ **Approval required!** Approve with \`self_applyChange\`: \`{"proposalId": "${proposalId}"}\``;
 
       return {
         content: [
@@ -328,7 +326,7 @@ export const selfImprovementTools = [
       properties: {
         proposalId: {
           type: 'string',
-          description: 'Uygulanacak proposal ID',
+          description: 'Proposal ID to apply',
         },
         approved: {
           type: 'boolean',
@@ -362,7 +360,8 @@ export const selfImprovementTools = [
       const proposal = JSON.parse(fs.readFileSync(proposalPath, 'utf8'));
 
       // Check approval if required
-      if (config.selfImprovement?.requireApproval && !approved) {
+      const requireApproval = config.selfImprovement?.requireApproval ?? true;
+      if (requireApproval && !approved) {
         return {
           content: [
             {
@@ -428,29 +427,14 @@ export const selfImprovementTools = [
       }
 
       // Auto-commit if enabled
-      if (config.selfImprovement?.autoCommit) {
+      const autoCommit = config.selfImprovement?.autoCommit ?? false;
+      if (autoCommit) {
         try {
-          await execAsync(`git add ${proposal.files.join(' ')}`, { timeout: 30000 });
-          const commitMsg = `[self-improve] ${proposal.operation}: ${proposal.description}`;
-          const { stdout: commitOut } = await execAsync(`git commit -m "${commitMsg}"`, {
-            timeout: 30000,
-          });
-
-          const commitHash = commitOut.match(/\[.+?\s([a-f0-9]+)\]/)?.[1];
-          results.push(`\n✓ Auto-committed: ${commitHash}`);
-
-          // Update log with commit hash
-          logChange({
-            operation: proposal.operation,
-            files: proposal.files,
-            description: proposal.description,
-            approved,
-            commitHash,
-          });
+          await execAsync(`git add ${proposal.files.map((f: string) => `"${f}"`).join(' ')}`, { timeout: 30000 });
+          await execAsync(`git commit -m "self-improve(${proposal.operation}): ${proposal.description}"`, { timeout: 30000 });
+          results.push('✓ Auto-committed changes');
         } catch (error: unknown) {
-          results.push(
-            `⚠️ Auto-commit failed: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          results.push(`⚠️ Auto-commit failed: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
 

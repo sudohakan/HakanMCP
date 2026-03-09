@@ -23,6 +23,13 @@ import { z } from 'zod';
 import { logger, LogLevel } from './utils/logger.js';
 import { deepMerge, atomicWriteFileSync } from './utils/common.js';
 
+// Auto-create config.yaml from config.yaml.example if missing
+const configYamlPath = path.join(PROJECT_ROOT, 'config.yaml');
+const configExamplePath = path.join(PROJECT_ROOT, 'config.yaml.example');
+if (!fs.existsSync(configYamlPath) && fs.existsSync(configExamplePath)) {
+  fs.copyFileSync(configExamplePath, configYamlPath);
+}
+
 const envSchema = z
   .object({
     GITHUB_TOKEN: z

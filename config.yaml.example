@@ -31,11 +31,12 @@ backup:
   intervalHours: 1
 
 # ─── GitHub ──────────────────────────────────────────────────────
-# Set owner/repo to your GitHub username and repo name
+# owner/repo are auto-detected from git remote origin.
+# Set manually only if you need to override auto-detection.
 github:
   enabled: true
-  owner: 'hakanmcp'
-  repo: 'hakanmcp'
+  # owner: 'your-github-username'
+  # repo: 'your-repo-name'
   branch: main
   private: true
 

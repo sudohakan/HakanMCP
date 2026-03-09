@@ -1232,23 +1232,47 @@ async function runStatus(): Promise<void> {
   // Config
   let serverName = 'hakan-mcp';
   let aiProviderLine = '';
+  let githubEnabled = false;
+  let monitoringEnabled = false;
+  let schedulerEnabled = false;
+  let consciousnessEnabled = false;
+  let watchEnabled = false;
+  let reactiveEnabled = false;
+  let selfImprovementEnabled = false;
   try {
     const { config: cfg } = await import('../src/config.js');
     serverName = cfg.serverName || serverName;
     const agentic = cfg.aiProviders?.agenticEnabled ?? false;
     const local = cfg.aiProviders?.localModels ?? false;
     aiProviderLine = (agentic ? 'agentic' : 'standard') + (local ? ' + ollama' : '');
+    githubEnabled = cfg.github?.enabled ?? false;
+    monitoringEnabled = cfg.monitoring?.enabled ?? false;
+    schedulerEnabled = cfg.scheduler?.enabled ?? false;
+    consciousnessEnabled = cfg.consciousness?.enabled ?? false;
+    watchEnabled = cfg.watch?.enabled ?? false;
+    reactiveEnabled = cfg.reactive?.enabled ?? false;
+    selfImprovementEnabled = cfg.selfImprovement?.enabled ?? false;
   } catch { /* ignore */ }
 
+  const toggle = (on: boolean) => on ? chalk.hex(THEME.success)('enabled') : chalk.hex(THEME.textMuted)('disabled');
+
   let body = '';
-  body += `  ${chalk.hex(THEME.primary)('Server')}        ${chalk.hex('#F1F2F6')(serverName)}\n`;
-  body += `  ${chalk.hex(THEME.primary)('Version')}       ${chalk.hex('#F1F2F6')(version)}\n`;
-  body += `  ${chalk.hex(THEME.primary)('Node')}          ${chalk.hex('#F1F2F6')(process.version)}\n`;
-  body += `  ${chalk.hex(THEME.primary)('PID')}           ${chalk.hex('#F1F2F6')(String(process.pid))}\n`;
-  body += `  ${chalk.hex(THEME.primary)('Uptime')}        ${chalk.hex('#F1F2F6')(uptime)}\n`;
-  body += `  ${chalk.hex(THEME.primary)('Backup')}        ${backupLine}\n`;
-  body += `  ${chalk.hex(THEME.primary)('AI Providers')}  ${chalk.hex('#F1F2F6')(aiProviderLine)}\n`;
-  body += `  ${chalk.hex(THEME.primary)('Project')}       ${chalk.hex(THEME.textMuted)(PROJECT_ROOT)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Server')}           ${chalk.hex('#F1F2F6')(serverName)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Version')}          ${chalk.hex('#F1F2F6')(version)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Node')}             ${chalk.hex('#F1F2F6')(process.version)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('PID')}              ${chalk.hex('#F1F2F6')(String(process.pid))}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Uptime')}           ${chalk.hex('#F1F2F6')(uptime)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Project')}          ${chalk.hex(THEME.textMuted)(PROJECT_ROOT)}\n`;
+  body += `\n`;
+  body += `  ${chalk.hex(THEME.primary)('AI Providers')}     ${chalk.hex('#F1F2F6')(aiProviderLine)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Backup')}           ${backupLine}\n`;
+  body += `  ${chalk.hex(THEME.primary)('GitHub')}           ${toggle(githubEnabled)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Monitoring')}       ${toggle(monitoringEnabled)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Scheduler')}        ${toggle(schedulerEnabled)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Consciousness')}    ${toggle(consciousnessEnabled)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Watch')}            ${toggle(watchEnabled)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Reactive')}         ${toggle(reactiveEnabled)}\n`;
+  body += `  ${chalk.hex(THEME.primary)('Self-Improve')}     ${toggle(selfImprovementEnabled)}\n`;
 
   console.log(renderTextMenu('Status', body.trimEnd(), undefined, 'status'));
 }
@@ -2779,13 +2803,23 @@ async function runSettings(): Promise<void> {
     },
     {
       title: 'GitHub',
-      rows: [
-        ['enabled', config.github?.enabled ?? false, 'GitHub integration on/off'],
-        ['owner', config.github?.owner ?? '—', 'Repository owner'],
-        ['repo', config.github?.repo ?? '—', 'Repository name'],
-        ['branch', config.github?.branch ?? '—', 'Default branch'],
-        ['private', config.github?.private ?? true, 'Repository visibility'],
-      ],
+      rows: (() => {
+        // Auto-detect owner/repo from git remote, fallback to config
+        let detectedOwner = config.github?.owner ?? '—';
+        let detectedRepo = config.github?.repo ?? '—';
+        try {
+          const remoteUrl = execSync('git remote get-url origin', { cwd: PROJECT_ROOT, encoding: 'utf8', timeout: 5000 }).trim();
+          const m = remoteUrl.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
+          if (m) { detectedOwner = m[1]; detectedRepo = m[2]; }
+        } catch { /* git not available or no remote */ }
+        return [
+          ['enabled', config.github?.enabled ?? false, 'GitHub integration on/off'],
+          ['owner', detectedOwner, 'Repository owner (auto-detected from git remote)'],
+          ['repo', detectedRepo, 'Repository name (auto-detected from git remote)'],
+          ['branch', config.github?.branch ?? '—', 'Default branch'],
+          ['private', config.github?.private ?? true, 'Repository visibility'],
+        ];
+      })(),
     },
     {
       title: 'Monitoring',
@@ -3049,6 +3083,13 @@ const CONFIG_INFO: Record<string, { title: string; description: string }> = {
       '',
       'agenticMaxIterations  Maximum tool-call iterations per agentic turn.',
       '                      Prevents runaway loops. Default: 15.',
+      '',
+      'codexKeyEncrypted     Encrypted OpenAI API key (decrypted at runtime with',
+      'claudeKeyEncrypted    AI_KEY_PASSWORD env var). Use "config set ai',
+      'geminiKeyEncrypted    <provider>KeyEncrypted <value>" to store.',
+      '',
+      'encryptionPasswordEnv  Name of the env var holding the decryption password.',
+      '                      Default: AI_KEY_PASSWORD.',
     ].join('\n'),
   },
   chat: {
@@ -3074,8 +3115,8 @@ const CONFIG_INFO: Record<string, { title: string; description: string }> = {
       'enabled               Master switch for GitHub integration. When false, no',
       '                      GitHub operations occur regardless of other settings.',
       '',
-      'owner / repo          Target GitHub repository (owner/repo format).',
-      '                      Example: owner=hakan repo=hakanmcp-backup.',
+      'owner / repo          Target GitHub repository. Auto-detected from git remote',
+      '                      origin URL. Set manually only to override auto-detection.',
       '',
       'branch                Default branch for sync. Default: main.',
       '',
@@ -3093,6 +3134,12 @@ const CONFIG_INFO: Record<string, { title: string; description: string }> = {
       '',
       'checkInterval         Milliseconds between health checks. Default: 300000 (5 min).',
       '                      Lower values catch issues faster but use more resources.',
+      '',
+      'peerInstance          Path to peer MCP instance for Guardian sync.',
+      '                      Usually "/peer" in Docker. Env override: MONITORING_PEER_INSTANCE.',
+      '',
+      'healthCheckEndpoints  Array of health check endpoint definitions.',
+      '                      Each entry has type, path, and description fields.',
     ].join('\n'),
   },
   backup: {
@@ -3131,6 +3178,9 @@ const CONFIG_INFO: Record<string, { title: string; description: string }> = {
       '',
       'taskHistoryRetentionDays  Number of days to keep completed task history.',
       '                      Older records are automatically pruned. Default: 30.',
+      '',
+      'persistencePath       File path for scheduler state persistence.',
+      '                      Default: ./scheduler-state.json.',
     ].join('\n'),
   },
   consciousness: {
@@ -3148,13 +3198,19 @@ const CONFIG_INFO: Record<string, { title: string; description: string }> = {
       'maxJournalEntries     Maximum journal entries to keep in journal.jsonl.',
       '                      Oldest entries are pruned when limit is reached.',
       '',
+      'reflection.maxLength  Maximum character length for generated reflections.',
+      '                      Default: 200.',
+      '',
+      'reflection.maxEntriesInPrompt  Number of recent journal entries included',
+      '                      as context for new reflections. Default: 3.',
+      '',
       'reflection.style      Journal generation style: auto | emotional | mixed | minimal.',
       '                      "auto" adapts based on current emotional state.',
       '                      "minimal" produces brief factual entries.',
       '',
       'Journal entries are event-driven: session start/end, errors, milestones,',
-      'and every 25 messages (checkpoint). Character traits from character.yaml',
-      'shift dynamically based on emotions (frustration, curiosity, energy, focus).',
+      'and every 25 messages (checkpoint). Character traits shift dynamically',
+      'based on emotions (frustration, curiosity, energy, focus).',
     ].join('\n'),
   },
   self: {
@@ -3263,6 +3319,19 @@ const CONFIG_INFO: Record<string, { title: string; description: string }> = {
       '',
       'NOTE: Configured per-workspace via hakanmcp.config.yaml.',
       'Use "hakanmcp reactive" to start reactive mode.',
+    ].join('\n'),
+  },
+  system: {
+    title: 'System',
+    description: [
+      'System-level security and execution constraints.',
+      '',
+      'allowedPaths          Path allowlist for fs_* and sys_runCommand tools.',
+      '                      When set, all file/command paths must resolve under',
+      '                      one of these directories. Empty array = allow all.',
+      '',
+      'commandTimeout        Default timeout in seconds for command execution.',
+      '                      Range: 5–3600. Default: 120.',
     ].join('\n'),
   },
 };

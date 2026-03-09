@@ -406,7 +406,6 @@ your-project/
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow and code style |
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting and security policy |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [docs/](docs/) | API reference, guides, architecture docs |
 
 ---
 

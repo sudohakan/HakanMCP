@@ -60,9 +60,13 @@ export class ConsciousnessService {
 
   /** Ensure logs/consciousness/ directory exists */
   ensureDir(): void {
-    if (!fs.existsSync(this.stateDir)) {
-      fs.mkdirSync(this.stateDir, { recursive: true });
+    // Validate that stateDir resolves under projectRoot to prevent path traversal
+    const resolved = path.resolve(this.stateDir);
+    const root = path.resolve(this.projectRoot);
+    if (!resolved.startsWith(root + path.sep) && resolved !== root) {
+      throw new Error('State directory escapes project root');
     }
+    fs.mkdirSync(this.stateDir, { recursive: true });
   }
 
   /** Read current state or return default */
@@ -170,8 +174,16 @@ export class ConsciousnessService {
   /** Append an entry to journal.jsonl */
   appendJournal(entry: JournalEntry): void {
     try {
+      // Truncate string fields to prevent unbounded writes
+      const MAX_FIELD_LEN = 8192;
+      const sanitized: JournalEntry = {
+        thought: typeof entry.thought === 'string' ? entry.thought.slice(0, MAX_FIELD_LEN) : entry.thought,
+        type: entry.type,
+        timestamp: typeof entry.timestamp === 'string' ? entry.timestamp.slice(0, MAX_FIELD_LEN) : entry.timestamp,
+        provider: typeof entry.provider === 'string' ? entry.provider.slice(0, MAX_FIELD_LEN) : entry.provider,
+      };
       this.ensureDir();
-      const line = JSON.stringify(entry) + '\n';
+      const line = JSON.stringify(sanitized) + '\n';
       fs.appendFileSync(this.journalPath, line, 'utf8');
       this.trimJournal();
     } catch (err) {
@@ -313,8 +325,14 @@ export class ConsciousnessService {
   /** Trim journal to maxJournalEntries */
   private trimJournal(): void {
     try {
-      if (!fs.existsSync(this.journalPath)) return;
-      const lines = fs.readFileSync(this.journalPath, 'utf8').trim().split('\n').filter(Boolean);
+      let raw: string;
+      try {
+        raw = fs.readFileSync(this.journalPath, 'utf8');
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+        return;
+      }
+      const lines = raw.trim().split('\n').filter(Boolean);
       if (lines.length > this.maxJournalEntries) {
         const trimmed = lines.slice(-this.maxJournalEntries);
         fs.writeFileSync(this.journalPath, trimmed.join('\n') + '\n', 'utf8');

@@ -93,10 +93,8 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     }
 
     // 3. Create state directory
-    if (!fs.existsSync(stateDirPath)) {
-      fs.mkdirSync(stateDirPath, { recursive: true });
-      spinner.text = `Created ${STATE_DIR}/`;
-    }
+    fs.mkdirSync(stateDirPath, { recursive: true });
+    spinner.text = `Created ${STATE_DIR}/`;
 
     // 4. Validate generated config
     const validated = loadWorkspaceConfig(cwd);

@@ -21,7 +21,7 @@ export class ConversationManager {
     const convConfig = (config as Record<string, unknown>).conversations as
       | { storagePath?: string; maxMessages?: number; persistOnEveryMessage?: boolean }
       | undefined;
-    const baseDir = convConfig?.storagePath || path.join(PROJECT_ROOT, 'conversations');
+    const baseDir = convConfig?.storagePath || path.join(PROJECT_ROOT, '.hakanmcp', 'conversations');
     this.storagePath = path.isAbsolute(baseDir) ? path.join(baseDir, 'default.json') : path.join(PROJECT_ROOT, baseDir, 'default.json');
     this.maxMessages = convConfig?.maxMessages || 100;
     this.persistOnEveryMessage = convConfig?.persistOnEveryMessage || false;

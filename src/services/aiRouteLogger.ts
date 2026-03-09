@@ -42,8 +42,13 @@ export function appendRoute(provider: string, fallback: boolean): void {
 function pruneIfNeeded(): void {
   try {
     const p = getRoutesPath();
-    if (!fs.existsSync(p)) return;
-    const content = fs.readFileSync(p, 'utf8');
+    let content: string;
+    try {
+      content = fs.readFileSync(p, 'utf8');
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw err;
+    }
     const lines = content.trim().split('\n').filter(Boolean);
     if (lines.length <= MAX_ENTRIES) return;
     const keep = lines.slice(-MAX_ENTRIES);

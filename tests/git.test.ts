@@ -5,16 +5,11 @@ import os from 'node:os';
 import { simpleGit } from 'simple-git';
 
 describe('Git Tools', () => {
-  const testRepoPath = path.join(os.tmpdir(), 'test-git-repo');
+  let testRepoPath: string;
 
   beforeEach(async () => {
-    // Clean up test repo if exists
-    if (fs.existsSync(testRepoPath)) {
-      fs.rmSync(testRepoPath, { recursive: true, force: true });
-    }
-
-    // Create a new test repository
-    fs.mkdirSync(testRepoPath, { recursive: true });
+    // Create a unique test repository directory
+    testRepoPath = fs.mkdtempSync(path.join(os.tmpdir(), 'test-git-repo-'));
     const git = simpleGit(testRepoPath);
     await git.init();
     await git.addConfig('user.name', 'Test User');

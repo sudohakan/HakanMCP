@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 describe('Console chat session and context', () => {
-  const tmpDir = path.join(os.tmpdir(), 'hakanmcp-session-test-' + Date.now());
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hakanmcp-session-test-'));
   const sessionsDir = path.join(tmpDir, '.hakanmcp', 'sessions');
 
   beforeAll(() => {

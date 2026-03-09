@@ -27,9 +27,16 @@ const changeLogPath = './self-improvement-log.json';
  * Logs a change to the self-improvement log
  */
 function logChange(change: Omit<ChangeLog, 'timestamp'>): void {
-  const log: ChangeLog[] = fs.existsSync(changeLogPath)
-    ? JSON.parse(fs.readFileSync(changeLogPath, 'utf8'))
-    : [];
+  let log: ChangeLog[];
+  try {
+    log = JSON.parse(fs.readFileSync(changeLogPath, 'utf8'));
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      log = [];
+    } else {
+      throw err;
+    }
+  }
 
   log.push({
     ...change,
@@ -43,9 +50,13 @@ function logChange(change: Omit<ChangeLog, 'timestamp'>): void {
  * Gets today's change count
  */
 function getTodayChangeCount(): number {
-  if (!fs.existsSync(changeLogPath)) return 0;
-
-  const log: ChangeLog[] = JSON.parse(fs.readFileSync(changeLogPath, 'utf8'));
+  let log: ChangeLog[];
+  try {
+    log = JSON.parse(fs.readFileSync(changeLogPath, 'utf8'));
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return 0;
+    throw err;
+  }
   const today = new Date().toISOString().split('T')[0];
 
   return log.filter((entry) => entry.timestamp.startsWith(today)).length;
@@ -137,18 +148,22 @@ export const selfImprovementTools = [
       if (parsed.action === 'changelog') {
         const limit = parsed.limit ?? 10;
 
-        if (!fs.existsSync(changeLogPath)) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: 'No self-improvement changes logged yet.',
-              },
-            ],
-          };
+        let log: ChangeLog[];
+        try {
+          log = JSON.parse(fs.readFileSync(changeLogPath, 'utf8'));
+        } catch (err: unknown) {
+          if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: 'No self-improvement changes logged yet.',
+                },
+              ],
+            };
+          }
+          throw err;
         }
-
-        const log: ChangeLog[] = JSON.parse(fs.readFileSync(changeLogPath, 'utf8'));
         const recent = log.slice(-limit).reverse();
 
         const report =
@@ -257,9 +272,7 @@ export const selfImprovementTools = [
 
       // Save proposal to temporary directory
       const proposalDir = './proposals';
-      if (!fs.existsSync(proposalDir)) {
-        fs.mkdirSync(proposalDir, { recursive: true });
-      }
+      fs.mkdirSync(proposalDir, { recursive: true });
 
       const proposalId = `${Date.now()}-${operation}`;
       const proposalPath = path.join(proposalDir, `${proposalId}.json`);
@@ -379,9 +392,7 @@ export const selfImprovementTools = [
 
           // Write new content
           const dir = path.dirname(filePath);
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
+          fs.mkdirSync(dir, { recursive: true });
 
           fs.writeFileSync(filePath, change.newContent, 'utf8');
           results.push(`✓ Applied: ${filePath}`);

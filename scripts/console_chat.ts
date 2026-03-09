@@ -25,6 +25,7 @@ import { buildMissionContextBlock } from '../src/mission/missionContext.js';
 import { buildTargetFilesBlock } from '../src/mission/targetAnalyzer.js';
 import { loadAllMissions } from '../src/mission/missionLoader.js';
 
+
 // Load .env first; .env overrides Windows/system env when key exists in .env
 try {
   const dotenv = await import('dotenv');
@@ -43,10 +44,11 @@ const SUGGESTION_PREFIX = chalk.hex('#FDCB6E')('💡');
 
 function formatProviderBadge(provider: string): string {
   const p = provider.toLowerCase();
-  if (p.includes('codex')) return chalk.green('Codex');
-  if (p.includes('claude')) return chalk.magenta('Claude');
-  if (p.includes('gemini')) return chalk.blue('Gemini');
-  if (p.includes('cursor')) return chalk.hex('#6B21A8')('Cursor');
+  if (p.includes('codex')) return chalk.hex('#10A37F')('Codex');
+  if (p.includes('claude')) return chalk.hex('#D97706')('Claude');
+  if (p.includes('gemini')) return chalk.hex('#4285F4')('Gemini');
+  if (p.includes('cursor')) return chalk.hex('#7C3AED')('Cursor');
+  if (p.includes('ollama')) return chalk.hex('#FFFFFF')('Ollama');
   if (p.includes('mcp')) return chalk.cyan('MCP');
   return chalk.dim(provider);
 }
@@ -72,10 +74,11 @@ function formatProviderError(message: string): string {
 
   const colorForProvider = (name: string): string => {
     const n = name.toLowerCase();
-    if (n.includes('codex')) return chalk.green(name);
-    if (n.includes('claude')) return chalk.magenta(name);
-    if (n.includes('gemini')) return chalk.blue(name);
-    if (n.includes('cursor')) return chalk.hex('#6B21A8')(name);
+    if (n.includes('codex')) return chalk.hex('#10A37F')(name);
+    if (n.includes('claude')) return chalk.hex('#D97706')(name);
+    if (n.includes('gemini')) return chalk.hex('#4285F4')(name);
+    if (n.includes('cursor')) return chalk.hex('#7C3AED')(name);
+    if (n.includes('ollama')) return chalk.hex('#FFFFFF')(name);
     return chalk.dim(name);
   };
 
@@ -515,8 +518,7 @@ function getProviderFromArgs(): Provider | 'auto' {
 }
 
 function getSessionDir(): string {
-  const home = os.homedir();
-  return path.join(home, '.hakanmcp', 'sessions');
+  return path.join(getProjectRoot(), '.hakanmcp', 'sessions');
 }
 
 function getSessionPath(): string {
@@ -551,14 +553,24 @@ function saveSession(messages: ChatMessage[]): void {
   try {
     const dir = getSessionDir();
     fs.mkdirSync(dir, { recursive: true });
+    const p = getSessionPath();
     const toSave = messages.slice(-SESSION_WINDOW);
+    // Preserve original startedAt if session file already exists
+    let startedAt = new Date().toISOString();
+    try {
+      if (fs.existsSync(p)) {
+        const existing = JSON.parse(fs.readFileSync(p, 'utf8')) as SessionData;
+        if (existing.startedAt) startedAt = existing.startedAt;
+      }
+    } catch {
+      /* use new timestamp */
+    }
     const data: SessionData = {
       sessionId: process.env.HAKANMCP_SESSION_ID || 'default',
-      startedAt: new Date().toISOString(),
+      startedAt,
       lastUpdated: new Date().toISOString(),
       messages: toSave,
     };
-    const p = getSessionPath();
     fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
   } catch {
     /* ignore */
@@ -714,7 +726,13 @@ async function _callCodexCli(prompt: string): Promise<string> {
 
   const uniqueCommands = Array.from(new Set(commands));
   const errors: string[] = [];
+  const ALLOWED_CLI_BINARIES = ['claude', 'codex', 'gemini', 'cursor', 'agent', 'ollama'];
   for (const command of uniqueCommands) {
+    const firstWord = command.trim().split(/\s+/)[0];
+    if (!ALLOWED_CLI_BINARIES.includes(firstWord)) {
+      errors.push('Skipped unsafe command: ' + command);
+      continue;
+    }
     try {
       const { stdout } = await execAsync(command, { timeout: 45000, maxBuffer: 16 * 1024 * 1024 });
       if (fs.existsSync(outputFile)) {
@@ -794,6 +812,9 @@ async function _callGeminiCli(prompt: string): Promise<string> {
 async function _callCursorCli(prompt: string): Promise<string> {
   const safePrompt = shellEscapeDoubleQuoted(prompt);
   const model = process.env.CURSOR_AGENT_MODEL || '';
+  if (model && !/^[a-zA-Z0-9._:/-]+$/.test(model)) {
+    throw new Error('Invalid model name: ' + model);
+  }
   const modelFlag = model ? ` --model "${model}"` : '';
   const { stdout } = await execAsync(`agent -p "${safePrompt}"${modelFlag}`, {
     timeout: 90000, // Cursor agent can take longer
@@ -1352,13 +1373,14 @@ async function runConsole(): Promise<void> {
     const showNotesHint = allNotes.length > 0 && Math.random() < 0.005;
 
     const displayText = !detailedMode ? renderSimpleMarkdown(finalText) : finalText;
-    const providerBadge = chalk.dim(' [') + formatProviderBadge(response.provider) + chalk.dim(']');
+    const agenticSuffix = config.aiProviders?.agenticEnabled ? chalk.dim(' - ') + chalk.hex('#E17055')('Agentic') : '';
+    const providerBadge = chalk.dim(' [') + formatProviderBadge(response.provider) + agenticSuffix + chalk.dim(']');
     let out: string;
     if (detailedMode) {
       const dBlocks = buildConsciousnessBlocks();
       const innerState = [dBlocks.emotionalState, dBlocks.toneGuidance].filter(Boolean).join(' ');
       out =
-        chalk.dim(`**Selected Model:** ${response.provider}\n`) +
+        chalk.dim('**Selected Model:** ') + formatProviderBadge(response.provider) + (config.aiProviders?.agenticEnabled ? chalk.dim(' - ') + chalk.hex('#E17055')('Agentic') : '') + chalk.dim('\n') +
         (innerState ? chalk.dim(`> Inner State: ${innerState}\n`) : '') +
         (finalText || '(no response)') +
         (showNotesHint

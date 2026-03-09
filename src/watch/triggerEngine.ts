@@ -14,6 +14,7 @@ const log = logger.child({ component: 'triggerEngine' });
 function matchesPattern(filePath: string, pattern: string): boolean {
   // Convert glob to regex
   const regexStr = pattern
+    .replace(/\\/g, '\\\\')
     .replace(/\./g, '\\.')
     .replace(/\*\*/g, '<<GLOBSTAR>>')
     .replace(/\*/g, '[^/\\\\]*')

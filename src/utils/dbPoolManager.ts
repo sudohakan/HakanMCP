@@ -7,7 +7,7 @@
 import type pg from 'pg';
 import type mysql from 'mysql2/promise';
 import type mssql from 'mssql';
-import { createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import { logger } from './logger.js';
 
 let _pg: typeof import('pg').default | null = null;
@@ -444,8 +444,8 @@ export class DatabasePoolManager {
     password: string;
     database: string;
   }): string {
-    const key = `${config.host}:${config.port}:${config.user}:${config.password}:${config.database}`;
-    return createHash('sha256').update(key).digest('hex').substring(0, 16);
+    const identity = `${config.host}:${config.port}:${config.user}:${config.database}`;
+    return createHmac('sha256', config.password).update(identity).digest('hex').substring(0, 16);
   }
 
   /**
@@ -453,10 +453,11 @@ export class DatabasePoolManager {
    */
   private hashMssqlConfig(config: MSSQLConfig): string {
     const useWindowsAuth = config.options?.trustedConnection || config.options?.integratedSecurity;
-    const key = useWindowsAuth
+    const identity = useWindowsAuth
       ? `${config.server}:${config.port || 1433}:${config.domain || 'WINDOWS_AUTH'}:${config.database}`
-      : `${config.server}:${config.port || 1433}:${config.user}:${config.password}:${config.database}`;
-    return createHash('sha256').update(key).digest('hex').substring(0, 16);
+      : `${config.server}:${config.port || 1433}:${config.user}:${config.database}`;
+    const secret = useWindowsAuth ? 'windows-auth' : (config.password || '');
+    return createHmac('sha256', secret).update(identity).digest('hex').substring(0, 16);
   }
 }
 

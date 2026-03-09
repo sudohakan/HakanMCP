@@ -8,6 +8,15 @@ import { execSync } from 'node:child_process';
 import { config, validateConfig, validateEnvironmentConfig } from '../src/config.js';
 import { backupService } from '../src/services/backupService.js';
 
+function maskSensitiveErrors(errors: string[]): string[] {
+  return errors.map((err) =>
+    err.replace(
+      /([A-Z_]*(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)[A-Z_]*)=([^\s|]+)/gi,
+      '$1=***',
+    ),
+  );
+}
+
 function fmt(label: string, ok: boolean, detail?: string): string {
   return `${ok ? '✓' : '✗'} ${label}${detail ? `: ${detail}` : ''}`;
 }
@@ -101,7 +110,7 @@ function checkCursorCli(): { ok: boolean; detail: string } {
 
 function main(): void {
   const configErrors = validateConfig(config, { strict: false });
-  const envErrors = validateEnvironmentConfig(config, { strict: false });
+  const envErrors = maskSensitiveErrors(validateEnvironmentConfig(config, { strict: false }));
 
   const peerPath = config.monitoring?.peerInstance;
   const peerExists = peerPath ? fs.existsSync(peerPath) : false;

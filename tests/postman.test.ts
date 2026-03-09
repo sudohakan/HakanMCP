@@ -4,8 +4,8 @@ import path from 'node:path';
 import os from 'node:os';
 
 describe('Postman Tools', () => {
-  const testPostmanDir = path.join(os.tmpdir(), 'postman-test');
-  const testCollectionPath = path.join(testPostmanDir, 'test.postman_collection.json');
+  let testPostmanDir: string;
+  let testCollectionPath: string;
   let postmanTools: Array<{ name: string; handler: (args: unknown) => Promise<unknown> }>;
   let fetchMock: jest.Mock;
 
@@ -77,11 +77,9 @@ describe('Postman Tools', () => {
   };
 
   beforeEach(() => {
-    // Create test directory and collection
-    if (fs.existsSync(testPostmanDir)) {
-      fs.rmSync(testPostmanDir, { recursive: true, force: true });
-    }
-    fs.mkdirSync(testPostmanDir, { recursive: true });
+    // Create unique test directory
+    testPostmanDir = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-test-'));
+    testCollectionPath = path.join(testPostmanDir, 'test.postman_collection.json');
     if (fetchMock) {
       fetchMock.mockClear();
     }

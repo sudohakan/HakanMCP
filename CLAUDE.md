@@ -140,6 +140,15 @@ Feature tools (`db`, `mongo`, `git`) require optional native dependencies — th
 | `SCHEDULER_ENABLED` | Enable/disable scheduler |
 | `HAKANMCP_PROJECT_ROOT` | Override detected project root |
 
+## Repository Cleanliness
+
+- NEVER commit generated artifacts, test outputs, or temp files to the repo
+- All test artifacts must use `fs.mkdtempSync()` for temp directories (no predictable paths)
+- Runtime state files (`.ai-provider-*.json`, `scheduler-state.json`, logs/) are gitignored — never commit them
+- Before adding new directories, check `.gitignore` and add entries for any generated/runtime content
+- Periodically audit for dead code, unused placeholders, and orphaned files — remove them promptly
+- Empty directories without a clear documented purpose should be removed
+
 ## Build & Run
 
 ```bash

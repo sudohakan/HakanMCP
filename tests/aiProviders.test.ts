@@ -110,11 +110,16 @@ describe('aiProviders', () => {
           body: { message: { content: 'local response' } },
         }) as unknown as Response;
       }
-      if (u.includes('anthropic.com')) {
-        return createFetchResponse({ ok: false, body: 'claude error' }) as unknown as Response;
-      }
-      if (u.includes('openai.com')) {
-        return createFetchResponse({ ok: false, body: 'codex error' }) as unknown as Response;
+      try {
+        const hostname = new URL(u).hostname;
+        if (hostname === 'api.anthropic.com' || hostname.endsWith('.anthropic.com')) {
+          return createFetchResponse({ ok: false, body: 'claude error' }) as unknown as Response;
+        }
+        if (hostname === 'api.openai.com' || hostname.endsWith('.openai.com')) {
+          return createFetchResponse({ ok: false, body: 'codex error' }) as unknown as Response;
+        }
+      } catch {
+        // invalid URL, fall through
       }
       return createFetchResponse({ ok: false, body: 'unknown' }) as unknown as Response;
     });

@@ -150,10 +150,7 @@ describe('common utilities', () => {
   });
 
   describe('atomicWriteFileSync (plan.md §E)', () => {
-    const tmpDir = path.join(os.tmpdir(), 'hakan-mcp-atomic-test');
-    beforeAll(() => {
-      fs.mkdirSync(tmpDir, { recursive: true });
-    });
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hakan-mcp-atomic-test-'));
     afterAll(() => {
       try {
         fs.rmSync(tmpDir, { recursive: true });

@@ -80,7 +80,7 @@ flowchart LR
 | Add types/interfaces | `src/types/` |
 | Add utilities | `src/utils/` |
 | Add tests | `tests/` (mirror source structure) |
-| Add documentation | `docs/` |
+| Add documentation | Root `.md` files (README, SETUP, etc.) |
 
 </details>
 

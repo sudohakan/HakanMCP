@@ -5,7 +5,7 @@
 ## Project Overview
 
 HakanMCP serves two roles:
-1. **MCP Server** — STDIO-based Model Context Protocol server with 100+ tools for Claude Code
+1. **MCP Server** — STDIO-based Model Context Protocol server with 131 tools for Claude Code
 2. **Mission Agent CLI** — Autonomous task execution via markdown mission files with 4 operating modes (Watch, Scheduled, Assistant, Reactive)
 
 ## Architecture

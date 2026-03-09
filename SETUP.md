@@ -42,7 +42,7 @@ HakanMCP uses **lazy-loading** for database drivers and heavy modules. If you do
 | `sqlite` / `sqlite3` | SQLite variant of `db_query` |
 | Python 3.8+ | `aidefence` tools (input scan, PII check, redaction) |
 
-All other 170+ tools work without any optional dependencies.
+All other tools work without any optional dependencies.
 
 </details>
 
@@ -101,6 +101,8 @@ For development with auto-reload:
 ```bash
 npm run dev
 ```
+
+> **Tip:** You only need one AI provider key to get started. Claude (`CLAUDE_CODE_API_KEY`) or OpenAI (`CODEX_API_KEY`) are recommended for the best experience. Additional providers add fallback redundancy.
 
 ---
 
@@ -210,7 +212,7 @@ npm run check:quick
 Expected output:
 ```
 ✓ Config loaded successfully
-✓ Tool registry initialized (199 tools)
+✓ Tool registry initialized (131 tools)
 ✓ Smoke tests passed
 ```
 

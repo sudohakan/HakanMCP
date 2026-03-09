@@ -26,6 +26,8 @@
 
 If you discover a security vulnerability in HakanMCP, please report it responsibly.
 
+**Preferred:** [GitHub Security Advisory](https://github.com/sudohakan/HakanMCP/security/advisories/new) (private by default)
+
 **Email:** security@hakanmcp.dev
 
 ### What to include in your report

@@ -256,4 +256,7 @@ This release marks the official rebranding from **Claude Flow** to **HakanMCP** 
 | Plugin Marketplace | v3.0.0-alpha.170 | 2025-12 | 8 plugins + IPFS registry |
 | Guidance Control Plane | v3.0.0-alpha.100 | 2026-01 | WASM policy kernel, ContinueGate |
 | AgentDB v3 | v3.1.0-alpha.55 | 2026-02 | 8 controllers, MutationGuard |
-| **HakanMCP v3.5** | **v3.5.0** | **2026-02-27** | **First stable release, rebranding** |
+| **Mission Agent MVP** | **v1.0.0** | **2026-03-08** | **Mission Agent CLI, 4 operating modes** |
+
+[1.0.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.0.0
+[3.5.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v3.5.0

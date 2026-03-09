@@ -82,8 +82,10 @@ export async function syncPeerRepo(
     return { status: 'skipped', detail: 'repo busy (possible AI agent activity), skipping sync' };
   }
 
-  const owner = config.github?.owner;
-  const repo = config.github?.repo;
+  const { resolveGitHubOwnerRepo } = await import('./gitInfo.js');
+  const gitInfo = resolveGitHubOwnerRepo(config.github?.owner, config.github?.repo);
+  const owner = gitInfo?.owner;
+  const repo = gitInfo?.repo;
   const branch = config.github?.branch || 'main';
   const token = (config.github?.token || process.env.GITHUB_TOKEN || '').trim();
   const originUrl =

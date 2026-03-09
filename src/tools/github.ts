@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { exec, execFile } from 'child_process';
 import util from 'util';
 import { config } from '../config.js';
+import { resolveGitHubOwnerRepo } from '../utils/gitInfo.js';
 
 const execAsync = util.promisify(exec);
 const execFileAsync = util.promisify(execFile);
@@ -27,8 +28,9 @@ function validateGitHubConfig(
   owner?: string,
   repo?: string,
 ): { valid: boolean; error?: string; owner?: string; repo?: string } {
-  const resolvedOwner = owner || config.github?.owner;
-  const resolvedRepo = repo || config.github?.repo;
+  const resolved = resolveGitHubOwnerRepo(config.github?.owner, config.github?.repo);
+  const resolvedOwner = owner || resolved?.owner;
+  const resolvedRepo = repo || resolved?.repo;
 
   if (!config.github?.enabled && !owner && !repo) {
     return { valid: false, error: 'GitHub integration is disabled' };

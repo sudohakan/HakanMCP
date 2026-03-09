@@ -126,6 +126,113 @@ function getAppVersion(): string {
   return '0.0.0';
 }
 
+interface StartupHealthResult {
+  status: 'ready' | 'update' | 'issues' | 'update-issues' | 'check-failed';
+  issues: string[];
+  latestVersion?: string;
+  localVersion: string;
+}
+
+async function fetchLatestGitHubVersion(timeoutMs = 3000): Promise<string | null> {
+  const https = await import('node:https');
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'api.github.com',
+      path: '/repos/sudohakan/HakanMCP/releases/latest',
+      headers: { 'User-Agent': 'HakanMCP-CLI' },
+      timeout: timeoutMs,
+    };
+    const req = https.get(options, (res) => {
+      let data = '';
+      res.on('data', (chunk: Buffer) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const tag = json.tag_name;
+          resolve(tag ? tag.replace(/^v/, '') : null);
+        } catch { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+async function checkStartupHealth(): Promise<StartupHealthResult> {
+  const localVersion = getAppVersion();
+  const issues: string[] = [];
+  let latestVersion: string | undefined;
+  let checkFailed = false;
+
+  // 1. Version check (GitHub Releases API)
+  try {
+    const remote = await fetchLatestGitHubVersion();
+    if (remote) {
+      const semverMod = await import('semver');
+      if (semverMod.default.gt(remote, localVersion)) {
+        latestVersion = remote;
+      }
+    } else {
+      checkFailed = true;
+    }
+  } catch {
+    checkFailed = true;
+  }
+
+  // 2. Build check
+  const distIndex = path.join(PROJECT_ROOT, 'dist', 'src', 'index.js');
+  if (!fs.existsSync(distIndex)) {
+    issues.push('Build missing (run npm run build)');
+  } else {
+    const distStat = fs.statSync(distIndex);
+    try {
+      const srcDir = path.join(PROJECT_ROOT, 'src');
+      let srcNewer = false;
+      const checkDir = (dir: string) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) checkDir(full);
+          else if (entry.name.endsWith('.ts') && fs.statSync(full).mtimeMs > distStat.mtimeMs) {
+            srcNewer = true;
+          }
+        }
+      };
+      checkDir(srcDir);
+      if (srcNewer) issues.push('Build outdated (src newer than dist)');
+    } catch { /* ignore */ }
+  }
+
+  // 3. Node.js version check
+  const nodeVer = process.versions.node;
+  const major = parseInt(nodeVer.split('.')[0], 10);
+  if (major < 20) {
+    issues.push(`Node.js ${nodeVer} (requires >= 20)`);
+  }
+
+  // 4. Config check
+  const cfgPath = path.join(PROJECT_ROOT, 'config.yaml');
+  if (fs.existsSync(cfgPath)) {
+    try {
+      const yamlMod = await import('js-yaml');
+      yamlMod.default.load(fs.readFileSync(cfgPath, 'utf8'));
+    } catch {
+      issues.push('config.yaml parse error');
+    }
+  }
+
+  const hasUpdate = !!latestVersion;
+  const hasIssues = issues.length > 0;
+
+  let status: StartupHealthResult['status'];
+  if (hasUpdate && hasIssues) status = 'update-issues';
+  else if (hasUpdate) status = 'update';
+  else if (hasIssues) status = 'issues';
+  else if (checkFailed) status = 'check-failed';
+  else status = 'ready';
+
+  return { status, issues, latestVersion, localVersion };
+}
+
 // ─── Animated Intro ───────────────────────────────────────────────
 function playAnimatedIntro(): Promise<void> {
   return new Promise((resolve) => {
@@ -164,12 +271,63 @@ function renderPillMenu(): string {
 }
 
 // ─── Status Bar ───────────────────────────────────────────────────
-function renderStatusBar(): string {
+function renderStatusBar(health?: StartupHealthResult): string {
   const version = getAppVersion();
-  const ready = chalk.hex(THEME.success)('●') + ' ' + chalk.hex(THEME.success)('Ready');
-  const ver = chalk.hex(THEME.textMuted)(`v${version}`);
-  const pad = ' '.repeat(Math.max(2, 50 - 8 - version.length));
-  return `  ${ready}${pad}${ver}`;
+
+  if (!health) {
+    const checking = chalk.hex(THEME.textMuted)('●') + ' ' + chalk.hex(THEME.textMuted)('Checking...');
+    const ver = chalk.hex(THEME.textMuted)(`v${version}`);
+    const pad = ' '.repeat(Math.max(2, 50 - 14 - version.length));
+    return `  ${checking}${pad}${ver}`;
+  }
+
+  let label: string;
+  let color: string;
+  let verStr: string;
+
+  switch (health.status) {
+    case 'ready':
+      label = 'Ready';
+      color = THEME.success;
+      verStr = `v${version}`;
+      break;
+    case 'update':
+      label = 'Update available';
+      color = THEME.warning;
+      verStr = `v${version} → v${health.latestVersion}`;
+      break;
+    case 'issues':
+      label = `${health.issues.length} issue(s) detected`;
+      color = THEME.error;
+      verStr = `v${version}`;
+      break;
+    case 'update-issues':
+      label = `Update available · ${health.issues.length} issue(s)`;
+      color = THEME.error;
+      verStr = `v${version} → v${health.latestVersion}`;
+      break;
+    case 'check-failed':
+      label = 'Ready (version check failed)';
+      color = THEME.textMuted;
+      verStr = `v${version}`;
+      break;
+  }
+
+  const dot = chalk.hex(color)('●');
+  const text = chalk.hex(color)(label);
+  const ver = chalk.hex(THEME.textMuted)(verStr);
+  const usedLen = label.length + 2 + verStr.length;
+  const pad = ' '.repeat(Math.max(2, 55 - usedLen));
+  let line = `  ${dot} ${text}${pad}${ver}`;
+
+  // Hint line for actionable states
+  if (health.status === 'update' || health.status === 'update-issues') {
+    line += `\n  ${chalk.hex(THEME.textDim)('run /doctor fix to update')}`;
+  } else if (health.status === 'issues') {
+    line += `\n  ${chalk.hex(THEME.textDim)('run /doctor fix to repair')}`;
+  }
+
+  return line;
 }
 
 // ─── Divider ──────────────────────────────────────────────────────
@@ -255,11 +413,11 @@ function renderTextMenu(
 }
 
 // ─── Unified Screen (chat mode only; uses boxen for main screen)
-function renderUnifiedScreen(taglineTitle: string, content?: string, customHint?: string): string {
+function renderUnifiedScreen(taglineTitle: string, content?: string, customHint?: string, health?: StartupHealthResult): string {
   clearScreen();
   const logo = renderGradientLogo();
   const pills = renderPillMenu();
-  const statusBar = renderStatusBar();
+  const statusBar = renderStatusBar(health);
   const divider = renderDivider();
 
   let block = `\n${logo}\n\n${statusBar}\n${divider}\n\n${pills}\n`;
@@ -313,8 +471,22 @@ async function captureStdout(fn: () => Promise<void>): Promise<string> {
 async function renderChatHeaderAnimated(): Promise<void> {
   clearScreen();
   await playAnimatedIntro();
+
+  // Show initial screen with "Checking..." status
   clearScreen();
   console.log(renderUnifiedScreen('Chat'));
+
+  // Run health checks, re-render with final status
+  try {
+    const health = await checkStartupHealth();
+    clearScreen();
+    console.log(renderUnifiedScreen('Chat', undefined, undefined, health));
+  } catch {
+    clearScreen();
+    console.log(renderUnifiedScreen('Chat', undefined, undefined, {
+      status: 'check-failed', issues: [], localVersion: getAppVersion()
+    }));
+  }
   console.log();
 }
 
@@ -558,16 +730,20 @@ async function runDoctor(fix = false): Promise<void> {
     const localVer = pkg.version || '0.0.0';
     let versionDetail = `v${localVer}`;
     try {
-      const remote = execSync('npm view hakan-mcp version --json', {
-        cwd: PROJECT_ROOT, timeout: 3000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'],
-      }).trim().replace(/"/g, '');
+      const remote = await fetchLatestGitHubVersion();
       if (remote && remote !== localVer) {
-        versionDetail += ` (registry: v${remote})`;
-        checks.push({ label: 'package.json', status: 'warn', detail: versionDetail });
+        const semverMod = await import('semver');
+        if (semverMod.default.gt(remote, localVer)) {
+          versionDetail += ` (latest: v${remote} — update available)`;
+          checks.push({ label: 'package.json', status: 'warn', detail: versionDetail });
+        } else {
+          checks.push({ label: 'package.json', status: 'ok', detail: versionDetail });
+        }
       } else {
         checks.push({ label: 'package.json', status: 'ok', detail: versionDetail });
       }
     } catch {
+      versionDetail += ' (version check failed)';
       checks.push({ label: 'package.json', status: 'ok', detail: versionDetail });
     }
   } else {
@@ -821,6 +997,26 @@ async function runDoctor(fix = false): Promise<void> {
 
     let needsRebuild = false;
 
+    // 0) Auto-update if a newer version is available on GitHub
+    const updateCheck = checks.find((c) => c.label === 'package.json' && c.status === 'warn');
+    if (updateCheck) {
+      body += `  ${icons.repair} ${chalk.hex('#6C5CE7')('Updating from GitHub...')}\n`;
+      try {
+        execSync('git pull origin main', { cwd: PROJECT_ROOT, stdio: 'pipe', timeout: 30_000 });
+        body += `  ${icons.repair} ${chalk.hex('#6C5CE7')('git pull done')}\n`;
+        execSync('npm install', { cwd: PROJECT_ROOT, stdio: 'pipe', timeout: 120_000 });
+        body += `  ${icons.repair} ${chalk.hex('#6C5CE7')('npm install done')}\n`;
+        execSync('npm run build', { cwd: PROJECT_ROOT, stdio: 'pipe', timeout: 120_000 });
+        body += `  ${icons.repair} ${chalk.hex('#6C5CE7')('npm run build done')}\n`;
+        repairCount += 3;
+        const newPkg = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, 'package.json'), 'utf8'));
+        body += `  ${icons.ok} ${chalk.hex(THEME.success)(`Updated to v${newPkg.version}`)}\n\n`;
+      } catch (updateErr: unknown) {
+        const msg = updateErr instanceof Error ? updateErr.message.split('\n')[0] : 'Update failed';
+        body += `  ${icons.repair} ${chalk.hex(THEME.error)(`Update failed: ${msg}`)}\n\n`;
+      }
+    }
+
     // 1) Run predefined repairActions
     for (const check of repairables) {
       const action = check.repairAction!;
@@ -925,6 +1121,10 @@ Rules:
       body += formatCheck(c) + '\n';
     }
 
+    const hasUpdate = checks.some((c) => c.label === 'package.json' && c.status === 'warn');
+    if (hasUpdate) {
+      body += `\n  ${chalk.hex(THEME.warning)('A newer version is available. Run \'hakanmcp doctor fix\' or \'/doctor fix\' to update.')}`;
+    }
     if (repairables.length > 0) {
       body += `\n  ${chalk.hex(THEME.primary)(`${repairables.length} issue(s) can be auto-repaired. Run 'hakanmcp doctor fix' or '/doctor fix' to fix.`)}`;
     }

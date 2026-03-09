@@ -68,7 +68,7 @@ consciousness:
   enabled: true
   maxJournalEntries: 500
   reflection:
-    maxLength: 200
+    maxLength: 300
     maxEntriesInPrompt: 3
     style: auto
 

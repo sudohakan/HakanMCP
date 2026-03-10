@@ -8,6 +8,17 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 
+// --- Workspace Entry Schema ---
+
+export const WorkspaceEntrySchema = z.object({
+  name: z.string().min(1),
+  path: z.string().min(1),
+  primary: z.string().min(1),
+  secondary: z.string().optional(),
+});
+
+export type WorkspaceEntry = z.infer<typeof WorkspaceEntrySchema>;
+
 // --- Workspace Config Schema ---
 
 export const WorkspaceConfigSchema = z.object({
@@ -56,6 +67,7 @@ export const WorkspaceConfigSchema = z.object({
       modes: z.array(z.enum(['watch', 'scheduled', 'assistant'])).default(['watch', 'scheduled']),
     })
     .optional(),
+  workspaces: z.array(WorkspaceEntrySchema).optional(),
 });
 
 export type WorkspaceConfig = z.infer<typeof WorkspaceConfigSchema>;
@@ -91,7 +103,18 @@ export function loadWorkspaceConfig(dir: string): WorkspaceConfig {
   }
 
   try {
-    return WorkspaceConfigSchema.parse(parsed);
+    const config = WorkspaceConfigSchema.parse(parsed);
+
+    // Validate workspace name uniqueness
+    if (config.workspaces && config.workspaces.length > 0) {
+      const names = config.workspaces.map((w) => w.name);
+      const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+      if (dupes.length > 0) {
+        throw new Error(`Duplicate workspace names: ${[...new Set(dupes)].join(', ')}`);
+      }
+    }
+
+    return config;
   } catch (err) {
     if (err instanceof z.ZodError) {
       const messages = err.issues.map((issue) => {
@@ -142,6 +165,14 @@ export function validateWorkspaceConfig(
   const result = WorkspaceConfigSchema.safeParse(parsed);
 
   if (result.success) {
+    // Validate workspace name uniqueness
+    if (result.data.workspaces && result.data.workspaces.length > 0) {
+      const names = result.data.workspaces.map((w) => w.name);
+      const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+      if (dupes.length > 0) {
+        return { valid: false, errors: [`Duplicate workspace names: ${[...new Set(dupes)].join(', ')}`] };
+      }
+    }
     return { valid: true };
   }
 

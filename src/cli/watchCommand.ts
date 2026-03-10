@@ -42,7 +42,7 @@ function removeStopSignal(cwd: string): void {
 
 /**
  * CLI handler for `hakanmcp watch`.
- * Same lifecycle pattern as startCommand.ts (spinner, signal handlers, stop-signal polling).
+ * Starts file watcher mode.
  */
 export async function runWatch(): Promise<void> {
   const cwd = process.cwd();

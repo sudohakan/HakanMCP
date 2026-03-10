@@ -57,6 +57,10 @@ export function setAgenticToolsRef(tools: typeof agenticToolsRef): void {
   agenticToolsRef = tools;
 }
 
+export function getAgenticToolsRef() {
+  return agenticToolsRef;
+}
+
 export interface GetChatResponseOptions {
   checkCliLimits?: boolean;
   checkApiLimits?: boolean;

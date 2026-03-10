@@ -5,6 +5,34 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-03-10
+
+### Added
+
+- Workspace-scoped missions: centralized config with per-workspace mission files and state
+- Interactive `hakanmcp init` with full Q&A flow (@inquirer/prompts: name, target, tasks, schedule, tags)
+- Workspace dashboard under `mission` command (default view lists all workspaces with status)
+- Workspace modes for `start` command (--workspace, --all, --parallel)
+- `init --remove <name>` to delete workspace config, mission files, and state directory
+- Shared CLI rendering utilities (`src/cli/cliUtils.ts`) for consistent command headers
+- Bare command support in chat REPL (type command name without `/` prefix)
+- `getAgenticToolsRef()` export from aiTools for external tool access
+- `npm pkg set` and `npm update` added to doctor fix safe command list
+
+### Changed
+
+- Pills menu reordered: init/start/stop/mission/report (row 3), watch/scheduled/reactive/clear/exit (row 4)
+- MENU_COLORS expanded to match pill column colors across all commands
+- Help text updated for mission (dashboard + detailed), init (interactive + --remove), watch (file watcher)
+- Config help: added workspaces[].name/path/primary/secondary documentation
+
+### Fixed
+
+- Double blank line after commands in chat REPL (prompt newline handling)
+- "Command error: Process exited with code 1" on commands that display their own errors
+- Spinner color mismatch (custom pre-colored frames instead of named ANSI colors)
+- Init crash in embed/subprocess mode (guard for non-TTY stdin)
+
 ## [1.3.1] - 2026-03-10
 
 ### Added
@@ -353,7 +381,9 @@ This release marks the official rebranding from **Claude Flow** to **HakanMCP** 
 | AgentDB v3 | v3.1.0-alpha.55 | 2026-02 | 8 controllers, MutationGuard |
 | **Mission Agent MVP** | **v1.0.0** | **2026-03-08** | **Mission Agent CLI, 4 operating modes** |
 | **Journal v2 & Config** | **v1.3.0** | **2026-03-10** | **Character system, consciousness guard, config overhaul** |
+| **Workspace Missions** | **v1.4.0** | **2026-03-10** | **Workspace-scoped missions, interactive init, dashboard** |
 
+[1.4.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.4.0
 [1.3.1]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.3.1
 [1.3.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.3.0
 [1.2.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.2.0

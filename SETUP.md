@@ -220,8 +220,9 @@ Expected output:
 
 - [ ] `npm run check:quick` passes without errors
 - [ ] `npm start` — server starts, logs show "MCP server listening"
-- [ ] `hakanmcp --version` — shows `1.0.0`
+- [ ] `hakanmcp --version` — shows current version
 - [ ] `hakanmcp tools` — lists all registered tools
+- [ ] `hakanmcp doctor` — health checks pass (version, build, config)
 - [ ] MCP client connects successfully (see [IDE Integration](#ide-integration))
 
 ---
@@ -302,9 +303,10 @@ In Cursor settings, add MCP server:
 <summary><strong>Still stuck?</strong></summary>
 
 1. **Check logs:** Look in the `logs/` directory for Winston daily-rotate logs
-2. **Debug mode:** Run with `DEBUG=* npm start` for verbose output
-3. **Diagnostics:** Run `hakanmcp --diagnostics` to generate a system report
-4. **Open an issue:** Include the diagnostics output and your Node.js version (`node --version`)
+2. **Debug mode:** Set `LOG_LEVEL=debug` in `.env` for verbose output
+3. **Doctor check:** Run `hakanmcp doctor` for automated health diagnostics
+4. **Doctor fix:** Run `hakanmcp doctor fix` for AI-driven auto-repair
+5. **Open an issue:** Include the doctor output and your Node.js version (`node --version`)
 
 </details>
 

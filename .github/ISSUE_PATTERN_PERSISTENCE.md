@@ -1,8 +1,10 @@
 ---
 title: "[BUG] MCP Pattern Store/Search/Stats Not Persisting Data"
-labels: bug, mcp, neural, high-priority
+labels: bug, mcp, neural, high-priority, legacy
 assignees:
 ---
+
+> **Note:** This issue documents a bug from the v2.7 era (`src/mcp/mcp-server.js`). The current codebase is v1.x (TypeScript, ESM). The fix described below was applied to the legacy monorepo and is preserved here for reference.
 
 ## Bug Description
 

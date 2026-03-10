@@ -1,6 +1,6 @@
 # HakanMCP — Claude Code Configuration
 
-> Unified MCP Server + Mission Agent CLI. v1.4.0, ESM, Node >= 20.
+> Unified MCP Server + Mission Agent CLI. v1.4.1, ESM, Node >= 20.
 
 ## Project Overview
 
@@ -31,7 +31,12 @@ src/
   services/             Business logic (agentic loop, backup, cache, consciousness, etc.)
   utils/                Shared utilities (logger, httpClient, dbPoolManager, etc.)
   types/                TypeScript type definitions
-  cli/                  CLI command handlers (init, start, stop, mission, report, watch, scheduled, reactive)
+  cli/                  CLI command handlers
+    cliUtils.ts         Shared rendering utilities (headers, dividers)
+    configValidator.ts  Workspace config schema (Zod) with WorkspaceEntrySchema
+    initCommand.ts      Interactive workspace setup (@inquirer/prompts)
+    missionCommand.ts   Workspace dashboard & detailed status
+    startCommand.ts     Workspace execution modes (--workspace, --all, --parallel)
   mission/              Mission loading, running, state tracking, report generation
   watch/                File watcher mode (chokidar-based)
   scheduled/            Cron/interval scheduled execution
@@ -48,15 +53,20 @@ scripts/          Build scripts (tool manifest generator)
 
 | Command | Description |
 |---------|-------------|
-| `hakanmcp init` | Initialize workspace (config + mission templates) |
-| `hakanmcp start [--daemon]` | Start mission agent (foreground or background) |
+| `hakanmcp init` | Interactive workspace setup (config + mission via Q&A) |
+| `hakanmcp init --remove <name>` | Remove a workspace (config, files, state) |
+| `hakanmcp start` | Start mission agent (default workspace) |
+| `hakanmcp start --workspace <name>` | Start specific workspace |
+| `hakanmcp start --all` | Start all workspaces |
 | `hakanmcp stop` | Stop running agent |
-| `hakanmcp mission` | Show current mission status |
+| `hakanmcp mission` | Workspace dashboard (all workspaces overview) |
+| `hakanmcp mission --workspace <name>` | Detailed status for one workspace |
 | `hakanmcp report [-n N]` | Show recent execution reports |
 | `hakanmcp watch` | File watcher mode |
 | `hakanmcp scheduled` | Cron/interval task mode |
 | `hakanmcp reactive` | Combined watch + scheduled mode |
-| `hakanmcp chat` | Interactive AI chat with mission context |
+| `hakanmcp doctor` | Health check (version, build, config) |
+| `hakanmcp doctor fix` | AI-driven auto-repair |
 
 ## MCP Tools (src/tools/)
 

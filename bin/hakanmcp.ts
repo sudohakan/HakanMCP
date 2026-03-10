@@ -260,8 +260,8 @@ function renderPillMenu(): string {
   const rows = [
     ['doctor',    'status',    'backup',    'journal',   'providers'],
     ['ralph',     'logs',      'config',    'tools',     'help'],
-    ['mission',   'watch',     'scheduled', 'reactive',  'report'],
-    ['init',      'start',     'stop',      'clear',     'exit'],
+    ['init',      'start',     'stop',      'mission',   'report'],
+    ['watch',     'scheduled', 'reactive',  'clear',     'exit'],
   ];
   const fmt = (label: string, colIdx: number) => {
     const color = chalk.hex(PILL_COL_COLORS[colIdx]);
@@ -347,7 +347,15 @@ const MENU_COLORS: Record<string, string> = {
   tools: '#FF6B6B',
   providers: '#a29bfe',
   help: '#a29bfe',
-  scheduled: '#FDCB6E',
+  // Mission Agent — colors match pill columns
+  init: THEME.primary,
+  start: THEME.success,
+  stop: '#FDCB6E',
+  mission: '#FF6B6B',
+  report: '#a29bfe',
+  watch: THEME.primary,
+  scheduled: THEME.success,
+  reactive: '#FDCB6E',
 };
 
 const isEmbedOutput = (): boolean => process.env.HAKANMCP_EMBED === '1';
@@ -1052,6 +1060,7 @@ ${repairCount > 0 ? `${repairCount} predefined repair(s) were already attempted.
 
 Respond ONLY with a JSON array of shell commands to fix these issues. Example: ["npm install foo","npm run build"]
 Rules:
+- For version mismatch issues, use: npm pkg set version=<target_version>
 - For native module compilation failures (node-gyp, sqlite3 etc), suggest pure-JS alternatives (e.g. better-sqlite3 instead of sqlite3)
 - Use npm commands, not yarn/pnpm
 - Maximum 5 commands
@@ -1071,6 +1080,8 @@ Rules:
           'npm run lint',
           'npm test',
           'npm ci',
+          'npm pkg set',
+          'npm update',
           'npx tsc',
           'git pull',
           'git fetch',
@@ -1496,6 +1507,10 @@ function runConfigYamlHelp(): void {
       ['schedule.cron', 'string', 'Cron expression'],
       ['assistant.enabled', 'true|false', 'Assistant context'],
       ['reactive.enabled', 'true|false', 'Reactive mode'],
+      ['workspaces[].name', 'string', 'Workspace identifier'],
+      ['workspaces[].path', 'string', 'Target directory'],
+      ['workspaces[].primary', 'string', 'Primary mission file'],
+      ['workspaces[].secondary', 'string', 'Secondary mission file (optional)'],
     ]},
   ];
 
@@ -1772,10 +1787,14 @@ function runHelp(): void {
       ['logs open <name> [file]', 'Open log directory or file'],
     ]},
     { title: 'Mission Agent', items: [
-      ['init [--force]', 'Initialize workspace (config + templates)'],
-      ['start [--daemon]', 'Start mission agent'],
+      ['init [--force]', 'Interactive workspace & mission setup'],
+      ['init --remove <name>', 'Remove a workspace'],
+      ['start [--workspace <name>]', 'Start mission agent'],
+      ['start --all [--parallel]', 'Run all workspaces'],
       ['stop', 'Stop running agent / watcher / scheduler'],
-      ['mission', 'Current mission status'],
+      ['mission', 'Workspace dashboard & mission status'],
+      ['mission --workspace <name>', 'Detailed status for a workspace'],
+      ['mission --all', 'Detailed status for all workspaces'],
       ['report [-n N]', 'Show recent reports'],
       ['watch', 'Start file watcher mode'],
       ['reactive', 'Start reactive mode (watch + scheduled)'],
@@ -1802,10 +1821,11 @@ function runHelp(): void {
       ['/journal reset', 'Clear journal & reset emotions'],
       ['/backup [run]', 'Backup management'],
       ['/ralph [sub]', 'Ralph loop'],
-      ['/init [--force]', 'Initialize workspace'],
-      ['/start [--daemon]', 'Start mission agent'],
+      ['/init [--force]', 'Interactive workspace & mission setup'],
+      ['/init --remove <name>', 'Remove a workspace'],
+      ['/start [--workspace <name>]', 'Start mission agent'],
       ['/stop', 'Stop running agent'],
-      ['/mission', 'Mission status'],
+      ['/mission', 'Workspace dashboard & mission status'],
       ['/report [-n N]', 'Recent reports'],
       ['/watch', 'File watcher mode'],
       ['/scheduled [sub]', 'Scheduler management'],
@@ -3826,14 +3846,18 @@ async function main(): Promise<void> {
 
   // Mission Agent Commands
   program.command('init')
-    .description('Initialize workspace (config + mission templates)')
-    .option('--force', 'Overwrite existing config')
+    .description('Interactive workspace & mission setup')
+    .option('--force', 'Overwrite existing config/workspace')
+    .option('--remove <name>', 'Remove a workspace')
     .action(runInit);
 
   program.command('start')
     .description('Start mission agent')
     .option('--daemon', 'Run in background')
     .option('--mission <file>', 'Mission file path', 'PRIMARY_MISSION.md')
+    .option('--workspace <name>', 'Run specific workspace')
+    .option('--all', 'Run all workspaces')
+    .option('--parallel', 'Run workspaces in parallel (use with --all)')
     .action(runStart);
 
   program.command('stop')
@@ -3842,6 +3866,8 @@ async function main(): Promise<void> {
 
   program.command('mission')
     .description('Show current mission status')
+    .option('--workspace <name>', 'Show specific workspace status')
+    .option('--all', 'Show all workspaces status')
     .action(runMission);
 
   program.command('report')

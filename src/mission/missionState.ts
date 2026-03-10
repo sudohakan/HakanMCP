@@ -22,8 +22,10 @@ const MAX_HISTORY = 1000;
 export class MissionStateManager {
   private stateDir: string;
 
-  constructor(workspaceDir: string) {
-    this.stateDir = path.join(workspaceDir, '.hakanmcp');
+  constructor(workspaceDir: string, workspaceName?: string) {
+    this.stateDir = workspaceName
+      ? path.join(workspaceDir, '.hakanmcp', 'workspaces', workspaceName)
+      : path.join(workspaceDir, '.hakanmcp');
   }
 
   /** Ensure .hakanmcp/ directory exists. */

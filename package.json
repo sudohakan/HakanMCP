@@ -36,6 +36,7 @@
     "status:quick": "node --no-warnings --loader ts-node/esm scripts/quick_status.ts"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.3.0",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@types/express": "^5.0.6",
     "@types/node-cron": "^3.0.11",

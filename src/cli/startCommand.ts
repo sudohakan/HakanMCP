@@ -12,12 +12,81 @@ import { loadWorkspaceConfig } from './configValidator.js';
 import { loadMission } from '../mission/missionLoader.js';
 import { runMission } from '../mission/missionRunner.js';
 import { MissionStateManager } from '../mission/missionState.js';
-import type { MissionRunnerConfig, MissionEvent } from '../mission/types.js';
+import type { MissionRunnerConfig, MissionEvent, MissionRunResult } from '../mission/types.js';
+import type { WorkspaceEntry } from './configValidator.js';
+import { getAgenticToolsRef } from '../tools/aiTools.js';
 
 const HAKANMCP_DIR = '.hakanmcp';
 const PID_FILE = 'agent.pid';
 const STOP_SIGNAL_FILE = 'stop-signal';
 const DAEMON_LOG_FILE = 'daemon.log';
+
+/**
+ * Resolve workspace config by name from the workspaces array.
+ */
+function resolveWorkspace(
+  workspaces: WorkspaceEntry[] | undefined,
+  name: string,
+): WorkspaceEntry {
+  if (!workspaces || workspaces.length === 0) {
+    throw new Error('No workspaces defined in config. Add a "workspaces" section to hakanmcp.config.yaml');
+  }
+  const ws = workspaces.find((w) => w.name === name);
+  if (!ws) {
+    const available = workspaces.map((w) => w.name).join(', ');
+    throw new Error(`Workspace "${name}" not found. Available: ${available}`);
+  }
+  return ws;
+}
+
+/**
+ * Run a single workspace mission (foreground).
+ */
+async function runSingleWorkspace(
+  cwd: string,
+  ws: WorkspaceEntry,
+  config: import('./configValidator.js').WorkspaceConfig,
+  signal: AbortSignal,
+): Promise<MissionRunResult> {
+  const missionPath = path.join(cwd, ws.primary);
+  const mission = loadMission(missionPath);
+
+  if (!mission) {
+    throw new Error(`Mission file not found for workspace "${ws.name}": ${missionPath}`);
+  }
+
+  const stateManager = new MissionStateManager(cwd, ws.name);
+  const runnerConfig: MissionRunnerConfig = {
+    maxIterationsPerStep: config.agent.maxIterationsPerStep,
+    maxRetriesPerStep: 2,
+    stepTimeoutMs: config.agent.stepTimeoutMs,
+    maxTotalTimeMs: 3_600_000,
+    continueOnFailure: config.agent.continueOnFailure,
+  };
+
+  const onProgress = (event: MissionEvent): void => {
+    const prefix = chalk.hex('#6C5CE7')(`[${ws.name}]`);
+    switch (event.type) {
+      case 'step:start':
+        console.log(`${prefix} Step ${(event.index ?? 0) + 1}/${event.total ?? '?'}: ${event.stepId ?? ''}`);
+        break;
+      case 'step:complete':
+        console.log(`${prefix} ${chalk.hex('#00D68F')(`Step ${(event.index ?? 0) + 1} completed`)}`);
+        break;
+      case 'step:failed':
+        console.log(`${prefix} ${chalk.hex('#FF6B6B')(`Step ${(event.index ?? 0) + 1} failed: ${event.error ?? ''}`)}`);
+        break;
+      case 'mission:complete':
+        console.log(`${prefix} ${chalk.hex('#00D68F')('Mission completed')}`);
+        break;
+      case 'mission:failed':
+        console.log(`${prefix} ${chalk.hex('#FF6B6B')(`Mission failed: ${event.error ?? ''}`)}`);
+        break;
+    }
+  };
+
+  return runMission(mission, stateManager, runnerConfig, signal, onProgress, getAgenticToolsRef());
+}
 
 /**
  * Check if a process with the given PID is alive.
@@ -91,6 +160,9 @@ function hasStopSignal(cwd: string): boolean {
 export async function runStart(options: {
   daemon?: boolean;
   mission?: string;
+  workspace?: string;
+  all?: boolean;
+  parallel?: boolean;
 }): Promise<void> {
   const cwd = process.cwd();
 
@@ -110,6 +182,87 @@ export async function runStart(options: {
     // Stale PID file — clean it up
     removePidFile(cwd);
   }
+
+  // --- Workspace modes ---
+  if (options.all) {
+    const workspaces = config.workspaces;
+    if (!workspaces || workspaces.length === 0) {
+      console.error(chalk.hex('#FF6B6B')('No workspaces defined in config.'));
+      process.exitCode = 1;
+      return;
+    }
+
+    writePidFile(cwd, process.pid);
+    removeStopSignal(cwd);
+    const abortController = new AbortController();
+    const shutdown = () => abortController.abort();
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+
+    console.log(chalk.hex('#6C5CE7')(`Running ${workspaces.length} workspace(s) ${options.parallel ? 'in parallel' : 'sequentially'}...\n`));
+
+    try {
+      if (options.parallel) {
+        const results = await Promise.allSettled(
+          workspaces.map((ws) => runSingleWorkspace(cwd, ws, config, abortController.signal)),
+        );
+        for (let i = 0; i < results.length; i++) {
+          const r = results[i];
+          const name = workspaces[i].name;
+          if (r.status === 'fulfilled') {
+            console.log(chalk.hex('#00D68F')(`\n[${name}] ${r.value.status} — ${r.value.steps.filter((s) => s.status === 'completed').length}/${r.value.steps.length} steps`));
+          } else {
+            console.log(chalk.hex('#FF6B6B')(`\n[${name}] Error: ${r.reason}`));
+          }
+        }
+      } else {
+        for (const ws of workspaces) {
+          if (abortController.signal.aborted) break;
+          console.log(chalk.hex('#6C5CE7')(`\n--- Workspace: ${ws.name} ---`));
+          try {
+            const result = await runSingleWorkspace(cwd, ws, config, abortController.signal);
+            console.log(chalk.hex('#00D68F')(`Result: ${result.status} — ${result.steps.filter((s) => s.status === 'completed').length}/${result.steps.length} steps`));
+          } catch (err) {
+            console.error(chalk.hex('#FF6B6B')(`Error: ${err instanceof Error ? err.message : String(err)}`));
+          }
+        }
+      }
+    } finally {
+      process.off('SIGTERM', shutdown);
+      process.off('SIGINT', shutdown);
+      removePidFile(cwd);
+    }
+    return;
+  }
+
+  if (options.workspace) {
+    const ws = resolveWorkspace(config.workspaces, options.workspace);
+    writePidFile(cwd, process.pid);
+    removeStopSignal(cwd);
+    const abortController = new AbortController();
+    const shutdown = () => abortController.abort();
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+
+    console.log(chalk.hex('#6C5CE7')(`Running workspace: ${ws.name}\n`));
+
+    try {
+      const result = await runSingleWorkspace(cwd, ws, config, abortController.signal);
+      console.log(chalk.hex('#6C5CE7')(
+        `\nResult: ${result.status} | Steps: ${result.steps.filter((s) => s.status === 'completed').length}/${result.steps.length} | Provider: ${result.provider}`,
+      ));
+    } catch (err) {
+      console.error(chalk.hex('#FF6B6B')(`Error: ${err instanceof Error ? err.message : String(err)}`));
+      process.exitCode = 1;
+    } finally {
+      process.off('SIGTERM', shutdown);
+      process.off('SIGINT', shutdown);
+      removePidFile(cwd);
+    }
+    return;
+  }
+
+  // --- Default workspace (existing behavior below) ---
 
   // 3. Load mission
   const missionFile = options.mission || 'PRIMARY_MISSION.md';
@@ -217,7 +370,7 @@ export async function runStart(options: {
   };
 
   try {
-    const result = await runMission(mission, stateManager, runnerConfig, signal, onProgress);
+    const result = await runMission(mission, stateManager, runnerConfig, signal, onProgress, getAgenticToolsRef());
     console.log(
       chalk.hex('#6C5CE7')(
         `\nResult: ${result.status} | Steps: ${result.steps.filter((s) => s.status === 'completed').length}/${result.steps.length} | Provider: ${result.provider}`,

@@ -17,8 +17,12 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| 1.4.x   | :white_check_mark: Current |
+| 1.3.x   | :white_check_mark: Security fixes |
+| 1.2.x   | :white_check_mark: Security fixes |
+| 1.1.x   | :warning: End of life |
+| 1.0.x   | :x: Unsupported    |
+| < 1.0   | :x: Legacy (v3.x monorepo era) |
 
 ---
 
@@ -93,6 +97,9 @@ Tools run as ESM modules with their own scope, preventing cross-tool state pollu
 ### Lazy-Loaded Dependencies
 Optional dependencies (database drivers, heavy modules) are loaded only when needed, reducing the attack surface for unused features.
 
+### Workspace Isolation
+Each workspace has its own mission files and state directory (`.hakanmcp/workspaces/<name>/`), preventing cross-workspace state corruption. Workspace paths are validated during `init` to ensure target directories exist.
+
 </details>
 
 ---
@@ -101,13 +108,15 @@ Optional dependencies (database drivers, heavy modules) are loaded only when nee
 
 When using HakanMCP, follow these security guidelines:
 
-- [ ] Keep Node.js and all dependencies updated (`npm audit` regularly)
+- [ ] Keep Node.js (>= 20) and all dependencies updated (`npm audit` regularly)
 - [ ] Use environment variables for all secrets — never hardcode credentials
 - [ ] Enable input validation on all custom tools (use Zod schemas)
 - [ ] Review logs regularly for suspicious activity (`logs/` directory)
 - [ ] Follow the principle of least privilege — only enable tools you need
 - [ ] Run `npm audit` before deploying to check for known vulnerabilities
 - [ ] Use `.env.example` as a template — never share your `.env` file
+- [ ] Restrict workspace target paths to directories you own — avoid system directories
+- [ ] Review mission files before execution — they define what the AI agent will do
 
 ---
 

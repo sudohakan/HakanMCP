@@ -1,5 +1,7 @@
 # 📊 Alpha-89: Token Tracking & Telemetry Implementation - WORKING!
 
+> **Note:** This issue documents work from the v3.5 monorepo era. The current codebase is v1.x (Mission Agent CLI). Some references below (hive-mind, swarm spawning, `./hakanmcp` binary) apply to the legacy monorepo and not the current npm package.
+
 ## 🎯 Status: ✅ IMPLEMENTED & CONFIRMED WORKING
 
 The token tracking and telemetry system has been successfully implemented and confirmed working with **real Claude API token data** capture.

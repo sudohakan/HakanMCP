@@ -124,6 +124,10 @@ export async function yourTool(input: z.infer<typeof inputSchema>) {
 
 - Create in `src/cli/`
 - Use Commander.js patterns from existing commands
+- Use `renderCommandHeader()` and `renderDivider()` from `src/cli/cliUtils.ts` for consistent output styling
+- Register the command in `bin/hakanmcp.ts`
+- Add to the help menu, pills, and MENU_COLORS if it's a user-facing command
+- Update CLI Commands table in `CLAUDE.md` and `README.md`
 
 ---
 

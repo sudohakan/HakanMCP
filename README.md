@@ -81,23 +81,28 @@ npm run build           # Compile TypeScript -> dist/
 # Install globally
 npm install -g hakanmcp
 
-# Initialize workspace with config and mission templates
+# Interactive setup — creates config, workspace, and mission via Q&A
 hakanmcp init
 
-# Edit your mission file
-# (opens PRIMARY_MISSION.md created by init)
-
 # Start the mission agent
-hakanmcp start
+hakanmcp start                          # default workspace
+hakanmcp start --workspace my-project   # specific workspace
+hakanmcp start --all                    # all workspaces
 
-# Check mission progress
+# Workspace dashboard — see all workspaces at a glance
 hakanmcp mission
+
+# Detailed status for one workspace
+hakanmcp mission --workspace my-project
 
 # View reports
 hakanmcp report
 
 # Stop the agent
 hakanmcp stop
+
+# Remove a workspace
+hakanmcp init --remove my-project
 ```
 
 Requires **Node.js >= 20.0.0**.
@@ -228,10 +233,11 @@ hakanmcp
 │   └── Provider Warmup (pre-resolve keys on startup)
 │
 └── Mission Agent CLI
-    ├── Watch Mode      — File system monitoring → AI actions
-    ├── Scheduled Mode  — Cron/interval tasks → periodic execution
-    ├── Assistant Mode  — Interactive chat with mission context
-    └── Reactive Mode   — Watch + Scheduled unified event bus
+    ├── Workspace System — Multi-workspace config with isolated state
+    ├── Watch Mode       — File system monitoring → AI actions
+    ├── Scheduled Mode   — Cron/interval tasks → periodic execution
+    ├── Assistant Mode   — Interactive chat with mission context
+    └── Reactive Mode    — Watch + Scheduled unified event bus
 ```
 
 <details>
@@ -267,12 +273,13 @@ hakanmcp scheduled
 Interactive chat with full mission context awareness.
 
 ```bash
-hakanmcp chat
+npm run console:chat
 ```
 
 - `PRIMARY_MISSION.md` content automatically injected into AI context
 - Target files/directories analyzed and included
 - Mission state (progress, history) available during conversation
+- Supports bare commands (type `mission` instead of `/mission`)
 
 ### Reactive Mode
 
@@ -295,40 +302,46 @@ HakanMCP uses markdown files to define tasks for autonomous execution.
 
 ### Mission File Format
 
-`hakanmcp init` creates a `PRIMARY_MISSION.md` template:
+`hakanmcp init` walks you through an interactive Q&A to create workspace-scoped missions:
+
+1. **Workspace name** — identifier (e.g. `crash-analyzer`)
+2. **Target directory** — the folder this workspace monitors/analyzes
+3. **Mission title & description** — what the agent should do
+4. **Tasks** — checklist items the agent will execute (add as many as needed)
+5. **Schedule mode** — manual, watch, or cron
+6. **Tags** — for categorization
+7. **Secondary mission** — optional additional mission
+
+Generated mission file example:
 
 ```markdown
 ---
-title: My Project Mission
-priority: high
-targets:
-  - src/
-  - tests/
+title: "crash-analyzer mission"
+priority: primary
+version: 1
+schedule:
+  mode: watch
+tags: ["monitoring", "windows", "crash"]
 ---
 
-## Objective
+Analyze Windows crash dump files and identify root causes.
 
-Describe what the agent should accomplish.
+# Tasks
 
-## Steps
-
-1. Analyze the target codebase
-2. Identify issues or improvements
-3. Implement changes
-4. Verify results
-
-## Success Criteria
-
-- All tests pass
-- No new warnings introduced
+- [ ] Scan target directory for .dmp files
+- [ ] Parse dump headers and extract crash metadata
+- [ ] Identify faulting module and error code
+- [ ] Generate analysis report
 ```
 
 ### How It Works
 
-1. The agent reads `PRIMARY_MISSION.md` and parses frontmatter + steps
-2. Each step is executed via the configured AI provider
-3. State is tracked in `.hakanmcp/` directory (`state.json`, `history.json`, `learned.json`)
-4. Reports are generated in `data/reports/` after completion
+1. `hakanmcp init` creates config, mission files, and workspace state directory
+2. Each workspace has isolated state in `.hakanmcp/workspaces/<name>/`
+3. The agent reads the mission file and executes tasks via the configured AI provider
+4. State is tracked per-workspace (`state.json`, `history.json`, `learned.json`)
+5. Reports are generated in `data/reports/` after completion
+6. Use `hakanmcp mission` for a dashboard of all workspace statuses
 
 </details>
 
@@ -336,7 +349,7 @@ Describe what the agent should accomplish.
 
 ## Configuration
 
-Running `hakanmcp init` creates a `hakanmcp.config.yaml` file:
+Running `hakanmcp init` interactively creates a `hakanmcp.config.yaml` file with workspace definitions:
 
 ```yaml
 version: "1"
@@ -349,7 +362,15 @@ agent:
   maxIterationsPerStep: 10
   stepTimeoutMs: 120000
   continueOnFailure: false
+
+workspaces:
+  - name: my-project
+    path: C:/path/to/target
+    primary: missions/my-project/PRIMARY_MISSION.md
+    secondary: missions/my-project/SECONDARY_MISSION.md   # optional
 ```
+
+Each workspace has its own mission files and isolated state directory (`.hakanmcp/workspaces/<name>/`).
 
 ### Environment Variables
 
@@ -380,35 +401,42 @@ GITBOOK_URL=https://your-instance.gitbook.io/your-api
 
 | Command | Description |
 |---------|-------------|
-| `hakanmcp init` | Initialize workspace (config + mission templates) |
-| `hakanmcp start` | Start mission agent (foreground) |
-| `hakanmcp start --daemon` | Start mission agent in background |
+| `hakanmcp init` | Interactive workspace setup (config + mission via Q&A) |
+| `hakanmcp init --remove <name>` | Remove a workspace (config, files, state) |
+| `hakanmcp start` | Start mission agent (default workspace) |
+| `hakanmcp start --workspace <name>` | Start specific workspace |
+| `hakanmcp start --all` | Start all workspaces |
 | `hakanmcp stop` | Stop running agent (any mode) |
-| `hakanmcp mission` | Show current mission status |
+| `hakanmcp mission` | Workspace dashboard (all workspaces overview) |
+| `hakanmcp mission --workspace <name>` | Detailed status for one workspace |
+| `hakanmcp mission --all` | Detailed status for all workspaces |
 | `hakanmcp report` | Show most recent report |
 | `hakanmcp report -n 5` | Show last 5 reports |
 | `hakanmcp watch` | Start file watcher mode |
 | `hakanmcp scheduled` | Start scheduled task mode |
 | `hakanmcp reactive` | Start reactive mode (watch + scheduled combined) |
-| `hakanmcp chat` | Interactive AI chat with mission context |
+| `hakanmcp doctor` | Health check (version, build, config) |
+| `hakanmcp doctor fix` | AI-driven auto-repair for detected issues |
 | `hakanmcp help` | Show help for all commands |
 
-### Interactive Commands (inside `hakanmcp chat`)
+### Interactive Chat Commands (inside `npm run console:chat`)
+
+The chat REPL supports both `/command` and bare `command` syntax:
 
 | Command | Description |
 |---------|-------------|
-| `/providers` | Show AI provider status and usage stats |
-| `/config` | Show current configuration |
-| `/init` | Initialize workspace from chat |
-| `/start` | Start mission agent |
-| `/stop` | Stop running agent |
-| `/mission` | Show mission status |
-| `/report` | Show recent reports |
-| `/watch` | Start watch mode |
-| `/scheduled` | Start scheduled mode |
-| `/assistant` | Start assistant mode |
-| `/reactive` | Start reactive mode |
-| `/help` | Show all commands |
+| `providers` | Show AI provider status and usage stats |
+| `config` | Show current configuration |
+| `init` | Initialize workspace from chat |
+| `start` | Start mission agent |
+| `stop` | Stop running agent |
+| `mission` | Workspace dashboard |
+| `report` | Show recent reports |
+| `watch` | Start watch mode |
+| `scheduled` | Start scheduled mode |
+| `reactive` | Start reactive mode |
+| `doctor` | Run health checks |
+| `help` | Show all commands |
 
 ---
 
@@ -463,11 +491,16 @@ Agentic mode respects the CLI/API priority chain -- if higher-priority CLI provi
 HakanMCP/
 ├── src/                    # TypeScript source code
 │   ├── index.ts            # MCP server entry point
-│   ├── config.ts           # Configuration loader
-│   ├── toolRegistry.ts     # Tool registration and discovery
-│   ├── tools/              # MCP tool implementations (131 tools)
+│   ├── config.ts           # Configuration loader (Zod-validated)
+│   ├── toolRegistry.ts     # Tool registration and discovery (lazy-loaded)
+│   ├── tools/              # MCP tool implementations (~35 modules)
 │   ├── services/           # Core services (agentic loop, backup, cache, etc.)
 │   ├── cli/                # CLI command handlers
+│   │   ├── cliUtils.ts     # Shared rendering utilities
+│   │   ├── configValidator.ts  # Workspace config schema (Zod)
+│   │   ├── initCommand.ts  # Interactive workspace setup
+│   │   ├── missionCommand.ts   # Workspace dashboard & status
+│   │   └── startCommand.ts # Workspace execution modes
 │   ├── mission/            # Mission system (loader, runner, state)
 │   ├── flows/              # Workflow pipeline engine
 │   ├── reactive/           # Event bus and cross-mode routing
@@ -476,10 +509,16 @@ HakanMCP/
 │   ├── types/              # Shared TypeScript type definitions
 │   └── utils/              # Utilities (logger, HTTP client, DB pool, etc.)
 ├── scripts/                # Development and maintenance scripts
+│   └── console_chat.ts     # Interactive chat REPL
 ├── bin/                    # CLI entry points
+│   └── hakanmcp.ts         # Premium CLI with gradient UI (Commander.js)
+├── missions/               # Workspace mission files (per-workspace subdirs)
 ├── agents/                 # Agent YAML definitions (architect, coder, reviewer, etc.)
 ├── tests/                  # Jest test suite
-├── .github/workflows/      # CI/CD and release automation
+├── .github/workflows/      # CI/CD and release automation (7 workflows)
+├── .hakanmcp/              # Runtime state (gitignored)
+│   └── workspaces/         # Per-workspace state directories
+├── hakanmcp.config.yaml    # Workspace configuration (gitignored)
 ├── config.yaml             # Server configuration (gitignored)
 ├── .env                    # API keys and secrets (gitignored)
 ├── .env.example            # Environment variable template

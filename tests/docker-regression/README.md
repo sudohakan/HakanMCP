@@ -99,7 +99,7 @@ docker-compose run --rm benchmark-tests
 ### Without Docker
 
 ```bash
-# Run locally (requires Node.js 18+)
+# Run locally (requires Node.js 20+)
 cd tests/docker-regression
 bash scripts/run-all-tests.sh
 ```

@@ -61,11 +61,17 @@ tests/results/
 .ai-provider-*.jsonl
 scheduler-state.json
 hakanmcp.config.json
+hakanmcp.config.yaml
 config.yaml
 .mcp.json
 init-output.log
 mcp-server.log
 swarm-debug.log
+
+# Mission system (user-generated via hakanmcp init)
+PRIMARY_MISSION.md
+SECONDARY_MISSION.md
+missions/
 
 # Runtime data directories
 .cache/

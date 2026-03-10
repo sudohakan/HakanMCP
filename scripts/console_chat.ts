@@ -1629,10 +1629,11 @@ async function runConsole(): Promise<void> {
       commandRunning = true;
       rl.pause();
       const cmdLabel = subcmd.split(/\s+/)[0] ?? subcmd;
+      const baseFrames = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+      const coloredFrames = baseFrames.map((f) => chalk.hex('#6C5CE7')(f));
       const spinner = ora({
         text: chalk.hex('#6C5CE7')(`${cmdLabel.charAt(0).toUpperCase() + cmdLabel.slice(1)}...`),
-        color: 'magenta',
-        spinner: 'dots12',
+        spinner: { interval: 80, frames: coloredFrames },
         stream: output,
       }).start();
       try {
@@ -1655,12 +1656,9 @@ async function runConsole(): Promise<void> {
             safeOutput(rl, chunk.toString());
           });
           child.on('error', (err) => reject(err));
-          child.on('close', (code) => {
-            if (code && code !== 0) {
-              reject(new Error(`Process exited with code ${code}`));
-            } else {
-              resolve();
-            }
+          child.on('close', () => {
+            // Always resolve — command output is already displayed
+            resolve();
           });
         });
       } catch (err: unknown) {
@@ -1671,7 +1669,10 @@ async function runConsole(): Promise<void> {
         if (spinner.isSpinning) spinner.stop();
         commandRunning = false;
         rl.resume();
+        // Prompt without leading \n after command output (output already has trailing newline)
+        rl.setPrompt(`${PROMPT_SYMBOL} `);
         rl.prompt();
+        rl.setPrompt(`\n${PROMPT_SYMBOL} `);
       }
     }
 
@@ -1842,6 +1843,19 @@ async function runConsole(): Promise<void> {
       output.write(chalk.hex('#6C5CE7')('  Mission-aware assistant mode is active by default.\n'));
       output.write(chalk.hex('#8395A7')('  Mission context from PRIMARY_MISSION.md is automatically included in conversations.\n'));
       rl.prompt();
+      return;
+    }
+
+    // Bare command name (without /) — run directly via runCliCommand
+    const BARE_COMMANDS = [
+      'doctor', 'health', 'status', 'tools', 'backup', 'config', 'logs',
+      'ralph', 'journal', 'providers',
+      'init', 'start', 'stop', 'mission', 'report',
+      'watch', 'scheduled', 'reactive',
+    ];
+    const bareToken = line.trim().split(/\s+/)[0].toLowerCase();
+    if (BARE_COMMANDS.includes(bareToken)) {
+      runCliCommand(line.trim());
       return;
     }
 

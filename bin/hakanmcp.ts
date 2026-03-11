@@ -1024,6 +1024,11 @@ async function runDoctor(fix = false): Promise<void> {
         repairCount += 3;
         const newPkg = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, 'package.json'), 'utf8'));
         body += `  ${icons.ok} ${chalk.hex(THEME.success)(`Updated to v${newPkg.version}`)}\n\n`;
+        // Update the stale check entry so AI repair doesn't re-trigger version fix
+        const pkgIdx = checks.findIndex((c) => c.label === 'package.json');
+        if (pkgIdx !== -1) {
+          checks[pkgIdx] = { label: 'package.json', status: 'ok', detail: `v${newPkg.version}` };
+        }
       } catch (updateErr: unknown) {
         const msg = updateErr instanceof Error ? updateErr.message.split('\n')[0] : 'Update failed';
         body += `  ${icons.repair} ${chalk.hex(THEME.error)(`Update failed: ${msg}`)}\n\n`;
@@ -1214,6 +1219,27 @@ Rules:
       case 'Consciousness': {
         if (!fs.existsSync(consciousnessDir)) return { label, status: 'warn', detail: 'Still missing' };
         return { label, status: 'ok', detail: 'Directory created' };
+      }
+      case 'package.json': {
+        const rePkgPath = path.join(PROJECT_ROOT, 'package.json');
+        if (!fs.existsSync(rePkgPath)) return { label, status: 'fail', detail: 'Not found' };
+        const rePkg = JSON.parse(fs.readFileSync(rePkgPath, 'utf8'));
+        const reLocalVer = rePkg.version || '0.0.0';
+        let reDetail = `v${reLocalVer}`;
+        try {
+          const remote = await fetchLatestGitHubVersion();
+          if (remote && remote !== reLocalVer) {
+            const semverMod = await import('semver');
+            if (semverMod.default.gt(remote, reLocalVer)) {
+              reDetail += ` (latest: v${remote} — update available)`;
+              return { label, status: 'warn', detail: reDetail };
+            }
+          }
+        } catch { /* ignore */ }
+        return { label, status: 'ok', detail: reDetail };
+      }
+      case 'Node.js': {
+        return { label, status: 'ok', detail: process.version };
       }
       default:
         return null;

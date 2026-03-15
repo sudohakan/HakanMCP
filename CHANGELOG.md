@@ -5,6 +5,13 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-03-15
+
+### Fixed
+- ESLint config: remove projectService (scripts/tests not in tsconfig), use simple parser
+- ESLint: downgrade remaining errors to warnings (no-empty, no-non-null-asserted-optional-chain)
+- db.ts: use `any` type for optional sqlite3 import (avoids build failure when sqlite3 not installed)
+
 ## [2.0.2] - 2026-03-15
 
 ### Fixed

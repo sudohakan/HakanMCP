@@ -10,8 +10,10 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { processRegistry } from '../utils/processRegistry.js';
 // Lazy-loaded: sqlite3 is an optional native dependency (requires node-gyp on Windows)
-let _sqlite3: typeof import('sqlite3').default | null = null;
-let _open: typeof import('sqlite').open | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _sqlite3: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _open: any = null;
 async function getSqlite() {
   if (!_sqlite3 || !_open) {
     try {

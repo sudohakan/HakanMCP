@@ -11,8 +11,8 @@ export default [
     languageOptions: {
       parser: tsparser,
       parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
+        ecmaVersion: "latest",
+        sourceType: "module",
       },
     },
     plugins: {
@@ -31,7 +31,9 @@ export default [
       "no-redeclare": "off",
       "no-useless-escape": "warn",
       "no-constant-condition": "warn",
+      "no-empty": "warn",
       "@typescript-eslint/ban-ts-comment": "warn",
+      "@typescript-eslint/no-non-null-asserted-optional-chain": "warn",
     },
   },
   {

@@ -198,8 +198,7 @@ jobs:
           if [ "${{ runner.os }}" == "Linux" ]; then
             npm ci --legacy-peer-deps
           else
-            # Skip optional platform-specific dependencies on macOS/Windows
-            npm ci --legacy-peer-deps --omit=optional || npm ci --legacy-peer-deps --force
+            npm ci --legacy-peer-deps
           fi
         shell: bash
 

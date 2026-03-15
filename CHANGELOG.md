@@ -5,6 +5,22 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-03-15
+
+### Breaking Changes
+- Major codebase-wide update across 172 files
+- CLI, config, agents, scripts, tools, and tests overhauled
+- Peer module updated
+
+### Changed
+- Updated all source files (src/, bin/, scripts/, peer/)
+- Updated all test files for consistency
+- Updated agent definitions (architect, coder, reviewer, security-architect, tester)
+- Updated CI/CD workflows and build configuration
+- Updated documentation (README, SETUP, SECURITY, CONTRIBUTING, CLAUDE.md)
+- Updated config examples (.env.example, config.yaml.example)
+- Updated package.json and package-lock.json dependencies
+
 ## [1.4.1] - 2026-03-10
 
 ### Fixed

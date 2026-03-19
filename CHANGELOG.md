@@ -5,6 +5,27 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-19
+
+### Added
+- On-demand MCP server catalog (`src/catalog/`) with 9 auth-free servers (fetch, filesystem, git, memory, sequential-thinking, sqlite, time, mermaid, duckdb)
+- `mcp_catalog` tool — lists available on-demand servers with conditions
+- `mcp_connectFromCatalog` tool — connects to catalog server by key name
+- JSON copy step in build pipeline for catalog distribution
+
+### Removed
+- `fs_*` tools (8) — replaced by on-demand Filesystem MCP server
+- `git_*` tools (7) — replaced by on-demand Git MCP server + Bash git commands
+- `github_*` tools (5) — replaced by `gh` CLI via Bash
+- `kg_*` tools (6) — replaced by on-demand Memory MCP server
+- `simple-git` dependency (no longer needed)
+- `glob` dependency (unused after fs_searchFiles removal)
+
+### Changed
+- Tool count reduced from 141 to 107 (34 removed, 2 added)
+- Feature modules now only include `db` and `mongo` (git removed)
+- Build config adds `resolveJsonModule` for catalog support
+
 ## [2.0.5] - 2026-03-15
 
 ### Fixed

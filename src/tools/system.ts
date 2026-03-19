@@ -3,12 +3,41 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { exec, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { glob } from 'glob';
 import { assertPidNumeric, isPathAllowed } from '../utils/common.js';
 import { config } from '../config.js';
+import os from 'node:os';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
+
+function getDefaultShell(): string | undefined {
+  if (process.platform === 'win32') {
+    return process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
+  }
+
+  return process.env.SHELL || '/bin/sh';
+}
+
+function buildCommandEnv(cwd?: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  const homeDir =
+    env.USERPROFILE ||
+    env.HOME ||
+    (process.platform === 'win32'
+      ? (env.HOMEDRIVE && env.HOMEPATH ? `${env.HOMEDRIVE}${env.HOMEPATH}` : undefined)
+      : os.homedir());
+
+  if (homeDir) {
+    env.USERPROFILE ??= homeDir;
+    env.HOME ??= homeDir;
+  }
+
+  if (cwd) {
+    env.PWD = cwd;
+  }
+
+  return env;
+}
 
 function assertPathAllowed(resolvedPath: string, label: string): void {
   if (!isPathAllowed(resolvedPath, config.system?.allowedPaths)) {
@@ -17,127 +46,6 @@ function assertPathAllowed(resolvedPath: string, label: string): void {
 }
 
 export const systemTools = [
-  // File System
-  {
-    name: 'fs_listDir',
-    description: 'Lists the directory contents.',
-    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
-    handler: async (args: unknown) => {
-      const { path: p } = z.object({ path: z.string() }).parse(args);
-      const resolved = path.resolve(p);
-      assertPathAllowed(resolved, 'path');
-      const stat = await fs.promises.stat(p).catch(() => null);
-      if (!stat) throw new Error(`Path not found: ${p}`);
-      if (!stat.isDirectory()) throw new Error(`This is not a directory: ${p}`);
-
-      const names = await fs.promises.readdir(p);
-      const files = await Promise.all(
-        names.map(async (f) => {
-          try {
-            const fp = path.join(p, f);
-            const s = await fs.promises.stat(fp);
-            return {
-              name: f,
-              type: s.isDirectory() ? 'dir' : 'file',
-              size: s.size,
-              modified: s.mtime.toISOString(),
-            };
-          } catch (e) {
-            return { name: f, type: 'unknown' as const, error: String(e) };
-          }
-        }),
-      );
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({ path: p, count: files.length, files }, null, 2),
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'fs_readFile',
-    description: 'Reads file content (UTF-8).',
-    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
-    handler: async (args: unknown) => {
-      const { path: p } = z.object({ path: z.string() }).parse(args);
-      assertPathAllowed(path.resolve(p), 'path');
-      if (!fs.existsSync(p)) throw new Error(`File not found: ${p}`);
-      const content = fs.readFileSync(p, 'utf8');
-      return {
-        content: [{ type: 'text', text: content }],
-      };
-    },
-  },
-  {
-    name: 'fs_writeFile',
-    description: 'Writes text to a file.',
-    inputSchema: {
-      type: 'object',
-      properties: { path: { type: 'string' }, content: { type: 'string' } },
-      required: ['path', 'content'],
-    },
-    handler: async (args: unknown) => {
-      const { path: p, content } = z.object({ path: z.string(), content: z.string() }).parse(args);
-      assertPathAllowed(path.resolve(p), 'path');
-      fs.writeFileSync(p, content, 'utf8');
-      return {
-        content: [{ type: 'text', text: `✓ File written: ${p}` }],
-      };
-    },
-  },
-  {
-    name: 'fs_deleteFile',
-    description: 'Deletes a file or directory.',
-    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
-    handler: async (args: unknown) => {
-      const { path: p } = z.object({ path: z.string() }).parse(args);
-      assertPathAllowed(path.resolve(p), 'path');
-      if (!fs.existsSync(p)) throw new Error(`Path not found: ${p}`);
-      fs.rmSync(p, { recursive: true, force: true });
-      return {
-        content: [{ type: 'text', text: `✓ Deleted: ${p}` }],
-      };
-    },
-  },
-  {
-    name: 'fs_moveFile',
-    description: 'Moves or renames File/Directory.',
-    inputSchema: {
-      type: 'object',
-      properties: { source: { type: 'string' }, destination: { type: 'string' } },
-      required: ['source', 'destination'],
-    },
-    handler: async (args: unknown) => {
-      const { source, destination } = z
-        .object({ source: z.string(), destination: z.string() })
-        .parse(args);
-      assertPathAllowed(path.resolve(source), 'source');
-      assertPathAllowed(path.resolve(destination), 'destination');
-      if (!fs.existsSync(source)) throw new Error(`Resource not found: ${source}`);
-      fs.renameSync(source, destination);
-      return {
-        content: [{ type: 'text', text: `✓ Moved: ${source} -> ${destination}` }],
-      };
-    },
-  },
-  {
-    name: 'fs_makeDir',
-    description: 'Creates a new directory.',
-    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
-    handler: async (args: unknown) => {
-      const { path: p } = z.object({ path: z.string() }).parse(args);
-      assertPathAllowed(path.resolve(p), 'path');
-      fs.mkdirSync(p, { recursive: true });
-      return {
-        content: [{ type: 'text', text: `✓ Directory created: ${p}` }],
-      };
-    },
-  },
-
   // Command Execution
   {
     name: 'sys_runCommand',
@@ -156,7 +64,12 @@ export const systemTools = [
         .parse(args);
       if (cwd) assertPathAllowed(path.resolve(cwd), 'cwd');
       try {
-        const { stdout, stderr } = await execAsync(command, { cwd });
+        const { stdout, stderr } = await execAsync(command, {
+          cwd,
+          env: buildCommandEnv(cwd),
+          shell: getDefaultShell(),
+          windowsHide: true,
+        });
         return {
           content: [
             {
@@ -529,69 +442,6 @@ export const systemTools = [
       } else {
         throw new Error('Scheduled task triggering is not supported on Linux.');
       }
-    },
-  },
-  {
-    name: 'fs_copyFile',
-    description: 'Copies a file or directory.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        source: { type: 'string' },
-        destination: { type: 'string' },
-      },
-      required: ['source', 'destination'],
-    },
-    handler: async (args: unknown) => {
-      const { source, destination } = z
-        .object({
-          source: z.string(),
-          destination: z.string(),
-        })
-        .parse(args);
-
-      if (!fs.existsSync(source)) throw new Error(`Resource not found: ${source}`);
-
-      const stats = fs.statSync(source);
-      if (stats.isDirectory()) {
-        fs.cpSync(source, destination, { recursive: true });
-      } else {
-        fs.copyFileSync(source, destination);
-      }
-
-      return {
-        content: [{ type: 'text', text: `✓ Copied: ${source} → ${destination}` }],
-      };
-    },
-  },
-  {
-    name: 'fs_searchFiles',
-    description: 'Searches files using a glob pattern.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        pattern: { type: 'string' },
-        cwd: { type: 'string' },
-      },
-      required: ['pattern'],
-    },
-    handler: async (args: unknown) => {
-      const { pattern, cwd } = z
-        .object({
-          pattern: z.string(),
-          cwd: z.string().optional(),
-        })
-        .parse(args);
-
-      const files = await glob(pattern, { cwd: cwd || process.cwd() });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({ pattern, count: files.length, files }, null, 2),
-          },
-        ],
-      };
     },
   },
   {

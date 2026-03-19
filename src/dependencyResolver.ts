@@ -61,12 +61,6 @@ export const FEATURE_DEPENDENCY_MAP: Record<string, FeatureDependency> = {
     installCommand: 'npm install mongodb',
     toolModulePath: './tools/mongodb.js',
   },
-  git: {
-    packages: ['simple-git'],
-    description: 'Git repository operations',
-    installCommand: 'npm install simple-git',
-    toolModulePath: './tools/git.js',
-  },
 };
 
 // ---------------------------------------------------------------------------

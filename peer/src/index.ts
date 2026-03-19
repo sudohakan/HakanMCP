@@ -22,7 +22,6 @@ import { mcpClientTools } from './tools/mcpClient.js';
 
 import { monitoringTools } from './tools/monitoring.js';
 import { selfImprovementTools } from './tools/selfImprovement.js';
-import { githubTools } from './tools/github.js';
 import { encryptionTools } from './tools/encryption.js';
 import { aiProviderTools } from './tools/aiProviders.js';
 import { schedulerTools } from './tools/scheduler.js';
@@ -34,7 +33,6 @@ import { performanceTools } from './tools/performance.js';
 
 import { dxTools } from './tools/dx.js';
 import { flowTools } from './tools/flow.js';
-import { knowledgeGraphTools } from './tools/knowledgeGraph.js';
 import { swarmTools } from './tools/swarm.js';
 import { consensusTools } from './tools/consensus.js';
 import { ruvectorTools } from './tools/ruvector.js';
@@ -74,9 +72,9 @@ const coreToolArrays = [
   gitbookTools, postmanTools, systemTools, httpTools, envTools,
   parserTools, templateTools, aiTools, systemOptimizationTools,
   backupTools, mcpClientTools, monitoringTools, selfImprovementTools,
-  githubTools, encryptionTools, aiProviderTools, schedulerTools,
+  encryptionTools, aiProviderTools, schedulerTools,
   cacheTools, dbMonitoringTools, apiTools, performanceTools,
-  dxTools, flowTools, knowledgeGraphTools, swarmTools, consensusTools,
+  dxTools, flowTools, swarmTools, consensusTools,
   ruvectorTools, moeRouterTools, aiDefenceTools, guidanceTools,
 ];
 
@@ -108,12 +106,6 @@ const featureModules: Array<{
     check: () => isPackageAvailable('mongodb'),
     loader: () => import('./tools/mongodb.js'),
     exportName: 'mongoTools',
-  },
-  {
-    prefix: 'git',
-    check: () => isPackageAvailable('simple-git'),
-    loader: () => import('./tools/git.js'),
-    exportName: 'gitTools',
   },
 ];
 

@@ -1,13 +1,13 @@
-![Version](https://img.shields.io/badge/version-1.4.1-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey)
-![Tools](https://img.shields.io/badge/tools-131-orange)
+![Tools](https://img.shields.io/badge/tools-107-orange)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 
 # HakanMCP
 
-Comprehensive MCP server with 131 tools for AI-powered development workflows.
+Comprehensive MCP server with 107 tools + 9 on-demand MCP servers for AI-powered development workflows.
 
 Run autonomous AI agents with mission-based task execution, or use as a Model Context Protocol server for Claude Code, Cursor, and other MCP-compatible clients.
 
@@ -220,7 +220,7 @@ npm install mongodb   # MongoDB
 
 ```
 hakanmcp
-├── MCP Server (131 tools via Model Context Protocol)
+├── MCP Server (107 tools + 9 on-demand via Model Context Protocol)
 │   ├── Tool Registry (lazy-loaded, health-checked)
 │   ├── Agentic Loop (multi-turn tool-use with any API provider)
 │   └── MCP Bridge (proxy remote MCP server tools)

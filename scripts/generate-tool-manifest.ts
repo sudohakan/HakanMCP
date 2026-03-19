@@ -30,10 +30,10 @@ interface ToolManifest {
 }
 
 const MODULE_NAMES = [
-  'gitbook', 'postman', 'system', 'db', 'mongodb', 'http', 'env', 'git',
+  'gitbook', 'postman', 'system', 'db', 'mongodb', 'http', 'env',
   'parser', 'template', 'aiTools', 'systemOptimization', 'backup', 'mcpClient',
-  'monitoring', 'selfImprovement', 'github', 'encryption', 'aiProviders',
-  'scheduler', 'cache', 'dbMonitoring', 'api', 'performance', 'dx', 'flow', 'knowledgeGraph',
+  'monitoring', 'selfImprovement', 'encryption', 'aiProviders',
+  'scheduler', 'cache', 'dbMonitoring', 'api', 'performance', 'dx', 'flow',
   'swarm', 'consensus', 'ruvector', 'moeRouter', 'aiDefence', 'guidance',
 ];
 

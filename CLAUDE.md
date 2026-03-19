@@ -1,11 +1,11 @@
 # HakanMCP — Claude Code Configuration
 
-> Unified MCP Server + Mission Agent CLI. v1.4.1, ESM, Node >= 20.
+> Unified MCP Server + Mission Agent CLI. v1.4.2, ESM, Node >= 20.
 
 ## Project Overview
 
 HakanMCP serves two roles:
-1. **MCP Server** — STDIO-based Model Context Protocol server with 131 tools for Claude Code
+1. **MCP Server** — STDIO-based Model Context Protocol server with ~107 tools for Claude Code + on-demand MCP catalog (9 auth-free servers)
 2. **Mission Agent CLI** — Autonomous task execution via markdown mission files with 4 operating modes (Watch, Scheduled, Assistant, Reactive)
 
 ## Architecture
@@ -17,7 +17,7 @@ config.yaml           Runtime configuration (Zod-validated)
 .env                  Secrets & env overrides (never committed)
 ```
 
-The MCP server uses a `ToolRegistry` with lazy loading: core tools are eagerly registered, feature tools (db, mongo, git) load on first call if native deps are available. Placeholder metadata is registered when deps are missing so `tools/list` always returns the full catalog.
+The MCP server uses a `ToolRegistry` with lazy loading: core tools are eagerly registered, feature tools (db, mongo) load on first call if native deps are available. Placeholder metadata is registered when deps are missing so `tools/list` always returns the full catalog. An on-demand MCP catalog (`src/catalog/servers.json`) allows dynamic connections to external auth-free MCP servers (git, filesystem, memory, etc.).
 
 ## Directory Structure
 
@@ -88,8 +88,6 @@ scripts/          Build scripts (tool manifest generator)
 | db.ts | `db_` | SQL database operations (PostgreSQL, MySQL, MSSQL, SQLite) |
 | dbMonitoring.ts | `db_` | Database pool stats, monitoring |
 | mongodb.ts | `mongo_` | MongoDB CRUD, aggregation, indexes |
-| git.ts | `git_` | Git operations (add, commit, checkout, sync) |
-| github.ts | `github_` | GitHub repo management (create, push, pull) |
 | encryption.ts | `crypto_` | File/value encryption |
 | monitoring.ts | `monitor_` | Health checks, auto-heal, peer sync |
 | selfImprovement.ts | `self_` | Self-modification proposals |
@@ -98,15 +96,14 @@ scripts/          Build scripts (tool manifest generator)
 | performance.ts | `perf_` | Benchmarking |
 | dx.ts | `dx_` | Developer experience (tool scaffolding) |
 | flow.ts | `flow_` | Multi-step flow execution & versioning |
-| knowledgeGraph.ts | `kg_` | Entity/relation knowledge graph |
 | swarm.ts | `swarm_` | Multi-agent coordination |
 | consensus.ts | `consensus_` | Distributed consensus protocols |
 | ruvector.ts | `ruvector_` | Vector similarity search |
 | moeRouter.ts | `moe_` | Mixture-of-experts routing |
 | guidance.ts | `guidance_` | Code guidance rules, auditing |
-| mcpClient.ts | `mcp_` | MCP-to-MCP bridge (connect to other MCP servers) |
+| mcpClient.ts | `mcp_` | MCP-to-MCP bridge + on-demand catalog (9 auth-free servers) |
 
-Feature tools (`db`, `mongo`, `git`) require optional native dependencies — they register as placeholders when deps are missing.
+Feature tools (`db`, `mongo`) require optional native dependencies — they register as placeholders when deps are missing.
 
 ## Tech Stack
 
@@ -119,7 +116,6 @@ Feature tools (`db`, `mongo`, `git`) require optional native dependencies — th
 - **Testing:** Jest with ts-jest (experimental VM modules)
 - **Linting:** ESLint + Prettier + lint-staged
 - **Optional DB Drivers:** pg, mysql2, mssql, sqlite3, mongodb (lazy-loaded)
-- **Optional:** simple-git for git tools
 
 ## Coding Conventions
 
@@ -138,7 +134,6 @@ Feature tools (`db`, `mongo`, `git`) require optional native dependencies — th
 
 | Variable | Purpose |
 |----------|---------|
-| `GITHUB_TOKEN` | GitHub API access (required if github tools enabled) |
 | `CODEX_API_KEY` / `OPENAI_API_KEY` | OpenAI API key |
 | `CLAUDE_CODE_API_KEY` / `ANTHROPIC_API_KEY` | Anthropic API key |
 | `GEMINI_API_KEY` | Google Gemini API key |

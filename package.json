@@ -1,6 +1,6 @@
 {
   "name": "hakanmcp",
-  "version": "1.4.2",
+  "version": "2.1.0",
   "description": "HakanMCP — Unified AI Agent Orchestration & MCP Tool Platform",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -20,7 +20,7 @@
   "scripts": {
     "prepublishOnly": "npm run build",
     "prepack": "npm run build",
-    "build": "tsc -p tsconfig.build.json && node dist/scripts/generate-tool-manifest.js",
+    "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('src/catalog/servers.json','dist/src/catalog/servers.json')\" && node dist/scripts/generate-tool-manifest.js",
     "start": "node --no-warnings dist/src/index.js",
     "dev": "node --no-warnings --loader ts-node/esm src/index.ts",
     "lint": "eslint \"{src,tests,scripts,bin}/**/*.{ts,tsx}\"",
@@ -50,7 +50,6 @@
     "csv-stringify": "^6.6.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "glob": "^13.0.0",
     "gradient-string": "^3.0.0",
     "gray-matter": "^4.0.3",
     "handlebars": "^4.7.8",
@@ -72,7 +71,6 @@
     "mssql": "^12.1.1",
     "mysql2": "^3.6.5",
     "pg": "^8.11.3",
-    "simple-git": "^3.21.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   },

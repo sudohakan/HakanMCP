@@ -34,7 +34,6 @@ export interface FeatureModule {
 export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   // Core modules (no native deps, eager load)
   sys: { modulePath: './tools/system.js', exportName: 'systemTools', nativeDeps: [], core: true, featureName: '' },
-  fs: { modulePath: './tools/system.js', exportName: 'systemTools', nativeDeps: [], core: true, featureName: '' },
   http: { modulePath: './tools/http.js', exportName: 'httpTools', nativeDeps: [], core: true, featureName: '' },
   env: { modulePath: './tools/env.js', exportName: 'envTools', nativeDeps: [], core: true, featureName: '' },
   cache: { modulePath: './tools/cache.js', exportName: 'cacheTools', nativeDeps: [], core: true, featureName: '' },
@@ -49,14 +48,12 @@ export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   mcp: { modulePath: './tools/mcpClient.js', exportName: 'mcpClientTools', nativeDeps: [], core: true, featureName: '' },
   monitor: { modulePath: './tools/monitoring.js', exportName: 'monitoringTools', nativeDeps: [], core: true, featureName: '' },
   self: { modulePath: './tools/selfImprovement.js', exportName: 'selfImprovementTools', nativeDeps: [], core: true, featureName: '' },
-  github: { modulePath: './tools/github.js', exportName: 'githubTools', nativeDeps: [], core: true, featureName: '' },
   crypto: { modulePath: './tools/encryption.js', exportName: 'encryptionTools', nativeDeps: [], core: true, featureName: '' },
   scheduler: { modulePath: './tools/scheduler.js', exportName: 'schedulerTools', nativeDeps: [], core: true, featureName: '' },
   api: { modulePath: './tools/api.js', exportName: 'apiTools', nativeDeps: [], core: true, featureName: '' },
   perf: { modulePath: './tools/performance.js', exportName: 'performanceTools', nativeDeps: [], core: true, featureName: '' },
   dx: { modulePath: './tools/dx.js', exportName: 'dxTools', nativeDeps: [], core: true, featureName: '' },
   flow: { modulePath: './tools/flow.js', exportName: 'flowTools', nativeDeps: [], core: true, featureName: '' },
-  kg: { modulePath: './tools/knowledgeGraph.js', exportName: 'knowledgeGraphTools', nativeDeps: [], core: true, featureName: '' },
   swarm: { modulePath: './tools/swarm.js', exportName: 'swarmTools', nativeDeps: [], core: true, featureName: '' },
   consensus: { modulePath: './tools/consensus.js', exportName: 'consensusTools', nativeDeps: [], core: true, featureName: '' },
   ruvector: { modulePath: './tools/ruvector.js', exportName: 'ruvectorTools', nativeDeps: [], core: true, featureName: '' },
@@ -67,7 +64,6 @@ export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   // Feature modules (native deps, lazy load)
   db: { modulePath: './tools/db.js', exportName: 'dbTools', nativeDeps: ['pg', 'mysql2', 'mssql', 'sqlite3', 'sqlite'], core: false, featureName: 'database' },
   mongo: { modulePath: './tools/mongodb.js', exportName: 'mongoTools', nativeDeps: ['mongodb'], core: false, featureName: 'mongodb' },
-  git: { modulePath: './tools/git.js', exportName: 'gitTools', nativeDeps: ['simple-git'], core: false, featureName: 'git' },
 };
 
 // ---------------------------------------------------------------------------
@@ -104,15 +100,6 @@ export const FEATURE_TOOL_METADATA: Record<string, PlaceholderToolMeta[]> = {
     { name: 'mongo_listCollections', description: 'List collections in MongoDB database.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' } }, required: ['connectionId'] } },
     { name: 'mongo_listDatabases', description: 'List databases on MongoDB server.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' } }, required: ['connectionId'] } },
     { name: 'mongo_disconnect', description: 'Close a MongoDB connection.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' } }, required: ['connectionId'] } },
-  ],
-  git: [
-    { name: 'git_info', description: 'Get git repository information (status, log, branches, remotes, diff, stash, tags).', inputSchema: { type: 'object', properties: { action: { type: 'string' } }, required: ['action'] } },
-    { name: 'git_sync', description: 'Sync with remote repository (pull/push/fetch).', inputSchema: { type: 'object', properties: { direction: { type: 'string' } }, required: ['direction'] } },
-    { name: 'git_add', description: 'Stage files for commit.', inputSchema: { type: 'object', properties: { files: { type: 'array' } }, required: ['files'] } },
-    { name: 'git_commit', description: 'Create a git commit.', inputSchema: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] } },
-    { name: 'git_checkout', description: 'Switch or create branches.', inputSchema: { type: 'object', properties: { branch: { type: 'string' } }, required: ['branch'] } },
-    { name: 'git_reset', description: 'Reset operations (soft, mixed, hard).', inputSchema: { type: 'object', properties: { mode: { type: 'string' } }, required: ['mode'] } },
-    { name: 'git_clone', description: 'Clone a git repository.', inputSchema: { type: 'object', properties: { url: { type: 'string' } }, required: ['url'] } },
   ],
 };
 

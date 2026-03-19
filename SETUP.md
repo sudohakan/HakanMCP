@@ -212,7 +212,7 @@ npm run check:quick
 Expected output:
 ```
 ✓ Config loaded successfully
-✓ Tool registry initialized (131 tools)
+✓ Tool registry initialized (107 tools)
 ✓ Smoke tests passed
 ```
 

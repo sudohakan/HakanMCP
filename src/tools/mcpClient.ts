@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { spawn, ChildProcess } from 'child_process';
 import { logger } from '../utils/logger.js';
 import { processRegistry } from '../utils/processRegistry.js';
+import { loadCatalog, getCatalogServer, listCatalogServers } from '../catalog/index.js';
 
 /**
  * MCP Client - Connect to other MCP servers and use their tools
@@ -551,6 +552,96 @@ export const mcpClientTools = [
           },
         ],
       };
+    },
+  },
+  {
+    name: 'mcp_catalog',
+    description:
+      'Lists available on-demand MCP servers from the built-in catalog. These servers require no API key or authentication and can be connected via mcp_connectFromCatalog.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+    handler: async () => {
+      try {
+        const servers = listCatalogServers();
+        const list = servers
+          .map(
+            (s) =>
+              `• ${s.key} — ${s.name}\n  ${s.description}\n  Conditions:\n${s.conditions.map((c) => `    - ${c}`).join('\n')}`,
+          )
+          .join('\n\n');
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `On-Demand MCP Catalog (${servers.length} servers):\n\n${list}`,
+            },
+          ],
+        };
+      } catch (error: unknown) {
+        throw new Error(
+          `Failed to load catalog: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    },
+  },
+  {
+    name: 'mcp_connectFromCatalog',
+    description:
+      'Connects to an MCP server from the built-in catalog by name. No API key or authentication required. Use mcp_catalog to see available servers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        serverKey: {
+          type: 'string',
+          description:
+            'Server key from catalog (e.g., "fetch", "git", "sqlite", "mermaid", "duckdb", "memory", "sequential-thinking", "time", "filesystem")',
+        },
+        extraArgs: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Additional arguments appended to the server command (e.g., db path for sqlite, allowed directories for filesystem)',
+        },
+      },
+      required: ['serverKey'],
+    },
+    handler: async (args: unknown) => {
+      const { serverKey, extraArgs } = z
+        .object({
+          serverKey: z.string(),
+          extraArgs: z.array(z.string()).optional(),
+        })
+        .parse(args);
+
+      const server = getCatalogServer(serverKey);
+      if (!server) {
+        const catalog = loadCatalog();
+        const available = Object.keys(catalog.servers).join(', ');
+        throw new Error(
+          `Server "${serverKey}" not found in catalog. Available: ${available}`,
+        );
+      }
+
+      const finalArgs = [...server.args, ...(extraArgs || [])];
+
+      try {
+        const connectionId = await connectionManager.connect(server.command, finalArgs);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Connected to ${server.name} (${serverKey})\n\nConnection ID: ${connectionId}\nCommand: ${server.command} ${finalArgs.join(' ')}\n\nUse mcp_listTools to see available tools, mcp_callTool to execute, mcp_disconnect when done.`,
+            },
+          ],
+        };
+      } catch (error: unknown) {
+        throw new Error(
+          `Failed to connect to ${server.name}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     },
   },
 ];

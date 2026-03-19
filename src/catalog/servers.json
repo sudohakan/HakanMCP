@@ -1,0 +1,108 @@
+{
+  "version": "1.0",
+  "description": "On-demand MCP server catalog. No API key or authentication required.",
+  "servers": {
+    "fetch": {
+      "name": "Fetch",
+      "description": "Enhanced web content fetching and markdown conversion",
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "conditions": [
+        "WebFetch returns an error or truncates content",
+        "Page is too large and needs chunked retrieval",
+        "Raw HTML content needed without markdown conversion"
+      ]
+    },
+    "filesystem": {
+      "name": "Filesystem",
+      "description": "Sandboxed file operations with directory tree, batch read, and search",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "dynamicArgs": ["allowedDirectories"],
+      "conditions": [
+        "Recursive directory tree visualization needed",
+        "Batch reading multiple files at once",
+        "Sandboxed file access to a specific directory required"
+      ]
+    },
+    "git": {
+      "name": "Git",
+      "description": "Deep git repository analysis - diff, blame, log, branch comparison",
+      "command": "uvx",
+      "args": ["mcp-server-git"],
+      "conditions": [
+        "Cross-branch file comparison or multi-commit diff analysis",
+        "Blame, log search, or commit history pattern analysis",
+        "Bash git commands insufficient for complex operations"
+      ]
+    },
+    "memory": {
+      "name": "Memory",
+      "description": "Knowledge graph with entities, relations, and observations",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "conditions": [
+        "Building persistent knowledge graph for multi-topic research",
+        "Entity-relation-observation model needed",
+        "User explicitly asks to build or query a knowledge graph"
+      ]
+    },
+    "sequential-thinking": {
+      "name": "Sequential Thinking",
+      "description": "Structured reasoning with hypothesis revision and trade-off analysis",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "conditions": [
+        "Architectural decision with 3+ alternatives requiring trade-off analysis",
+        "Debugging requires systematic hypothesis testing with revision",
+        "Deep analysis, comparison, or multi-step reasoning needed"
+      ]
+    },
+    "sqlite": {
+      "name": "SQLite",
+      "description": "Local SQLite database querying and analysis",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sqlite"],
+      "dynamicArgs": ["dbPath"],
+      "conditions": [
+        "Project contains .sqlite or .db files to query",
+        "Local database analysis or data extraction needed",
+        "Dedicated SQL tools needed for SQLite"
+      ]
+    },
+    "time": {
+      "name": "Time",
+      "description": "Timezone conversion and current time queries",
+      "command": "uvx",
+      "args": ["mcp-server-time"],
+      "conditions": [
+        "User asks to convert time between timezones",
+        "Cross-timezone scheduling calculation needed",
+        "Current time in a specific timezone needed"
+      ]
+    },
+    "mermaid": {
+      "name": "Mermaid",
+      "description": "Diagram generation - flowcharts, sequence, class, ER, state, Gantt",
+      "command": "npx",
+      "args": ["-y", "mcp-mermaid"],
+      "conditions": [
+        "User asks for a visual diagram",
+        "Architecture or data flow visualization needed",
+        "Documentation requires embedded diagrams"
+      ]
+    },
+    "duckdb": {
+      "name": "DuckDB",
+      "description": "Analytical SQL on local CSV, Parquet, and JSON files",
+      "command": "uvx",
+      "args": ["mcp-server-duckdb"],
+      "dynamicArgs": ["dbPath"],
+      "conditions": [
+        "SQL queries on local CSV, Parquet, or JSON files needed",
+        "Analytical queries (aggregation, joins, window functions) on file-based data",
+        "In-memory analytical database for data exploration"
+      ]
+    }
+  }
+}

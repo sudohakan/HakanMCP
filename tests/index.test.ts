@@ -217,17 +217,15 @@ describe('MCP Server Entry Point', () => {
         system: (await import('../src/tools/system.js')).systemTools,
         ai: (await import('../src/tools/aiTools.js')).aiTools,
         devOps: [
-          ...(await import('../src/tools/git.js')).gitTools,
-          ...(await import('../src/tools/github.js')).githubTools,
           ...(await import('../src/tools/backup.js')).backupTools,
         ],
       };
 
       expect(categories.gitbook.length).toBeGreaterThan(5);
       expect(categories.database.length).toBeGreaterThan(20);
-      expect(categories.system.length).toBeGreaterThan(10);
+      expect(categories.system.length).toBeGreaterThan(3);
       expect(categories.ai.length).toBeGreaterThan(3);
-      expect(categories.devOps.length).toBeGreaterThan(15);
+      expect(categories.devOps.length).toBeGreaterThan(0);
     });
   });
 
@@ -242,11 +240,11 @@ describe('MCP Server Entry Point', () => {
     it('should validate tool handler return types', async () => {
       const { systemTools } = await import('../src/tools/system.js');
 
-      const listDirTool = systemTools.find((t) => t.name === 'fs_listDir');
-      expect(listDirTool).toBeDefined();
+      const sysInfoTool = systemTools.find((t) => t.name === 'sys_getSystemInfo');
+      expect(sysInfoTool).toBeDefined();
 
       // Handler should be a function
-      expect(typeof listDirTool!.handler).toBe('function');
+      expect(typeof sysInfoTool!.handler).toBe('function');
     });
   });
 

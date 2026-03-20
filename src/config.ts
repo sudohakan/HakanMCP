@@ -432,9 +432,12 @@ function loadConfig(envValues: Record<string, string | undefined>): Config {
   const parseResult = configSchema.safeParse(mergedWithOverrides);
   if (!parseResult.success) {
     const messages = formatZodIssues(parseResult.error.issues);
-    throw new Error(
-      `config.yaml validation failed:\n${messages.map((m) => `  - ${m}`).join('\n')}`,
-    );
+    const formatted = `config.yaml validation failed:\n${messages.map((m) => `  - ${m}`).join('\n')}`;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(formatted);
+    }
+    logger.warn(formatted);
+    return DEFAULT_CONFIG as Config;
   }
 
   const validatedConfig = parseResult.data;
@@ -447,7 +450,8 @@ function loadConfig(envValues: Record<string, string | undefined>): Config {
   return validatedConfig;
 }
 
-const envValues = loadEnvironment();
+const strictEnv = process.env.NODE_ENV === 'production';
+const envValues = loadEnvironment({ strict: strictEnv, warnOnly: !strictEnv });
 export const config = loadConfig(envValues);
 
 /**

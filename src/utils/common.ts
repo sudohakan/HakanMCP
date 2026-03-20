@@ -33,7 +33,7 @@ export function escapeForPowerShellSingleQuoted(s: string): string {
   return s.replace(/'/g, "''");
 }
 
-/** Plan §11 G: When allowedPaths is set, path must resolve under one of them. Returns true if no allowlist. */
+/** When allowedPaths is set, path must resolve under one of them. Returns true if no allowlist. */
 export function isPathAllowed(resolvedPath: string, allowedPaths?: string[]): boolean {
   if (!allowedPaths?.length) return true;
   const normalized = path.resolve(resolvedPath);
@@ -94,7 +94,6 @@ export function atomicWriteFileSync(
       error: name,
       message: msg,
     });
-    /* Do not unlink .tmp: content is valid; user can manually recover */
     throw err;
   }
 }

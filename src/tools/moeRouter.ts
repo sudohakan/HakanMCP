@@ -106,7 +106,6 @@ export const moeRouterTools = [
           const { expert, confidence } = selectExpert(taskDescription);
           const tier = preferredTier ?? adjustTier(expert.name, complexity);
 
-          // Update stats
           const prev = expert.tasksRouted;
           expert.tasksRouted += 1;
           expert.avgConfidence = (expert.avgConfidence * prev + confidence) / expert.tasksRouted;

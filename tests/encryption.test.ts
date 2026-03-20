@@ -33,7 +33,7 @@ describe('encryption tools', () => {
       value: 'stored-secret',
       password: 'shared-pass',
     });
-    const encryptedValue = encryptedText.content[0].text.match(/```([\s\S]*?)```/)?.[1].trim()!;
+    const encryptedValue = encryptedText.content[0].text.match(/```([\s\S]*?)```/)?.[1].trim() ?? '';
 
     const success = await decryptTool.handler({
       encrypted: encryptedValue,

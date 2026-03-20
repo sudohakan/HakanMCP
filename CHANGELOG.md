@@ -5,6 +5,36 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-03-20
+
+### Changed
+- Rewrite README with interactive layout, mermaid architecture diagram, and collapsible sections
+- Update SECURITY.md supported versions table (v2.1.x as current)
+- Add v2.x release tag links and milestone entries to CHANGELOG.md
+- Rewrite docker-regression README to reflect v2.1.0 architecture
+
+### Fixed
+- Replace 11 Turkish strings with English equivalents across 3 tool modules
+- Fix 9 TypeScript build errors (mongodb/mysql2 optional dependency types)
+- Fix all 66 ESLint warnings (unused vars, implicit any, empty blocks, useless escapes)
+- Fix tool count inconsistency in README (131→107)
+- Fix unreachable logic in moeRouter.ts (hardcoded complexity)
+- Fix non-null assertion on optional chain in encryption test
+
+### Removed
+- Remove 900+ code comments and decorative separators across 80+ files
+- Remove dead code: 287-line unused function block in console_chat.ts
+- Remove no-op clearCharacterCache() function
+- Remove unused dependencies: csv-stringify, cli-table3, agentdb
+- Remove 39 internal plan references ("plan §", "Pitfall N") from JSDoc
+- Remove invalid Windows absolute path from .gitignore
+
+### Security
+- Fix high-severity prototype pollution in flatted
+- Fix moderate-severity prototype pollution in hono
+- Move @types/express, @types/node-cron from dependencies to devDependencies
+- Move adm-zip from devDependencies to dependencies (runtime usage)
+
 ## [2.1.0] - 2026-03-19
 
 ### Added
@@ -469,7 +499,9 @@ This release marks the official rebranding from **Claude Flow** to **HakanMCP** 
 | **Mission Agent MVP** | **v1.0.0** | **2026-03-08** | **Mission Agent CLI, 4 operating modes** |
 | **Journal v2 & Config** | **v1.3.0** | **2026-03-10** | **Character system, consciousness guard, config overhaul** |
 | **Workspace Missions** | **v1.4.0** | **2026-03-10** | **Workspace-scoped missions, interactive init, dashboard** |
+| **Production Cleanup** | **v2.1.1** | **2026-03-20** | **Zero lint, zero comments, full English, interactive README** |
 
+[2.1.1]: https://github.com/sudohakan/HakanMCP/compare/v2.1.0...v2.1.1
 [1.4.1]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.4.1
 [1.4.0]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.4.0
 [1.3.1]: https://github.com/sudohakan/HakanMCP/releases/tag/v1.3.1

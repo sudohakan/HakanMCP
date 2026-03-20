@@ -13,8 +13,6 @@ import { logger } from '../utils/logger.js';
 
 const log = logger.child({ component: 'missionLoader' });
 
-// --- Helpers ---
-
 /**
  * Strip UTF-8 BOM and normalize CRLF to LF.
  */
@@ -34,8 +32,6 @@ function generateTaskId(description: string): string {
     .slice(0, 12);
 }
 
-// --- Core Parser ---
-
 /**
  * Parse raw mission markdown content into a structured ParsedMission object.
  * - Extracts and validates YAML frontmatter with Zod (falls back to defaults on invalid input)
@@ -47,7 +43,6 @@ export function parseMissionContent(raw: string, filePath: string): ParsedMissio
   const normalized = normalizeContent(raw);
   const { data, content } = matter(normalized);
 
-  // Validate frontmatter — use defaults on failure
   const parseResult = MissionFrontmatterSchema.safeParse(data);
   let frontmatter;
   if (parseResult.success) {
@@ -60,11 +55,9 @@ export function parseMissionContent(raw: string, filePath: string): ParsedMissio
     frontmatter = MissionFrontmatterSchema.parse({});
   }
 
-  // Extract description: first non-heading, non-list paragraph from content
-  const descMatch = content.match(/^([^#\n][^\n]*(?:\n[^#\n\-][^\n]*)*)/);
+  const descMatch = content.match(/^([^#\n][^\n]*(?:\n[^#\n-][^\n]*)*)/);
   const description = descMatch ? descMatch[1].trim() : '';
 
-  // Extract sections: split on ## or ### headings
   const sections: MissionSection[] = [];
   const sectionParts = content.split(/^(#{2,3}\s+.+)$/m);
   for (let i = 1; i < sectionParts.length; i += 2) {
@@ -74,7 +67,6 @@ export function parseMissionContent(raw: string, filePath: string): ParsedMissio
     });
   }
 
-  // Extract tasks: match - [ ] text and - [x] text patterns
   const tasks: MissionTask[] = [];
   let currentSection = 'general';
   for (const line of content.split('\n')) {
@@ -96,8 +88,6 @@ export function parseMissionContent(raw: string, filePath: string): ParsedMissio
 
   return { filePath, frontmatter, description, tasks, sections, raw: normalized };
 }
-
-// --- File Loader ---
 
 /**
  * Load and parse a single mission file.

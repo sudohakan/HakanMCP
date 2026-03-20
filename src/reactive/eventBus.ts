@@ -13,7 +13,6 @@ export class EventBus {
 
   constructor() {
     this.emitter = new EventEmitter();
-    // Pitfall 4: Prevent MaxListenersExceededWarning with multiple mode adapters
     this.emitter.setMaxListeners(50);
   }
 

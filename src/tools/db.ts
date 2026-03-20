@@ -1,5 +1,4 @@
 import { z } from 'zod';
-// Lazy-loaded: mssql is an optional native dependency
 let _mssqlMod: typeof import('mssql') | null = null;
 async function getMssqlMod() {
   if (!_mssqlMod) { try { _mssqlMod = await import('mssql'); } catch { throw new Error('mssql is not installed. Run: npm install mssql'); } }
@@ -9,7 +8,6 @@ import fs from 'node:fs';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { processRegistry } from '../utils/processRegistry.js';
-// Lazy-loaded: sqlite3 is an optional native dependency (requires node-gyp on Windows)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _sqlite3: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,8 +28,6 @@ import type { MSSQLConfig } from '../utils/dbPoolManager.js';
 import { assertPathSafe } from '../utils/common.js';
 
 const execFileAsync = promisify(execFile);
-
-// ─── Shared Zod schemas ───────────────────────────────────────────────────────
 
 const mysqlConnSchema = z.object({
   host: z.string(),
@@ -66,10 +62,7 @@ function buildMssqlConfig(p: z.infer<typeof mssqlConnSchema>): MSSQLConfig {
   };
 }
 
-// ─── Tools ────────────────────────────────────────────────────────────────────
-
 export const dbTools = [
-  // ── 1. db_query ────────────────────────────────────────────────────────────
   {
     name: 'db_query',
     description:
@@ -84,17 +77,13 @@ export const dbTools = [
           description: 'Database engine',
         },
         query: { type: 'string', description: 'SQL query to execute' },
-        // postgres
         connectionString: { type: 'string', description: 'PostgreSQL connection string (postgres only)' },
-        // mysql
         host: { type: 'string', description: 'Host (mysql/mssql)' },
         port: { type: 'number', description: 'Port (mysql default 3306, mssql default 1433)' },
         user: { type: 'string', description: 'Username (mysql/mssql)' },
         password: { type: 'string', description: 'Password (mysql/mssql)' },
         database: { type: 'string', description: 'Database name (mysql/mssql)' },
-        // sqlite
         dbPath: { type: 'string', description: 'File path to the SQLite database (sqlite only)' },
-        // mssql
         server: { type: 'string', description: 'SQL Server host (mssql only)' },
         encrypt: { type: 'boolean', description: 'Encrypted connection (mssql, default: true)' },
         trustServerCertificate: {
@@ -177,7 +166,6 @@ export const dbTools = [
     },
   },
 
-  // ── 2. db_listTables ───────────────────────────────────────────────────────
   {
     name: 'db_listTables',
     description:
@@ -191,17 +179,13 @@ export const dbTools = [
           enum: ['postgres', 'mysql', 'sqlite', 'mssql'],
           description: 'Database engine',
         },
-        // postgres
         connectionString: { type: 'string', description: 'PostgreSQL connection string (postgres only)' },
-        // mysql / mssql shared
         host: { type: 'string' },
         port: { type: 'number' },
         user: { type: 'string' },
         password: { type: 'string' },
         database: { type: 'string' },
-        // sqlite
         dbPath: { type: 'string', description: 'SQLite file path (sqlite only)' },
-        // mssql
         server: { type: 'string', description: 'SQL Server host (mssql only)' },
         encrypt: { type: 'boolean' },
         trustServerCertificate: { type: 'boolean' },
@@ -296,7 +280,6 @@ export const dbTools = [
     },
   },
 
-  // ── 3. db_getTableSchema ───────────────────────────────────────────────────
   {
     name: 'db_getTableSchema',
     description:
@@ -311,17 +294,13 @@ export const dbTools = [
           description: 'Database engine',
         },
         tableName: { type: 'string', description: 'Table name' },
-        // postgres
         connectionString: { type: 'string', description: 'PostgreSQL connection string (postgres only)' },
-        // mysql / mssql shared
         host: { type: 'string' },
         port: { type: 'number' },
         user: { type: 'string' },
         password: { type: 'string' },
         database: { type: 'string' },
-        // sqlite
         dbPath: { type: 'string', description: 'SQLite file path (sqlite only)' },
-        // mssql
         server: { type: 'string', description: 'SQL Server host (mssql only)' },
         schema: { type: 'string', description: 'Schema name (mssql, default: dbo)' },
         encrypt: { type: 'boolean' },
@@ -426,7 +405,6 @@ export const dbTools = [
     },
   },
 
-  // ── 4. db_backup ──────────────────────────────────────────────────────────
   {
     name: 'db_backup',
     description:
@@ -440,19 +418,16 @@ export const dbTools = [
           enum: ['postgres', 'mysql', 'mssql'],
           description: 'Database engine',
         },
-        // postgres
         connectionString: { type: 'string', description: 'PostgreSQL connection string (postgres only)' },
         outputPath: {
           type: 'string',
           description: 'Output file path for the backup dump (postgres/mysql)',
         },
-        // mysql
         host: { type: 'string' },
         port: { type: 'number' },
         user: { type: 'string' },
         password: { type: 'string' },
         database: { type: 'string' },
-        // mssql
         server: { type: 'string', description: 'SQL Server host (mssql only)' },
         backupPath: {
           type: 'string',
@@ -522,7 +497,6 @@ export const dbTools = [
     },
   },
 
-  // ── 5. db_restore ─────────────────────────────────────────────────────────
   {
     name: 'db_restore',
     description:
@@ -536,19 +510,16 @@ export const dbTools = [
           enum: ['postgres', 'mysql', 'mssql'],
           description: 'Database engine',
         },
-        // postgres
         connectionString: { type: 'string', description: 'PostgreSQL connection string (postgres only)' },
         inputPath: {
           type: 'string',
           description: 'Input dump file path to restore from (postgres/mysql)',
         },
-        // mysql
         host: { type: 'string' },
         port: { type: 'number' },
         user: { type: 'string' },
         password: { type: 'string' },
         database: { type: 'string' },
-        // mssql
         server: { type: 'string', description: 'SQL Server host (mssql only)' },
         backupPath: {
           type: 'string',
@@ -627,7 +598,6 @@ export const dbTools = [
     },
   },
 
-  // ── 6. db_closeConnections (unchanged) ────────────────────────────────────
   {
     name: 'db_closeConnections',
     description: 'Closes all database connection pools.',
@@ -644,7 +614,6 @@ export const dbTools = [
     },
   },
 
-  // ── 7. db_getPoolStats (unchanged) ────────────────────────────────────────
   {
     name: 'db_getPoolStats',
     description: 'Shows statistics of active database connection pools.',

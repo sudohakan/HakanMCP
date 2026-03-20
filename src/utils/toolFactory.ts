@@ -39,28 +39,22 @@ export function createTool<T = unknown>(options: ToolOptions<T>): ToolDefinition
       const toolLogger = logger.child({ tool: name, operation });
 
       try {
-        // Log tool invocation
         if (!skipLogging) {
           toolLogger.info('Tool invoked', { args });
         }
 
-        // Validate input with Zod
         const validatedArgs = inputSchema.parse(args) as T;
 
-        // Execute handler
         const result = await handler(validatedArgs);
 
-        // Log success
         if (!skipLogging) {
           toolLogger.info('Tool completed successfully');
         }
 
         return result;
       } catch (error: unknown) {
-        // Log error
         toolLogger.error('Tool execution failed', error, { args });
 
-        // Handle different error types
         if (error instanceof z.ZodError) {
           return createErrorResponse(
             `Validation error: ${error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
@@ -122,10 +116,8 @@ export function createToolWithJsonSchema<T = unknown>(
       try {
         toolLogger.debug('Tool invoked', { args });
 
-        // Validate with Zod if schema provided
         const validatedArgs = zodSchema ? zodSchema.parse(args) : args;
 
-        // Execute handler
         const result = await handler(validatedArgs as T);
 
         toolLogger.debug('Tool completed successfully');

@@ -101,25 +101,20 @@ function buildStepSection(step: MissionStepState, index: number): string {
  * @returns Full file path of the generated report
  */
 export async function generateReport(data: ReportData, outputDir: string): Promise<string> {
-  // 1. Ensure output directory exists
   await fs.promises.mkdir(outputDir, { recursive: true });
 
-  // 2. Generate Windows-safe filename (no colons or dots from ISO string)
   const timestamp = new Date(data.completedAt).toISOString().replace(/[:.]/g, '-');
   const filename = `mission-${timestamp}.md`;
   const filePath = path.join(outputDir, filename);
 
-  // 3. Compute summary metrics
   const totalSteps = data.tasks.length;
   const completedCount = data.tasks.filter((t) => t.status === 'completed').length;
   const failedCount = data.tasks.filter((t) => t.status === 'failed').length;
   const skippedCount = data.tasks.filter((t) => t.status === 'skipped').length;
   const totalRetries = data.tasks.reduce((sum, t) => sum + t.retryCount, 0);
 
-  // 4. Build step sections
   const stepSections = data.tasks.map((step, i) => buildStepSection(step, i)).join('\n\n');
 
-  // 5. Build learned patterns section
   let patternsSection: string;
   if (data.learnedPatterns.length > 0) {
     const patternRows = data.learnedPatterns
@@ -132,7 +127,6 @@ ${patternRows}`;
     patternsSection = 'No patterns learned during this mission.';
   }
 
-  // 6. Build full report
   const report = `# Mission Report: ${data.title}
 
 **Mission ID:** ${data.missionId}
@@ -165,7 +159,6 @@ ${patternsSection}
 *Report by HakanMCP Mission System*
 `;
 
-  // 7. Write report to file
   await fs.promises.writeFile(filePath, report, 'utf8');
 
   log.info('Mission report generated', { filePath, missionId: data.missionId });

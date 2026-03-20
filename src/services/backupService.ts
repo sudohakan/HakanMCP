@@ -5,30 +5,27 @@
 
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { exec, execFile, spawn } from 'node:child_process';
-import { processRegistry } from '../utils/processRegistry.js';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { logger } from '../utils/logger.js';
 import { config as appConfig } from '../config.js';
 import { assertPathSafe, escapeForPowerShellSingleQuoted } from '../utils/common.js';
 import { PROJECT_ROOT } from '../utils/projectRoot.js';
 
-const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
 export interface BackupConfig {
-  sourceDir: string; // Directory to backup
-  backupDir: string; // Where to store backups
-  maxBackups: number; // Max number of backups to keep (default: 48)
-  intervalHours: number; // Backup interval in hours (default: 1)
-  enabled: boolean; // Enable/disable backup
-  includeNodeModules: boolean; // Include node_modules in backups
-  compressionEnabled: boolean; // Enable compression for archives
-  retentionHours?: number; // Optional retention in hours for stats
-  minIntervalMinutes?: number; // Minimum interval between backups to prevent storms
-  /** Additional glob patterns to exclude from backups (plan §11 F). Merged with defaults. */
+  sourceDir: string;
+  backupDir: string;
+  maxBackups: number;
+  intervalHours: number;
+  enabled: boolean;
+  includeNodeModules: boolean;
+  compressionEnabled: boolean;
+  retentionHours?: number;
+  minIntervalMinutes?: number;
+  /** Additional glob patterns to exclude from backups. Merged with defaults. */
   excludes?: string[];
 }
 
@@ -55,7 +52,6 @@ export class BackupService {
   constructor(config: Partial<BackupConfig> = {}) {
     this.config = { ...DEFAULT_BACKUP_CONFIG, ...config };
     this.lockFilePath = path.join(this.config.backupDir, 'backup.lock');
-    // Ensure minIntervalMinutes is at least intervalHours (prevent sub-interval backups)
     this.config.minIntervalMinutes = Math.max(
       this.config.minIntervalMinutes ?? 30,
       this.config.intervalHours * 60,
@@ -84,25 +80,19 @@ export class BackupService {
       return;
     }
 
-    // Ensure backup directory exists
     this.ensureBackupDir();
 
-    // Role-based jitter (0-120 seconds) to prevent main/second instance overlap
     const role = (process.env.INSTANCE_ROLE || 'main').toLowerCase();
     const jitterSeconds = role === 'main' ? 0 : Math.floor(Math.random() * 120);
 
-    // Seed lastBackupTime from most recent backup on disk to prevent
-    // unnecessary backup on every restart
     this.seedLastBackupTimeFromDisk();
 
-    // Run initial backup with jitter (interval guard will skip if too recent)
     setTimeout(() => {
       this.createBackup().catch((error) => {
         logger.error('Initial backup failed', error);
       });
     }, jitterSeconds * 1000);
 
-    // Schedule hourly backups
     const intervalMs = Math.max(
       (this.config.minIntervalMinutes || 30) * 60 * 1000,
       this.config.intervalHours * 60 * 60 * 1000,
@@ -112,7 +102,6 @@ export class BackupService {
       this.createBackup().catch((error) => {
         logger.error('Scheduled backup failed', error);
       });
-      // Cleanup old logs on each backup cycle
       this.cleanupOldLogs().catch((error) => {
         logger.error('Log cleanup failed', error);
       });
@@ -134,7 +123,6 @@ export class BackupService {
     try {
       const backups = this.listBackups();
       if (backups.length > 0) {
-        // listBackups returns sorted oldest→newest, last element is most recent
         const mostRecent = backups[backups.length - 1];
         this.lastBackupTime = mostRecent.created;
         logger.debug('Seeded lastBackupTime from disk', {
@@ -143,7 +131,7 @@ export class BackupService {
         });
       }
     } catch {
-      // Ignore — will treat as no previous backup
+      /* ignore */
     }
   }
 
@@ -183,14 +171,11 @@ export class BackupService {
       .join('_')
       .substring(0, 19);
 
-    // Atomic write pattern: temporary partial file -> final zip
-    // Keep .zip extension on partial file for Windows Compress-Archive compatibility
     const backupFileName = `mcpserver_backup_${role}_${hostname}_${timestamp}.zip`;
     const partialFileName = `mcpserver_backup_${role}_${hostname}_${timestamp}.partial.zip`;
     const backupPath = path.join(this.config.backupDir, backupFileName);
     const partialPath = path.join(this.config.backupDir, partialFileName);
 
-    // Min interval guard (skip for manual/user-initiated runs)
     if (!options?.skipIntervalCheck && this.lastBackupTime) {
       const minIntervalMs = (this.config.minIntervalMinutes ?? 30) * 60 * 1000;
       if (Date.now() - this.lastBackupTime < minIntervalMs) {
@@ -203,13 +188,8 @@ export class BackupService {
       }
     }
 
-    // Clean stale lock before attempting acquire
     await this.cleanStaleLock();
-
-    // Ensure backup directory exists before lock (lock file lives inside it)
     this.ensureBackupDir();
-
-    // Atomic lock acquire — prevents race condition between concurrent calls
     const lockAcquired = await this.acquireLock();
     if (!lockAcquired) {
       logger.debug('Backup skipped: another backup process is running (lock found)', {
@@ -222,15 +202,11 @@ export class BackupService {
     try {
       logger.info('Creating backup', { backupPath });
 
-      // Create ZIP backup at partial path
       await this.createZipBackup(this.config.sourceDir, partialPath);
-
-      // Atomic rename
       await fsp.rename(partialPath, backupPath);
 
       this.lastBackupTime = Date.now();
 
-      // Get file size
       const stats = await fsp.stat(backupPath);
       const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
@@ -239,16 +215,12 @@ export class BackupService {
         sizeMB: `${sizeMB} MB`,
       });
 
-      // Cleanup old backups
       await this.cleanupOldBackups();
-
-      // Cleanup orphan/partial/0-byte files in backup dir
       await this.cleanupBackupDirOrphans();
 
       return backupPath;
     } catch (error) {
       logger.error('Backup creation failed', error);
-      // Cleanup partial file if failed
       if (fs.existsSync(partialPath)) {
         await fsp.unlink(partialPath).catch(() => {});
       }
@@ -263,14 +235,13 @@ export class BackupService {
       const stats = await fsp.stat(this.lockFilePath).catch(() => null);
       if (!stats) return;
 
-      // Stale lock cleanup (15 minutes)
       const isStale = Date.now() - stats.mtimeMs > 15 * 60 * 1000;
       if (isStale) {
         logger.info('Stale backup lock found, cleaning up', { lockFile: this.lockFilePath });
         await fsp.unlink(this.lockFilePath).catch(() => {});
       }
     } catch {
-      // Ignore
+      /* ignore */
     }
   }
 
@@ -281,11 +252,9 @@ export class BackupService {
       role: process.env.INSTANCE_ROLE || 'main',
     };
     try {
-      // wx flag: create exclusively — fails if file already exists (atomic)
       await fsp.writeFile(this.lockFilePath, JSON.stringify(lockInfo), { flag: 'wx' });
       return true;
     } catch {
-      // Lock already exists — another process won the race
       return false;
     }
   }
@@ -304,7 +273,6 @@ export class BackupService {
       excludes.push('*/node_modules/*');
     }
 
-    // Config-provided excludes (plan §11 F)
     const configExcludes = this.config.excludes;
     if (configExcludes?.length) {
       excludes.push(...configExcludes);
@@ -333,36 +301,27 @@ export class BackupService {
     const normalizedSource = path.resolve(sourceDir);
     const normalizedBackup = path.resolve(this.config.backupDir);
 
-    // Build exclusion matchers
     const excludePatterns: Array<(filePath: string, name: string) => boolean> = [];
 
-    // node_modules
     if (!this.config.includeNodeModules) {
       excludePatterns.push((fp) => fp.includes(`${path.sep}node_modules${path.sep}`) || fp.endsWith(`${path.sep}node_modules`));
     }
 
-    // Backup dir itself
     if (normalizedBackup.startsWith(normalizedSource)) {
       excludePatterns.push((fp) => fp.startsWith(normalizedBackup));
     }
 
-    // .git directory
     excludePatterns.push((fp, name) => name === '.git' && fs.statSync(fp).isDirectory());
-
-    // Secrets and logs
     excludePatterns.push((_fp, name) => name === '.env');
     excludePatterns.push((_fp, name) => name.endsWith('.key'));
     excludePatterns.push((_fp, name) => name.endsWith('.pem'));
     excludePatterns.push((fp) => fp.includes(`${path.sep}logs${path.sep}`));
 
-    // Windows reserved device names
     const reservedRe = /^(NUL|CON|PRN|AUX|COM[1-9]|LPT[1-9])(\.|$)/i;
     excludePatterns.push((_fp, name) => reservedRe.test(name));
 
-    // Config excludes
     for (const pat of this.config.excludes ?? []) {
       if (pat.includes('*')) {
-        // Simple glob: convert * to regex
         const re = new RegExp(pat.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*'), 'i');
         excludePatterns.push((fp) => re.test(fp));
       } else {
@@ -374,7 +333,6 @@ export class BackupService {
       return excludePatterns.some((fn) => fn(filePath, name));
     }
 
-    // Recursive walk and add files
     const walk = (dir: string): void => {
       let entries: fs.Dirent[];
       try {
@@ -392,7 +350,6 @@ export class BackupService {
           try {
             zip.addLocalFile(fullPath, path.dirname(relativePath));
           } catch {
-            // Skip files that can't be read (locked, permission denied)
             logger.debug('Skipped file during backup', { file: fullPath });
           }
         }
@@ -404,7 +361,7 @@ export class BackupService {
   }
 
   /**
-   * Cleans orphan, partial, and 0-byte files in backup directory (plan.md A).
+   * Cleans orphan, partial, and 0-byte files in backup directory.
    * Runs on each backup cycle to prevent disk clutter.
    */
   private async cleanupBackupDirOrphans(): Promise<void> {
@@ -430,7 +387,7 @@ export class BackupService {
         } else if (file.endsWith('.zip')) {
           shouldRemove = stats.size === 0;
         } else {
-          shouldRemove = !file.includes('.'); // extensionless orphan
+          shouldRemove = !file.includes('.');
         }
 
         if (shouldRemove) {
@@ -478,19 +435,16 @@ export class BackupService {
         return;
       }
 
-      // Sort by creation time (oldest first)
       backups.sort((a, b) => a.created - b.created);
 
-      // Find the last backup of each month (year-month key)
       const monthlyLast = new Map<string, string>();
       for (const b of backups) {
         const d = new Date(b.created);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        monthlyLast.set(key, b.path); // overwrites → last one in sorted order wins
+        monthlyLast.set(key, b.path);
       }
       const protectedPaths = new Set(monthlyLast.values());
 
-      // Calculate how many to delete
       const toDelete = backups.length - this.config.maxBackups;
       const candidates = backups.slice(0, toDelete);
       const deletable = candidates.filter((b) => !protectedPaths.has(b.path));
@@ -503,7 +457,6 @@ export class BackupService {
         maxBackups: this.config.maxBackups,
       });
 
-      // Delete old backups (skip monthly-protected ones)
       await Promise.all(
         deletable.map(async (backup) => {
           try {
@@ -523,7 +476,7 @@ export class BackupService {
   }
 
   /**
-   * Removes log files older than 3 days (plan §H: async I/O, no sync readdir/stat/unlink)
+   * Removes log files older than 3 days
    */
   async cleanupOldLogs(): Promise<void> {
     try {
@@ -588,7 +541,7 @@ export class BackupService {
       });
 
     const backups = await Promise.all(backupPromises);
-    return backups.sort((a, b) => b.created - a.created); // Newest first
+    return backups.sort((a, b) => b.created - a.created);
   }
 
   /**
@@ -613,20 +566,18 @@ export class BackupService {
         };
       });
 
-    // Also cleanup any orphan partial files
     files
       .filter((file) => file.endsWith('.partial') || file.includes('.partial.zip'))
       .forEach((file) => {
         const filePath = path.join(this.config.backupDir, file);
         const stats = fs.statSync(filePath);
-        // If older than 1 hour, it's an orphan
         if (Date.now() - stats.mtimeMs > 60 * 60 * 1000) {
           fs.unlinkSync(filePath);
           logger.info('Cleaned up orphan partial backup file', { file });
         }
       });
 
-    return backups.sort((a, b) => b.created - a.created); // Newest first
+    return backups.sort((a, b) => b.created - a.created);
   }
 
   /**
@@ -723,12 +674,10 @@ export class BackupService {
   }
 }
 
-// Singleton instance
 function buildBackupConfigFromAppConfig(): Partial<BackupConfig> {
   const backupCfg = appConfig.backup;
   const intervalHours = backupCfg?.intervalHours ?? DEFAULT_BACKUP_CONFIG.intervalHours;
 
-  // maxBackups priority: config.maxBackups > derived from retentionHours > default
   let maxBackups: number;
   if (backupCfg?.maxBackups) {
     maxBackups = backupCfg.maxBackups;

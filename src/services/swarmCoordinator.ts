@@ -1,5 +1,3 @@
-// SwarmCoordinator — multi-topology swarm orchestration service
-
 export type SwarmTopology = 'hierarchical' | 'mesh' | 'ring' | 'star';
 
 export interface SwarmAgent {
@@ -73,7 +71,7 @@ export class SwarmCoordinator {
     return this.getStatus();
   }
 
-  routeTask(task: TaskRequest): string | null {
+  routeTask(_task: TaskRequest): string | null {
     const available = this.state.agents.filter((a) => a.status !== 'failed');
     if (available.length === 0) return null;
 
@@ -93,7 +91,6 @@ export class SwarmCoordinator {
 
   reconfigure(newTopology: SwarmTopology): SwarmState {
     this.state.topology = newTopology;
-    // Reassign roles based on new topology
     this.assignRoles();
     this.electLeader();
     this.buildConnections();
@@ -128,19 +125,15 @@ export class SwarmCoordinator {
     };
   }
 
-  // --- private helpers ---
-
   private electLeader(): void {
     if (this.state.agents.length === 0) {
       this.state.leader = undefined;
       return;
     }
-    // If current leader still exists and is not failed, keep it
     if (this.state.leader) {
       const existing = this.state.agents.find((a) => a.id === this.state.leader);
       if (existing && existing.status !== 'failed') return;
     }
-    // Prefer queen, then lead, then first non-failed agent
     const queen = this.state.agents.find((a) => a.role === 'queen' && a.status !== 'failed');
     if (queen) {
       this.state.leader = queen.id;
@@ -170,13 +163,11 @@ export class SwarmCoordinator {
         agent.role = 'peer';
       }
     } else if (topology === 'star') {
-      // First agent or queen becomes hub, rest workers
       const hub = this.state.agents.find((a) => a.role === 'queen') ?? this.state.agents[0];
       for (const agent of this.state.agents) {
         agent.role = agent.id === hub?.id ? 'queen' : 'worker';
       }
     } else if (topology === 'hierarchical') {
-      // Keep queens, promote first to queen if none
       const hasQueen = this.state.agents.some((a) => a.role === 'queen');
       if (!hasQueen && this.state.agents.length > 0) {
         this.state.agents[0].role = 'queen';
@@ -212,19 +203,16 @@ export class SwarmCoordinator {
     const workers = agents.filter((a) => a.role === 'worker');
 
     if (leads.length > 0) {
-      // queen → leads
       for (const q of queens) {
         for (const l of leads) {
           this.state.connections.push({ from: q.id, to: l.id, type: 'leader' });
         }
       }
-      // leads → workers
       for (let i = 0; i < workers.length; i++) {
         const lead = leads[i % leads.length];
         this.state.connections.push({ from: lead.id, to: workers[i].id, type: 'worker' });
       }
     } else {
-      // queen → workers directly
       for (const q of queens) {
         for (const w of workers) {
           this.state.connections.push({ from: q.id, to: w.id, type: 'worker' });
@@ -260,7 +248,6 @@ export class SwarmCoordinator {
 
   private buildStar(): void {
     const agents = this.state.agents;
-    // Hub is the leader (queen or first agent)
     const hubId = this.state.leader ?? agents[0].id;
     for (const agent of agents) {
       if (agent.id !== hubId) {
@@ -274,7 +261,6 @@ export class SwarmCoordinator {
   }
 
   private routeHierarchical(available: SwarmAgent[]): string | null {
-    // Route to queen
     const queen = available.find((a) => a.role === 'queen');
     if (queen) return queen.id;
     const lead = available.find((a) => a.role === 'lead');
@@ -283,7 +269,6 @@ export class SwarmCoordinator {
   }
 
   private routeMesh(available: SwarmAgent[]): string | null {
-    // Least loaded
     let min = available[0];
     for (const a of available) {
       if (a.load < min.load) min = a;
@@ -291,11 +276,9 @@ export class SwarmCoordinator {
     return min.id;
   }
 
-  private routeRing(available: SwarmAgent[]): string | null {
-    // Round-robin across all agents (not just available — index based on full list)
+  private routeRing(_available: SwarmAgent[]): string | null {
     const allAgents = this.state.agents;
     if (allAgents.length === 0) return null;
-    // Find next available starting from current index
     for (let attempt = 0; attempt < allAgents.length; attempt++) {
       const idx = (this.roundRobinIndex + attempt) % allAgents.length;
       const agent = allAgents[idx];
@@ -308,7 +291,6 @@ export class SwarmCoordinator {
   }
 
   private routeStar(available: SwarmAgent[]): string | null {
-    // Route to hub (leader)
     if (this.state.leader) {
       const leader = available.find((a) => a.id === this.state.leader);
       if (leader) return leader.id;

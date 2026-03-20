@@ -10,9 +10,7 @@ import type { WatchEvent, WatchTrigger, TriggerResult } from './types.js';
 
 const log = logger.child({ component: 'triggerEngine' });
 
-/** Simple glob-like matching (supports * and **) */
 function matchesPattern(filePath: string, pattern: string): boolean {
-  // Convert glob to regex
   const regexStr = pattern
     .replace(/\\/g, '\\\\')
     .replace(/\./g, '\\.')
@@ -75,7 +73,6 @@ export class TriggerEngine {
   ): TriggerResult {
     const filePath = event.path;
 
-    // 1. Check glob patterns
     const patternMatch = trigger.patterns.some((p) =>
       matchesPattern(filePath, p),
     );
@@ -83,7 +80,6 @@ export class TriggerEngine {
       return { trigger, event, matched: false, reason: 'pattern_mismatch' };
     }
 
-    // 2. Check extension filter
     if (trigger.extensions && trigger.extensions.length > 0) {
       const ext = path.extname(filePath).toLowerCase();
       if (!trigger.extensions.includes(ext)) {
@@ -91,7 +87,6 @@ export class TriggerEngine {
       }
     }
 
-    // 3. Check directory exclusion
     if (trigger.excludeDirs && trigger.excludeDirs.length > 0) {
       const parts = filePath.split(/[/\\]/);
       const excluded = trigger.excludeDirs.some((dir) => parts.includes(dir));
@@ -100,7 +95,6 @@ export class TriggerEngine {
       }
     }
 
-    // 4. Check content pattern (only for add/change, not unlink)
     if (trigger.contentMatch && event.type !== 'unlink') {
       try {
         const fullPath = path.resolve(cwd, filePath);
@@ -136,14 +130,12 @@ export class TriggerEngine {
     const key = trigger.name;
     const debounceMs = trigger.debounceMs ?? this.defaultDebounceMs;
 
-    // Clear existing timer
     const existing = this.debounceTimers.get(key);
     if (existing) {
       clearTimeout(existing);
       log.debug('Trigger debounced', { trigger: key });
     }
 
-    // Set new timer
     const timer = setTimeout(() => {
       this.debounceTimers.delete(key);
       log.info('Trigger fired', { trigger: key, path: result.event.path });

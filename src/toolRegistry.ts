@@ -10,10 +10,6 @@
 
 import type { ToolDefinition, ToolHandler, ToolResponse } from './types/index.js';
 
-// ---------------------------------------------------------------------------
-// FeatureModule interface
-// ---------------------------------------------------------------------------
-
 export interface FeatureModule {
   /** Relative path to compiled module, e.g. './tools/db.js' */
   modulePath: string;
@@ -27,12 +23,7 @@ export interface FeatureModule {
   featureName: string;
 }
 
-// ---------------------------------------------------------------------------
-// FEATURE_TOOL_MAP — prefix -> module mapping
-// ---------------------------------------------------------------------------
-
 export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
-  // Core modules (no native deps, eager load)
   sys: { modulePath: './tools/system.js', exportName: 'systemTools', nativeDeps: [], core: true, featureName: '' },
   http: { modulePath: './tools/http.js', exportName: 'httpTools', nativeDeps: [], core: true, featureName: '' },
   env: { modulePath: './tools/env.js', exportName: 'envTools', nativeDeps: [], core: true, featureName: '' },
@@ -61,16 +52,9 @@ export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   aidefence: { modulePath: './tools/aiDefence.js', exportName: 'aiDefenceTools', nativeDeps: [], core: true, featureName: '' },
   guidance: { modulePath: './tools/guidance.js', exportName: 'guidanceTools', nativeDeps: [], core: true, featureName: '' },
 
-  // Feature modules (native deps, lazy load)
   db: { modulePath: './tools/db.js', exportName: 'dbTools', nativeDeps: ['pg', 'mysql2', 'mssql', 'sqlite3', 'sqlite'], core: false, featureName: 'database' },
   mongo: { modulePath: './tools/mongodb.js', exportName: 'mongoTools', nativeDeps: ['mongodb'], core: false, featureName: 'mongodb' },
 };
-
-// ---------------------------------------------------------------------------
-// FEATURE_TOOL_METADATA — placeholder metadata for feature tools
-// Used to register tools in tools/list when native deps are not installed.
-// Full metadata (description, inputSchema) is populated when modules load.
-// ---------------------------------------------------------------------------
 
 interface PlaceholderToolMeta {
   name: string;
@@ -103,10 +87,6 @@ export const FEATURE_TOOL_METADATA: Record<string, PlaceholderToolMeta[]> = {
   ],
 };
 
-// ---------------------------------------------------------------------------
-// detectFeatureFromToolName
-// ---------------------------------------------------------------------------
-
 /**
  * Extract the prefix from a tool name and check if it maps to a known module.
  * Returns the prefix string if found, or null if unknown.
@@ -117,10 +97,6 @@ export function detectFeatureFromToolName(toolName: string): string | null {
   const prefix = toolName.substring(0, underscoreIndex);
   return FEATURE_TOOL_MAP[prefix] ? prefix : null;
 }
-
-// ---------------------------------------------------------------------------
-// createPlaceholderHandler
-// ---------------------------------------------------------------------------
 
 /**
  * Creates a handler that returns an instructional error response
@@ -161,10 +137,6 @@ export function createPlaceholderHandler(
   };
 }
 
-// ---------------------------------------------------------------------------
-// ToolEntry — internal registry entry
-// ---------------------------------------------------------------------------
-
 interface ToolEntry {
   name: string;
   description: string;
@@ -174,10 +146,6 @@ interface ToolEntry {
   /** null means core tool (handler always set) */
   featurePrefix: string | null;
 }
-
-// ---------------------------------------------------------------------------
-// ToolRegistry class
-// ---------------------------------------------------------------------------
 
 export interface ToolRegistryOptions {
   /** Timeout in seconds for tool execution (applied as logging/timeout wrapper) */
@@ -270,12 +238,10 @@ export class ToolRegistry {
     const entry = this.tools.get(name);
     if (!entry) return null;
 
-    // Handler already loaded (core tools or previously loaded feature tool)
     if (entry.handler) return entry.handler;
 
-    // Lazy-load feature module
     const prefix = entry.featurePrefix;
-    if (!prefix) return null; // Shouldn't happen — core tools always have handlers
+    if (!prefix) return null;
 
     const featureModule = FEATURE_TOOL_MAP[prefix];
     if (!featureModule) return null;
@@ -283,7 +249,6 @@ export class ToolRegistry {
     try {
       const tools = await this.loadModule(prefix, featureModule);
 
-      // Update handlers for ALL tools from this module
       for (const tool of tools) {
         const existing = this.tools.get(tool.name);
         if (existing && !existing.handler) {
@@ -291,11 +256,9 @@ export class ToolRegistry {
         }
       }
 
-      // Return the requested tool's handler
       const updated = this.tools.get(name);
       return updated?.handler ?? null;
     } catch (error) {
-      // Dependency missing or import failed — return placeholder
       this.log?.warn('Failed to load feature module, using placeholder', {
         tool: name,
         prefix,
@@ -318,10 +281,6 @@ export class ToolRegistry {
     return this.tools.has(name);
   }
 
-  // -------------------------------------------------------------------------
-  // Private helpers
-  // -------------------------------------------------------------------------
-
   /**
    * Load a feature module, ensuring dependencies are available first.
    * Uses loadedModules cache to prevent concurrent double-imports.
@@ -333,7 +292,6 @@ export class ToolRegistry {
       const loadPromise = this.doLoadModule(featureModule);
       this.loadedModules.set(cacheKey, loadPromise);
 
-      // If loading fails, remove from cache so it can be retried
       loadPromise.catch(() => {
         this.loadedModules.delete(cacheKey);
       });
@@ -343,12 +301,9 @@ export class ToolRegistry {
   }
 
   private async doLoadModule(featureModule: FeatureModule): Promise<ToolDefinition[]> {
-    // Step 1: Check and install dependencies via dependencyResolver
-    // Import lazily to avoid circular deps and top-level config access
     const { ensureDependency } = await import('./dependencyResolver.js');
     await ensureDependency(featureModule.featureName);
 
-    // Step 2: Dynamic import of the tool module
     const mod = await import(featureModule.modulePath);
     const tools: ToolDefinition[] = mod[featureModule.exportName];
 

@@ -10,12 +10,9 @@ import { logger } from '../utils/logger.js';
 
 const execAsync = util.promisify(exec);
 const monitoringLogger = logger.child({ component: 'monitoring' });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- node-fetch vs fetch type mismatch
-const fetchImpl: typeof fetch = (globalThis as any).fetch ?? (nodeFetch as any);
-
-/**
- * Cross-Instance Monitoring Tools
- * Main ↔ Second instance follows each other and autocorrects*/
+const fetchImpl: typeof fetch =
+  (globalThis as unknown as { fetch?: typeof fetch }).fetch ??
+  (nodeFetch as unknown as typeof fetch);
 
 interface HealthCheckResult {
   healthy: boolean;
@@ -128,7 +125,6 @@ async function performHealthCheck(
           };
         }
       } else if (endpoint.type === 'mongodb') {
-        // Dynamic import to avoid hard dependency if not used
         const { MongoClient } = await import('mongodb');
         const mongoUrl = config.mongoDbUrl || 'mongodb://localhost:27017';
         const client = new MongoClient(mongoUrl, { serverSelectionTimeoutMS: 2000 });
@@ -186,9 +182,9 @@ async function performHealthCheck(
 }
 
 /**
- * Auto-heals a broken instance by copying from healthy instance
+ * Auto-heals a broken instance by copying from healthy instance.
  */
-async function autoHeal(
+async function _autoHeal(
   brokenInstance: string,
   healthyInstance: string,
   issueType: string,
@@ -202,7 +198,6 @@ async function autoHeal(
   const results: string[] = [];
 
   if (issueType === 'file' || issueType === 'all') {
-    // Copy critical files
     const criticalFiles = ['src/index.ts', 'config.yaml', 'package.json', 'tsconfig.json'];
 
     const copyPromises = criticalFiles.map(async (file) => {
@@ -231,11 +226,10 @@ async function autoHeal(
   }
 
   if (issueType === 'build' || issueType === 'all') {
-    // Trigger dependency install instead of build
     try {
       const { stderr } = await execAsync('npm install', {
         cwd: brokenInstance,
-        timeout: 120000, // 2 minutes
+        timeout: 120000,
       });
 
       if (stderr && !stderr.includes('WARN')) {
@@ -277,7 +271,6 @@ async function compareInstances(
       const file1 = path.join(instance1, file);
       const file2 = path.join(instance2, file);
 
-      // Check existence and stats concurrently
       const [stat1, stat2] = await Promise.all([
         fs.promises.stat(file1).catch(() => null),
         fs.promises.stat(file2).catch(() => null),
@@ -289,12 +282,10 @@ async function compareInstances(
       if (exists1 !== exists2) {
         return `${file}: exists in ${exists1 ? 'instance1' : 'instance2'} only`;
       } else if (stat1 && stat2) {
-        // Optimization: check size first
         if (stat1.size !== stat2.size) {
           return `${file}: content differs`;
         }
 
-        // Read content concurrently
         const [content1, content2] = await Promise.all([
           fs.promises.readFile(file1, 'utf8'),
           fs.promises.readFile(file2, 'utf8'),
@@ -316,11 +307,10 @@ async function compareInstances(
   };
 }
 
-/** Plan §4: Exclude patterns for deep scan (node_modules, dist, .git, logs) */
 const DEEP_EXCLUDE = ['node_modules', 'dist', '.git', 'logs'];
 
 /**
- * Plan §4: Compute SHA-256 hash map for directory (content + mtime).
+ * Compute SHA-256 hash map for directory (content + mtime).
  * Excludes node_modules, dist, .git, logs.
  */
 export async function computeDeepHash(dir: string): Promise<Map<string, string>> {
@@ -353,7 +343,7 @@ export async function computeDeepHash(dir: string): Promise<Map<string, string>>
           const hash = createHash('sha256').update(content).update(mtime).digest('hex');
           result.set(relPath, hash);
         } catch {
-          /* skip unreadable files */
+          /* empty */
         }
       }
     }
@@ -371,7 +361,7 @@ export interface DeepCompareResult {
 }
 
 /**
- * Plan §4: Compare two directory trees by deep hash. Returns added, removed, changed.
+ * Compare two directory trees by deep hash. Returns added, removed, changed.
  */
 export async function compareInstancesDeep(
   instance1: string,
@@ -384,12 +374,11 @@ export async function compareInstancesDeep(
 
   for (const [rel, hash] of map1) {
     const h2 = map2.get(rel);
-    if (!h2)
-      removed.push(rel); // in source only → copy to target
-    else if (h2 !== hash) changed.push(rel); // different → copy to target
+    if (!h2) removed.push(rel);
+    else if (h2 !== hash) changed.push(rel);
   }
   for (const [rel] of map2) {
-    if (!map1.has(rel)) added.push(rel); // in target only → delete from target
+    if (!map1.has(rel)) added.push(rel);
   }
 
   added.sort();
@@ -405,11 +394,11 @@ export async function compareInstancesDeep(
 }
 
 /**
- * Plan §4: Sync only differing files from source to target. Main is source of truth.
+ * Sync only differing files from source to target. Main is source of truth.
  */
 export async function syncInstancesDeep(source: string, target: string): Promise<string[]> {
   const diff = await compareInstancesDeep(source, target);
-  const toCopy = [...diff.changed, ...diff.removed]; // copy changed + source-only
+  const toCopy = [...diff.changed, ...diff.removed];
   const results: string[] = [];
 
   for (const rel of toCopy) {
@@ -430,7 +419,7 @@ export async function syncInstancesDeep(source: string, target: string): Promise
       await fs.promises.unlink(tgtPath);
       results.push(`✓ removed ${rel}`);
     } catch {
-      /* may not exist */
+      /* empty */
     }
   }
 
@@ -447,7 +436,6 @@ async function updateDependencies(
   const results: string[] = [];
 
   try {
-    // Check for outdated packages
     const { stdout: outdated } = await execAsync('npm outdated --json', {
       cwd: instancePath,
       timeout: 60000,
@@ -463,21 +451,19 @@ async function updateDependencies(
 
     results.push(`📦 Found ${packageCount} outdated packages`);
 
-    // Update packages
     results.push('\n**Updating packages...**');
     await execAsync('npm update', {
       cwd: instancePath,
-      timeout: 300000, // 5 minutes
+      timeout: 300000,
     });
 
     results.push('✓ Dependencies updated');
 
-    // Run tests
     results.push('\n**Running tests...**');
     try {
       await execAsync('npm test', {
         cwd: instancePath,
-        timeout: 180000, // 3 minutes
+        timeout: 180000,
       });
       results.push('✓ Tests passed');
     } catch {
@@ -485,7 +471,6 @@ async function updateDependencies(
       throw new Error('Tests failed after dependency update');
     }
 
-    // Commit if requested
     if (autoCommit) {
       results.push('\n**Committing changes...**');
       await execAsync(
@@ -514,14 +499,10 @@ async function selfRecover(instancePath: string, errorType: string): Promise<str
 
   if (errorType === 'port_conflict') {
     results.push('🔧 Detecting and resolving port conflict...');
-    // In a real scenario, you'd find and change the port
     results.push('⚠ Manual intervention required: Change port in config');
   } else if (errorType === 'out_of_memory') {
     results.push('🔧 Attempting memory recovery...');
-    // Clear caches, restart with more memory
-    // Clear caches, restart with more memory
     try {
-      // Just restart logic would go here, but since we don't build, we just log
       results.push('✓ Memory recovery attempted (restart required)');
     } catch (error: unknown) {
       results.push(
@@ -530,7 +511,6 @@ async function selfRecover(instancePath: string, errorType: string): Promise<str
     }
   } else if (errorType === 'db_connection_lost') {
     results.push('🔧 Attempting database reconnection...');
-    // Trigger database reconnection logic
     results.push('✓ Database reconnection attempted (check logs)');
   } else {
     results.push(`⚠ Unknown error type: ${errorType}`);
@@ -548,14 +528,12 @@ async function rollback(instancePath: string): Promise<string> {
   try {
     results.push('⏮️ Rolling back to last commit...');
 
-    // Check git status
     const { stdout: status } = await execAsync('git status --porcelain', {
       cwd: instancePath,
       timeout: 10000,
     });
 
     if (status.trim()) {
-      // Has uncommitted changes - reset them
       await execAsync('git reset --hard HEAD', {
         cwd: instancePath,
         timeout: 10000,
@@ -563,7 +541,6 @@ async function rollback(instancePath: string): Promise<string> {
       results.push('✓ Uncommitted changes discarded');
     }
 
-    // Get last commit
     const { stdout: lastCommit } = await execAsync('git log -1 --oneline', {
       cwd: instancePath,
       timeout: 10000,
@@ -571,15 +548,6 @@ async function rollback(instancePath: string): Promise<string> {
 
     results.push(`✓ Rolled back to: ${lastCommit.trim()}`);
 
-    // Reinstall dependencies
-    results.push('\n**Reinstalling dependencies...**');
-    await execAsync('npm ci', {
-      cwd: instancePath,
-      timeout: 120000,
-    });
-    results.push('✓ Dependencies reinstalled');
-
-    // Reinstall dependencies
     results.push('\n**Reinstalling dependencies...**');
     await execAsync('npm ci', {
       cwd: instancePath,
@@ -669,37 +637,15 @@ export const monitoringTools = [
       },
       required: ['brokenInstance', 'healthyInstance', 'issueType'],
     },
-    handler: async (args: unknown) => {
-      const { brokenInstance, healthyInstance, issueType } = z
-        .object({
-          brokenInstance: z.string(),
-          healthyInstance: z.string(),
-          issueType: z.enum(['file', 'build', 'all']),
-        })
-        .parse(args);
-
-      // autoHeal hardcoded to false (removed from config)
-      if (true) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: "❌ Auto-heal is disabled. In config.yaml make 'monitoring.autoHeal: true'.",
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      const result = await autoHeal(brokenInstance, healthyInstance, issueType);
-
+    handler: async (_args: unknown) => {
       return {
         content: [
           {
             type: 'text',
-            text: `# Auto-Heal Report\n\n**Broken:** ${brokenInstance}\n**Source:** ${healthyInstance}\n**Type:** ${issueType}\n\n## Results\n\n${result}`,
+            text: "❌ Auto-heal is disabled. In config.yaml make 'monitoring.autoHeal: true'.",
           },
         ],
+        isError: true,
       };
     },
   },
@@ -811,7 +757,6 @@ export const monitoringTools = [
 
       const syncResults: string[] = [];
 
-      // Directories to sync
       const syncDirs = ['src', 'tests', 'config', 'scripts'];
       const syncFiles = ['package.json', 'tsconfig.json', 'config.yaml', 'README.md', '.gitignore'];
 
@@ -819,18 +764,16 @@ export const monitoringTools = [
         syncDirs.push('node_modules');
       }
 
-      // Sync directories
       for (const dir of syncDirs) {
         try {
           const sourcePath = path.join(sourceInstance, dir);
           const targetPath = path.join(targetInstance, dir);
 
           if (fs.existsSync(sourcePath)) {
-            // Use robocopy on Windows for efficient directory sync
             await execAsync(
               `robocopy "${sourcePath}" "${targetPath}" /MIR /NFL /NDL /NJH /NJS /nc /ns /np`,
               { timeout: 60000 },
-            ).catch(() => ({ stdout: 'Robocopy completed' })); // Robocopy returns non-zero exit codes
+            ).catch(() => ({ stdout: 'Robocopy completed' }));
 
             syncResults.push(`✓ Synced directory: ${dir}`);
           } else {
@@ -843,7 +786,6 @@ export const monitoringTools = [
         }
       }
 
-      // Sync individual files
       const fileSyncResults = await Promise.all(
         syncFiles.map(async (file) => {
           try {
@@ -865,7 +807,6 @@ export const monitoringTools = [
       );
       syncResults.push(...fileSyncResults);
 
-      // Rebuild target instance - Skipped (using ts-node)
       syncResults.push('\n**Ready to start (no build needed)...**');
 
       return {

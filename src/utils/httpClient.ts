@@ -73,12 +73,10 @@ export class HttpClient {
       async () => {
         const response = await this.fetch(url, fetchOptions);
 
-        // Don't retry on client errors (4xx)
         if (response.status >= 400 && response.status < 500) {
           return response;
         }
 
-        // Retry on server errors (5xx)
         if (response.status >= 500) {
           throw new NetworkError(`HTTP ${response.status}: ${response.statusText}`, {
             url,
@@ -262,5 +260,4 @@ export class HttpClient {
   }
 }
 
-// Default singleton instance
 export const httpClient = new HttpClient();

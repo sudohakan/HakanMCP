@@ -19,7 +19,6 @@ export function createMCPBridge(connectionManager: MCPConnectionManager): MCPBri
         arguments: input,
       });
 
-      // MCP tool results come as { content: [{ type, text }] }
       const typed = result as { content?: Array<{ type?: string; text?: string }> };
       if (typed?.content && Array.isArray(typed.content)) {
         return typed.content

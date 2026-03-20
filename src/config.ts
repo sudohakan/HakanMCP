@@ -1,15 +1,8 @@
-/**
- * Configuration management for MCP server
- * Supports YAML file and environment variable overrides
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { config as dotenvConfig } from 'dotenv';
 import { PROJECT_ROOT } from './utils/projectRoot.js';
 
-// Load .env before any env access; .env overrides Windows/system env when key exists
-// Plan §2: .env missing → create from .env.example
 const envPath = path.join(PROJECT_ROOT, '.env');
 const envExamplePath = path.join(PROJECT_ROOT, '.env.example');
 if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
@@ -23,7 +16,6 @@ import { z } from 'zod';
 import { logger, LogLevel } from './utils/logger.js';
 import { deepMerge, atomicWriteFileSync } from './utils/common.js';
 
-// Auto-create config.yaml from config.yaml.example if missing
 const configYamlPath = path.join(PROJECT_ROOT, 'config.yaml');
 const configExamplePath = path.join(PROJECT_ROOT, 'config.yaml.example');
 if (!fs.existsSync(configYamlPath) && fs.existsSync(configExamplePath)) {
@@ -112,7 +104,6 @@ const configSchema = z.object({
       compressionEnabled: z.boolean(),
       includeNodeModules: z.boolean(),
       intervalHours: z.number().int().min(1).optional(),
-      /** Glob patterns to exclude from backups (plan §11 F). Merged with defaults: .env, *.key, *.pem, logs/* */
       excludes: z.array(z.string()).optional(),
     })
     .optional(),
@@ -123,9 +114,7 @@ const configSchema = z.object({
       geminiKeyEncrypted: z.string().optional(),
       encryptionPasswordEnv: z.string().optional(),
       localModels: z.boolean().optional(),
-      /** Enable agentic tool-use loop for ai_chat by default. When true, ai_chat uses Claude API with tool calling. */
       agenticEnabled: z.boolean().optional(),
-      /** Default max iterations for agentic loop (default: 10). */
       agenticMaxIterations: z.number().int().min(1).max(50).optional(),
     })
     .optional(),
@@ -139,9 +128,7 @@ const configSchema = z.object({
     .optional(),
   system: z
     .object({
-      /** Path allowlist for fs_* and sys_runCommand. When set, paths must resolve under one of these. Empty = allow all. */
       allowedPaths: z.array(z.string()).optional(),
-      /** Default handler timeout in seconds (plan §11 G). */
       commandTimeout: z.number().int().min(5).max(3600).optional(),
     })
     .optional(),
@@ -179,11 +166,10 @@ const DEFAULT_CONFIG: Config = {
   postmanDir: 'postman',
   cacheTtl: 300,
   logLevel: 'info',
-  // Provide a reachable default to keep validation happy in dev; override in config.yaml for real deployments.
   ollamaUrl: 'http://localhost:11434',
   ollamaModel: 'llama3',
-  ollamaTimeout: 36000000, // 10 hours default
-  ollamaUpgradeTolerance: 0.15, // ±15% param size tolerance for model upgrades
+  ollamaTimeout: 36000000,
+  ollamaUpgradeTolerance: 0.15,
   retryCount: 3,
   availableModels: [],
   aiProviders: {
@@ -206,7 +192,6 @@ const DEFAULT_CONFIG: Config = {
  * Resolves config file path relative to project root
  */
 function getConfigPath(): string {
-  // Try multiple locations
   const locations = [
     path.join(PROJECT_ROOT, 'config.yaml'),
     path.join(PROJECT_ROOT, '..', 'config.yaml'),
@@ -218,7 +203,7 @@ function getConfigPath(): string {
     }
   }
 
-  return locations[0]; // Default to cwd
+  return locations[0];
 }
 
 function formatZodIssues(issues: z.ZodIssue[]): string[] {
@@ -231,8 +216,6 @@ function formatZodIssues(issues: z.ZodIssue[]): string[] {
 function checkSecretFilePermissions(targetPath: string): void {
   try {
     if (!fs.existsSync(targetPath)) return;
-    // Windows ACLs and Docker bind mounts can report permissive mode bits.
-    // Skip mode-based checks in these environments to avoid false positives.
     if (process.platform === 'win32' || process.env.DOCKER_CONTAINER === 'true') return;
 
     const stat = fs.statSync(targetPath);
@@ -317,7 +300,6 @@ function applyRuntimeEnvOverrides(
     cfg.monitoring.peerInstance = peerOverride;
   }
 
-  // Resolve peerInstance relative to PROJECT_ROOT so it stays fixed regardless of cwd
   if (cfg.monitoring?.peerInstance && !path.isAbsolute(cfg.monitoring.peerInstance)) {
     cfg.monitoring.peerInstance = path.resolve(PROJECT_ROOT, cfg.monitoring.peerInstance);
   }
@@ -332,7 +314,6 @@ function applyRuntimeEnvOverrides(
     cfg.selfImprovement.enabled = selfImprovementEnabledOverride;
   }
 
-  // Plan §2: Env overrides for config.yaml (LOG_LEVEL, CACHE_TTL, GITBOOK_URL)
   const logLevelEnv = envValues.HAKANMCP_LOG_LEVEL || envValues.LOG_LEVEL;
   if (
     logLevelEnv &&
@@ -352,8 +333,7 @@ function applyRuntimeEnvOverrides(
     try {
       new URL(gitbookUrlEnv);
       cfg.gitbookUrl = gitbookUrlEnv;
-    } catch {
-      // Invalid URL, skip override
+    } catch { /* empty */
     }
   }
 
@@ -467,7 +447,6 @@ function loadConfig(envValues: Record<string, string | undefined>): Config {
   return validatedConfig;
 }
 
-// Initialize config with fail-fast validation
 const envValues = loadEnvironment();
 export const config = loadConfig(envValues);
 
@@ -523,8 +502,8 @@ export function updateConfig(updates: Partial<Config>): void {
 }
 
 export interface ConfigValidationOptions {
-  strict?: boolean; // Throw on validation error
-  warnOnly?: boolean; // Only log warnings
+  strict?: boolean;
+  warnOnly?: boolean;
   /** When provided, validates env requirements (GITHUB_TOKEN, AI_KEY_PASSWORD) */
   env?: Record<string, string | undefined>;
 }
@@ -535,7 +514,6 @@ export interface ConfigValidationResult {
   suggestions: string[];
 }
 
-/** Plan §2: Dangerous value checks with auto-fix suggestions */
 function validateDangerousValues(cfg: Config): ConfigValidationResult {
   const critical: string[] = [];
   const suggestions: string[] = [];
@@ -562,7 +540,7 @@ function validateDangerousValues(cfg: Config): ConfigValidationResult {
 }
 
 /**
- * Validates configuration values (Plan §2: extended with critical keys, dangerous values, auto-fix)
+ * Validates configuration values.
  */
 export function validateConfig(
   cfg: Config,
@@ -626,7 +604,6 @@ export function validateEnvironmentConfig(
   return validateEnvironmentRequirements(cfg, env, options);
 }
 
-// Validate config on load with environment requirements
 try {
   validateConfig(config, {
     strict: true,
@@ -648,7 +625,6 @@ logger.info('Configuration loaded', {
   cacheTtl: config.cacheTtl,
 });
 
-// Apply log level from config if no environment override
 if (!process.env.LOG_LEVEL && config.logLevel) {
   const desiredLevel = config.logLevel.toUpperCase();
   if (desiredLevel in LogLevel) {

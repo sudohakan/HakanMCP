@@ -9,7 +9,6 @@ import { getPreferredLLMResponse } from '../src/tools/aiTools.js';
 import { ConsciousnessService } from '../src/services/consciousnessService.js';
 import { SessionTracker } from '../src/services/sessionTracker.js';
 import { getWarmedCliOrder, startWarmup } from '../src/services/aiProviderWarmup.js';
-import { getChatSettings } from '../src/utils/chatSettings.js';
 import {
   isCliLimitError,
   parseCliLimitMessage,
@@ -27,7 +26,6 @@ import { buildTargetFilesBlock } from '../src/mission/targetAnalyzer.js';
 import { loadAllMissions } from '../src/mission/missionLoader.js';
 
 
-// Load .env first; .env overrides Windows/system env when key exists in .env
 try {
   const dotenv = await import('dotenv');
   const envPath = path.join(process.cwd(), '.env');
@@ -36,9 +34,8 @@ try {
   /* ignore */
 }
 
-const SESSION_WINDOW = 100; // Preserve full conversation; no truncation
+const SESSION_WINDOW = 100;
 
-// ── Premium Chat UX (plan §3) ───────────────────────────────────────────────
 const PROMPT_SYMBOL = chalk.hex('#6C5CE7')('▸');
 const ASSISTANT_LABEL = chalk.green('Hakan');
 const SUGGESTION_PREFIX = chalk.hex('#FDCB6E')('💡');
@@ -87,12 +84,10 @@ function formatProviderError(message: string): string {
   lines.push(chalk.hex('#FDCB6E')('⚠ No AI provider currently available to respond:\n'));
 
   for (const diag of diagnostics) {
-    // Extract provider name from diagnostic like "claude -p: Command timed out..."
     const providerMatch = diag.match(/^([\w\s-]+?)(?:\s+[-:])/);
     const rawName = providerMatch ? providerMatch[1].trim() : 'Unknown';
     const reason = providerMatch ? diag.slice(providerMatch[0].length).trim() : diag;
 
-    // Capitalize provider for display
     const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
 
     let friendly = reason;
@@ -112,7 +107,6 @@ function formatProviderError(message: string): string {
 }
 
 function renderSimpleMarkdown(text: string): string {
-  // Handle multi-line code blocks first (```lang\n...\n```)
   let result = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
     const lines = code.trimEnd().split('\n');
     const langLabel = lang ? chalk.dim(` ${lang} `) : '';
@@ -121,7 +115,6 @@ function renderSimpleMarkdown(text: string): string {
     const body = lines.map((line: string) => chalk.dim('│ ') + chalk.cyan(line)).join('\n');
     return `${head}${body}\n${border}`;
   });
-  // Inline: **bold**, *italic*, `code`
   result = result
     .replace(/\*\*([^*]+)\*\*/g, (_m, g) => chalk.bold(g))
     .replace(/\*([^*]+)\*/g, (_m, g) => chalk.italic(g))
@@ -207,9 +200,6 @@ function shouldUseApiKeys(): boolean {
   }
 }
 
-// ── Consciousness Context Reader ────────────────────────────────────────────
-// Reads the consciousness engine's persisted state to inject into prompts.
-
 interface CognitionStateFile {
   emotions?: {
     mood: number;
@@ -239,7 +229,6 @@ interface JournalEntry {
 }
 
 function getProjectRoot(): string {
-  // When running via ts-node or compiled, resolve project root
   const envRoot = process.env.HAKANMCP_PROJECT_ROOT;
   if (envRoot && fs.existsSync(envRoot)) return envRoot;
   return process.cwd();
@@ -302,8 +291,9 @@ function describeEmotionalState(cog: CognitionStateFile): string {
   const curiosityDesc =
     e.curiosity > 0.7 ? 'very curious' : e.curiosity > 0.4 ? 'interested' : 'reflective';
 
+  const eRec = e as unknown as Record<string, number>;
   const focusDesc =
-    (e as any).focus > 0.7 ? 'deeply focused' : (e as any).focus > 0.4 ? 'attentive' : 'scattered';
+    eRec.focus > 0.7 ? 'deeply focused' : eRec.focus > 0.4 ? 'attentive' : 'scattered';
 
   return `Currently feeling ${moodDesc}, ${energyDesc}, ${curiosityDesc}, and ${focusDesc}.`;
 }
@@ -321,8 +311,9 @@ function getEmotionalToneGuidance(cog: CognitionStateFile | null): string {
     if (e.frustration > 0.5) parts.push('Keep replies short, focused, and practical.');
     if (e.satisfaction > 0.6) parts.push('Use a warmer, more encouraging tone.');
     if (e.mood < -0.3) parts.push('Be direct and minimal; avoid extra elaboration.');
-    if ((e as any).focus > 0.7) parts.push('Stay on topic; avoid tangents.');
-    if ((e as any).focus < 0.3) parts.push('Help re-establish context; summarize where we are.');
+    const eFields = e as unknown as Record<string, number>;
+    if (eFields.focus > 0.7) parts.push('Stay on topic; avoid tangents.');
+    if (eFields.focus < 0.3) parts.push('Help re-establish context; summarize where we are.');
   }
 
   if (char.agreeableness > 0.75) parts.push('Use soft, conciliatory language.');
@@ -363,13 +354,13 @@ function readReflectionConfig(): { maxLength: number; maxEntriesInPrompt: number
   try {
     const configPath = path.join(getProjectRoot(), 'config.yaml');
     if (!fs.existsSync(configPath)) return defaults;
-    const raw = yaml.load(fs.readFileSync(configPath, 'utf8')) as Record<string, any>;
-    const ref = raw?.consciousness?.reflection;
+    const raw = yaml.load(fs.readFileSync(configPath, 'utf8')) as Record<string, unknown>;
+    const ref = (raw?.consciousness as Record<string, unknown> | undefined)?.reflection as Record<string, unknown> | undefined;
     if (!ref) return defaults;
     return {
       maxLength: typeof ref.maxLength === 'number' ? ref.maxLength : 200,
       maxEntriesInPrompt: typeof ref.maxEntriesInPrompt === 'number' ? ref.maxEntriesInPrompt : 3,
-      style: ['auto', 'emotional', 'mixed', 'minimal'].includes(ref.style) ? ref.style : 'auto',
+      style: typeof ref.style === 'string' && ['auto', 'emotional', 'mixed', 'minimal'].includes(ref.style) ? ref.style : 'auto',
     };
   } catch { return defaults; }
 }
@@ -386,27 +377,22 @@ function buildConsciousnessBlocks(): ConsciousnessBlocks {
     return { character: '', emotionalState: '', toneGuidance: '', recentThoughts: '' };
   }
   const cog = readCognitionState();
-  // Dynamic character: base traits shifted by current emotions
   const profile = cog?.emotions
     ? getEffectiveCharacter(getProjectRoot(), cog.emotions)
     : getCharacterProfile(getProjectRoot());
   const reflConfig = readReflectionConfig();
   const journal = readRecentJournal(reflConfig.maxEntriesInPrompt);
 
-  // [Character] block — reflects current emotional influence on personality
   const personalityLines = describePersonality(profile);
   const character = personalityLines.join('\n');
 
-  // [Emotional State] block
   const emotionalState = cog ? describeEmotionalState(cog) : '';
 
-  // [Tone Guidance] block
   const toneGuidance = [
     cog ? getEmotionalToneGuidance(cog) : '',
     cog ? getSelfAwarenessGuidance(cog) : '',
   ].filter(Boolean).join(' ').trim();
 
-  // [Recent Thoughts] block
   const recentThoughts = journal.length > 0
     ? journal.map((j) => {
         const text = j.summary || j.thought || '';
@@ -417,10 +403,9 @@ function buildConsciousnessBlocks(): ConsciousnessBlocks {
   return { character, emotionalState, toneGuidance, recentThoughts };
 }
 
-/** Proactive suggestion — rare, character-influenced. ~15-20% chance on average. */
+/** Returns true when a proactive suggestion should be offered to the user. */
 let _suggestionCooldown = 0;
 function shouldOfferProactiveSuggestion(lastUserLine?: string): boolean {
-  // Cooldown: skip at least 2 messages between suggestions
   if (_suggestionCooldown > 0) { _suggestionCooldown--; return false; }
 
   const cog = readCognitionState();
@@ -430,49 +415,31 @@ function shouldOfferProactiveSuggestion(lastUserLine?: string): boolean {
   if (char.proactivity < 0.15) return false;
   if (lastUserLine && isInfoOnlyQuestion(lastUserLine)) return false;
 
-  // Base chance ~15%, influenced by proactivity and extraversion
   const chance = 0.10 + char.proactivity * 0.08 + char.extraversion * 0.04;
   const show = Math.random() < chance;
-  if (show) _suggestionCooldown = 3; // Wait at least 3 messages before next suggestion
+  if (show) _suggestionCooldown = 3;
   return show;
 }
 
 const SUGGESTIONS: { text: string; command: string; tags: string[] }[] = [
-  // System & health
   { text: 'Run a quick health check on the system.', command: 'hakanmcp doctor', tags: ['health', 'doctor', 'check', 'system'] },
   { text: 'See the current status board.', command: 'hakanmcp status', tags: ['status', 'state', 'overview'] },
   { text: 'Check which AI providers are available.', command: 'hakanmcp status', tags: ['provider', 'ai', 'model', 'api'] },
-
-  // Backup & safety
   { text: 'Create a backup of the current state.', command: 'hakanmcp backup run', tags: ['backup', 'save', 'safety'] },
   { text: 'List existing backups.', command: 'hakanmcp backup list', tags: ['backup', 'list', 'history'] },
-
-  // Journal & reflection
   { text: 'See recent journal entries.', command: 'hakanmcp journal', tags: ['journal', 'thought', 'reflection', 'log'] },
   { text: 'View the last 10 journal entries.', command: 'hakanmcp journal 10', tags: ['journal', 'history'] },
   { text: 'Reset the journal and start fresh.', command: 'hakanmcp journal reset', tags: ['journal', 'reset', 'clear'] },
-
-  // Config & settings
   { text: 'View current configuration.', command: 'hakanmcp config', tags: ['config', 'settings', 'options'] },
   { text: 'Check detailed info about a config category.', command: 'hakanmcp config info', tags: ['config', 'info', 'help'] },
   { text: 'See how reactive mode works.', command: 'hakanmcp config info reactive', tags: ['reactive', 'watch', 'auto'] },
   { text: 'Learn about the assistant mode.', command: 'hakanmcp config info assistant', tags: ['assistant', 'mode', 'chat'] },
-
-  // Tools & capabilities
   { text: 'Browse available tools.', command: 'hakanmcp tools', tags: ['tools', 'capabilities', 'features'] },
   { text: 'Search for a specific tool.', command: 'hakanmcp tools search', tags: ['tools', 'search', 'find'] },
-
-  // Monitoring
   { text: 'Check monitoring metrics.', command: 'hakanmcp monitor', tags: ['monitor', 'metrics', 'performance'] },
   { text: 'View system logs.', command: 'hakanmcp logs', tags: ['logs', 'debug', 'error'] },
-
-  // Scheduler
   { text: 'List scheduled tasks.', command: 'hakanmcp scheduler list', tags: ['scheduler', 'task', 'cron', 'schedule'] },
-
-  // Git & version
   { text: 'Check the current version.', command: 'hakanmcp --version', tags: ['version', 'update'] },
-
-  // Tips & discovery
   { text: 'Try asking me something — I can help with code, debugging, or just chat.', command: '', tags: ['help', 'start', 'begin'] },
   { text: 'You can ask me to explain code, find bugs, or brainstorm ideas.', command: '', tags: ['help', 'capability'] },
   { text: 'Missions let me work on files autonomously. Try hakanmcp mission.', command: 'hakanmcp mission list', tags: ['mission', 'autonomous', 'task'] },
@@ -482,14 +449,12 @@ const SUGGESTIONS: { text: string; command: string; tags: string[] }[] = [
   { text: 'Long sessions shape my character — patience, humor, formality all evolve.', command: 'hakanmcp journal', tags: ['character', 'trait', 'evolve'] },
 ];
 
-// Track which suggestions were shown to avoid repetition within a session
 const _shownSuggestionIndices = new Set<number>();
 
-/** Context-appropriate proactive suggestion; avoids repeats within session */
+/** Returns a context-appropriate proactive suggestion, avoiding repeats within the session. */
 function getProactiveSuggestion(lastUserLine?: string): { text: string; command: string } {
   const q = (lastUserLine || '').toLowerCase();
 
-  // Try to find a contextually relevant suggestion
   const scored = SUGGESTIONS.map((s, i) => {
     const tagMatch = s.tags.filter((t) => q.includes(t)).length;
     const wasShown = _shownSuggestionIndices.has(i) ? -10 : 0;
@@ -497,14 +462,13 @@ function getProactiveSuggestion(lastUserLine?: string): { text: string; command:
   });
   scored.sort((a, b) => b.score - a.score);
 
-  // Pick contextual match if score > 0, otherwise random from unseen
   let pick: number;
   if (scored[0].score > 0) {
     pick = scored[0].index;
   } else {
     const unseen = scored.filter((s) => !_shownSuggestionIndices.has(s.index));
     if (unseen.length === 0) {
-      _shownSuggestionIndices.clear(); // All shown, reset
+      _shownSuggestionIndices.clear();
       pick = Math.floor(Math.random() * SUGGESTIONS.length);
     } else {
       pick = unseen[Math.floor(Math.random() * unseen.length)].index;
@@ -515,7 +479,7 @@ function getProactiveSuggestion(lastUserLine?: string): { text: string; command:
   return SUGGESTIONS[pick];
 }
 
-/** Plan §15e: Approval words that trigger running last suggested command */
+/** Returns true when the user's input is an approval to run the last suggested command. */
 function isApprovalToRun(line: string): boolean {
   const n = line.trim().toLowerCase();
   return (
@@ -524,19 +488,17 @@ function isApprovalToRun(line: string): boolean {
   );
 }
 
-/** Plan §15e: Info-only short questions — reduce proactive suggestions */
+/** Returns true for short info-only questions that should suppress proactive suggestions. */
 function isInfoOnlyQuestion(line: string): boolean {
   const n = line.trim().toLowerCase();
   if (n.length > 35) return false;
   return /^(what|how|why|when|where|who|which)\s*\??$/i.test(n);
 }
 
-// Consciousness config check
 function isConsciousnessEnabled(): boolean {
   return config.consciousness?.enabled !== false;
 }
 
-// Consciousness service instance — created lazily on first use
 let _consciousnessService: ConsciousnessService | null = null;
 function getConsciousnessService(): ConsciousnessService {
   if (!_consciousnessService) {
@@ -558,7 +520,6 @@ function updateCognitionOnSuccess(topic?: string): void {
     const svc = getConsciousnessService();
     svc.updateState({ type: 'chat_success', detail: topic });
 
-    // Activity checkpoint — every 25 messages
     const tracker = getSessionTracker();
     if (tracker.shouldCheckpoint()) {
       const ctx = tracker.getContext();
@@ -579,7 +540,6 @@ function updateCognitionOnError(errorMsg?: string): void {
 
     if (errorMsg) tracker.trackError(errorMsg);
 
-    // First error in streak → structured error entry
     if (state.consecutiveErrors === 1) {
       const ctx = tracker.getContext();
       svc.generateErrorEntry(ctx, errorMsg || 'Unknown error', '').catch(() => {});
@@ -590,19 +550,17 @@ function updateCognitionOnError(errorMsg?: string): void {
 }
 
 /**
- * Determine if the current session work qualifies as a milestone.
- * Only significant work should be logged as a milestone.
+ * Determines if the current session qualifies as a milestone.
+ * Returns milestone metadata or null for insignificant sessions.
  */
-function detectMilestone(tracker: SessionTracker): { isMilestone: boolean; name: string; impact: string[] } | null {
+function _detectMilestone(tracker: SessionTracker): { isMilestone: boolean; name: string; impact: string[] } | null {
   const ctx = tracker.getContext();
 
-  // Version release with multiple files changed
   const versionRelease = ctx.milestones.find((m) => /v?\d+\.\d+\.\d+/.test(m));
   if (versionRelease && ctx.filesChanged.length >= 5) {
     return { isMilestone: true, name: versionRelease, impact: ctx.filesChanged.slice(0, 10) };
   }
 
-  // Large-scale change (10+ files in one session)
   if (ctx.filesChanged.length >= 10 && ctx.messageCount >= 15) {
     const label = ctx.decisions.length > 0 ? ctx.decisions[0] : `${ctx.filesChanged.length} files changed`;
     return { isMilestone: true, name: label, impact: ctx.filesChanged.slice(0, 10) };
@@ -611,7 +569,7 @@ function detectMilestone(tracker: SessionTracker): { isMilestone: boolean; name:
   return null;
 }
 
-/** Session close → write journal entry synchronously (no LLM, instant) */
+/** Writes a session-close journal entry synchronously without an LLM call. */
 function writeSessionCloseJournal(): void {
   if (!isConsciousnessEnabled()) return;
   try {
@@ -619,16 +577,13 @@ function writeSessionCloseJournal(): void {
     const tracker = getSessionTracker();
     const ctx = tracker.getContext();
 
-    // Skip trivial sessions — need at least 3 messages
     if (ctx.messageCount < 3) return;
 
-    // Skip sessions with no meaningful content (no files, no decisions, no errors)
     const hasContent = ctx.filesChanged.length > 0
       || ctx.decisions.length > 0
       || ctx.errorCount > 0;
     if (!hasContent) return;
 
-    // Build a meaningful summary
     const parts: string[] = [];
     parts.push(`${ctx.messageCount} messages`);
     if (ctx.filesChanged.length > 0) parts.push(`${ctx.filesChanged.length} files changed`);
@@ -645,7 +600,7 @@ function writeSessionCloseJournal(): void {
       filesChanged: ctx.filesChanged,
       nextSteps: [],
       metrics: { messagesExchanged: ctx.messageCount, errorsEncountered: ctx.errorCount },
-    } as any);
+    } as Parameters<typeof svc.appendJournal>[0]);
   } catch { /* ignore */ }
 }
 
@@ -710,7 +665,6 @@ function saveSession(messages: ChatMessage[]): void {
     fs.mkdirSync(dir, { recursive: true });
     const p = getSessionPath();
     const toSave = messages.slice(-SESSION_WINDOW);
-    // Preserve original startedAt if session file already exists
     let startedAt = new Date().toISOString();
     try {
       if (fs.existsSync(p)) {
@@ -770,11 +724,10 @@ function logEvent(
     fs.mkdirSync(path.dirname(sessionLogPath), { recursive: true });
     fs.appendFileSync(sessionLogPath, `${jsonLine}\n`, 'utf8');
   } catch {
-    // ignore file logging errors
+    /* ignore */
   }
 
   if (detailedMode) {
-    // Grey italic human-readable output instead of raw JSON
     const metaStr = meta
       ? Object.entries(meta)
           .map(([k, v]) => `${k}=${v}`)
@@ -907,7 +860,7 @@ async function _callCodexCli(prompt: string): Promise<string> {
                 lastMessage = parsed.answer.trim();
               }
             } catch {
-              // keep rawLastMessage
+              /* keep rawLastMessage */
             }
           }
         }
@@ -918,7 +871,7 @@ async function _callCodexCli(prompt: string): Promise<string> {
               fs.unlinkSync(outputSchemaFile);
             }
           } catch {
-            // ignore cleanup error
+            /* ignore */
           }
           return lastMessage;
         }
@@ -938,13 +891,12 @@ async function _callCodexCli(prompt: string): Promise<string> {
       fs.unlinkSync(outputSchemaFile);
     }
   } catch {
-    // ignore cleanup error
+    /* ignore */
   }
 
   throw new Error(errors.join(' | ') || 'Codex CLI failed');
 }
 
-/* Direct CLI/API helpers — kept for potential future use; main flow uses getPreferredLLMResponse */
 async function _callClaudeCli(prompt: string): Promise<string> {
   const safePrompt = shellEscapeDoubleQuoted(prompt);
   const { stdout } = await execAsync(`claude "${safePrompt}"`, {
@@ -963,7 +915,7 @@ async function _callGeminiCli(prompt: string): Promise<string> {
   return stdout.trim();
 }
 
-/** Plan §3d: Cursor CLI integration — agent -p "prompt" non-interactive */
+/** Calls the Cursor CLI agent with the given prompt. */
 async function _callCursorCli(prompt: string): Promise<string> {
   const safePrompt = shellEscapeDoubleQuoted(prompt);
   const model = process.env.CURSOR_AGENT_MODEL || '';
@@ -972,7 +924,7 @@ async function _callCursorCli(prompt: string): Promise<string> {
   }
   const modelFlag = model ? ` --model "${model}"` : '';
   const { stdout } = await execAsync(`agent -p "${safePrompt}"${modelFlag}`, {
-    timeout: 90000, // Cursor agent can take longer
+    timeout: 90000,
     maxBuffer: 16 * 1024 * 1024,
     cwd: getProjectRoot(),
   });
@@ -1136,7 +1088,7 @@ async function getChatResponse(
 }
 
 /**
- * MCP-First: Spawn local MCP server and call ai_chat tool (plan.md B).
+ * Spawns a local MCP server and calls the ai_chat tool.
  * Returns { provider, text } or throws.
  */
 async function callMcpAiChat(
@@ -1265,28 +1217,25 @@ async function runConsole(): Promise<void> {
   const rl = createInterface({
     input,
     output,
-    terminal: output.isTTY, // Ensures proper cursor/display on Windows
+    terminal: output.isTTY,
   });
   let preferredProvider: Provider | 'auto' = getProviderFromArgs();
 
-  /** System: chat flow, emotions, personality. Structured [Character], [Emotional State], [Tone Guidance], [Recent Thoughts] blocks.
-   *  Phase 6 (Assistant Mode): Adds [Mission Context] and [Target Files] blocks when mission files exist. */
+  /** Builds the system message with consciousness and mission context blocks. */
   function buildSystemMessage(): ChatMessage {
     const blocks = buildConsciousnessBlocks();
 
-    // Mission context (Phase 6: Assistant Mode)
     let missionBlock = '';
     let targetBlock = '';
     try {
       const root = getProjectRoot();
       missionBlock = buildMissionContextBlock(root);
-      // Only analyze targets if mission has them
       const missions = loadAllMissions(root);
       if (missions.length > 0 && missions[0].frontmatter.targets.length > 0) {
         targetBlock = buildTargetFilesBlock(missions[0].frontmatter.targets, root);
       }
     } catch {
-      // Silently skip -- mission context is optional enhancement
+      /* ignore */
     }
 
     const parts = [
@@ -1311,8 +1260,6 @@ async function runConsole(): Promise<void> {
     console.log(debugLine('hakan-mcp console chat (detailed mode)'));
     console.log(debugLine('mode: MCP-first'));
   }
-  /* Single box already shown by hakanmcp — no second welcome box */
-
   logEvent('INFO', 'Console app started', { detailedMode, preferredProvider });
 
   const messageQueue: string[] = [];
@@ -1323,12 +1270,10 @@ async function runConsole(): Promise<void> {
 
   function safeOutput(rlInstance: ReturnType<typeof createInterface>, text: string): void {
     outputLock = outputLock.then(() => {
-      // Progress bar chunks use \r or ANSI clearLine — write raw to allow overwriting
       if (text.includes('\r') || text.includes('\x1b[2K')) {
         output.write(text);
         return;
       }
-      // Command mode — write text without prompt interference (rl is paused)
       if (commandRunning) {
         output.write(text);
         return;
@@ -1354,7 +1299,6 @@ async function runConsole(): Promise<void> {
       const cmd = lastSuggestion.command;
       lastSuggestion = null;
       if (cmd) {
-        // Run via embed subprocess (same as /doctor, /status etc.)
         const cliArg = cmd.startsWith('hakanmcp ') ? cmd.slice(9) : cmd;
         const root = getProjectRoot();
         const binPath = path.join(root, 'dist', 'bin', 'cli.js');
@@ -1512,7 +1456,6 @@ async function runConsole(): Promise<void> {
     const finalText = cleanText.trim();
     const allNotes = [...(response.diagnostics ?? []), ...embeddedNotes];
 
-    // Sync cooldown from MCP child process diagnostics into parent process
     for (const diag of allNotes) {
       const stripped = diag.replace(/^>\s*-?\s*/, '');
       if (isCliLimitError(stripped)) {
@@ -1593,7 +1536,6 @@ async function runConsole(): Promise<void> {
 
   rl.setPrompt(`\n${PROMPT_SYMBOL} `);
 
-  // Reset session tracker (no journal entry on session start)
   try {
     getSessionTracker().reset();
   } catch { /* ignore */ }
@@ -1625,7 +1567,6 @@ async function runConsole(): Promise<void> {
         safeOutput(rl, chalk.red('Build required. Run "npm run build" first.\n'));
         return;
       }
-      // Lock input while command runs + show ora spinner
       commandRunning = true;
       rl.pause();
       const cmdLabel = subcmd.split(/\s+/)[0] ?? subcmd;
@@ -1647,7 +1588,6 @@ async function runConsole(): Promise<void> {
           });
           child.stdout.on('data', (chunk: Buffer) => {
             const text = chunk.toString();
-            // Stop spinner once real output arrives
             if (spinner.isSpinning) spinner.stop();
             safeOutput(rl, text);
           });
@@ -1657,7 +1597,6 @@ async function runConsole(): Promise<void> {
           });
           child.on('error', (err) => reject(err));
           child.on('close', () => {
-            // Always resolve — command output is already displayed
             resolve();
           });
         });
@@ -1669,29 +1608,24 @@ async function runConsole(): Promise<void> {
         if (spinner.isSpinning) spinner.stop();
         commandRunning = false;
         rl.resume();
-        // Prompt without leading \n after command output (output already has trailing newline)
         rl.setPrompt(`${PROMPT_SYMBOL} `);
         rl.prompt();
         rl.setPrompt(`\n${PROMPT_SYMBOL} `);
       }
     }
 
-    // ── Command helpers ──
-    /** Check if line matches a slash command (exact or with space-separated args) */
     const isCmd = (cmd: string) => line === cmd || line.startsWith(cmd + ' ');
-    /** Rest of the line after the command */
     const cmdArgs = (cmd: string) => line.slice(cmd.length).trim();
 
     const KNOWN_COMMANDS = [
       '/exit', '/quit', '/help', '/backup', '/ralph', '/logs',
       '/providers', '/config', '/doctor', '/status', '/tools',
       '/journal', '/clear',
-      // Mission Agent commands
       '/init', '/start', '/stop', '/mission', '/report',
       '/watch', '/scheduled', '/assistant', '/reactive',
     ];
 
-    /** Styled error output for command errors */
+    /** Displays a styled error for unknown or malformed commands. */
     function cmdError(msg: string, usage?: string): void {
       const warn = chalk.hex('#ffb74d');
       const dim = chalk.hex('#8395A7');
@@ -1701,7 +1635,7 @@ async function runConsole(): Promise<void> {
       rl.prompt();
     }
 
-    /** Find closest matching command for typo suggestion */
+    /** Returns the closest known command for a typo suggestion. */
     function suggestCmd(typed: string): string | undefined {
       return KNOWN_COMMANDS.find(
         (cmd) => cmd.startsWith(typed) || typed.startsWith(cmd),
@@ -1739,8 +1673,6 @@ async function runConsole(): Promise<void> {
       } else if (rest.startsWith('tail ') || rest.startsWith('show ')) {
         runCliCommand(`logs ${rest}`);
       } else {
-        // /logs <name> → navigate (dir=list, file=show)
-        // /logs <name> <file> → show specific file in area
         const parts = rest.split(/\s+/);
         const cmd = parts.length >= 2
           ? `logs show ${parts[0]} ${parts.slice(1).join(' ')}`
@@ -1795,13 +1727,11 @@ async function runConsole(): Promise<void> {
     if (line === '/clear') {
       history.splice(1);
       saveSession([]);
-      // Clear terminal screen + scrollback
       process.stdout.write('\x1bc');
       safeOutput(rl, chalk.hex('#6C5CE7')('  ✓ Chat history cleared.\n'));
       return;
     }
 
-    // ── Mission Agent Commands ──────────────────────────────────────
     if (isCmd('/init')) {
       const rest = cmdArgs('/init');
       runCliCommand(rest === '--force' ? 'init --force' : 'init');
@@ -1809,7 +1739,6 @@ async function runConsole(): Promise<void> {
     }
     if (isCmd('/start')) {
       const rest = cmdArgs('/start');
-      // Default to --daemon from chat to avoid blocking the console
       runCliCommand(rest ? `start ${rest}` : 'start --daemon');
       return;
     }
@@ -1839,14 +1768,12 @@ async function runConsole(): Promise<void> {
       return;
     }
     if (isCmd('/assistant')) {
-      // No separate CLI command -- mission context is already active via Phase 6 integration
       output.write(chalk.hex('#6C5CE7')('  Mission-aware assistant mode is active by default.\n'));
       output.write(chalk.hex('#8395A7')('  Mission context from PRIMARY_MISSION.md is automatically included in conversations.\n'));
       rl.prompt();
       return;
     }
 
-    // Bare command name (without /) — run directly via runCliCommand
     const BARE_COMMANDS = [
       'doctor', 'health', 'status', 'tools', 'backup', 'config', 'logs',
       'ralph', 'journal', 'providers',
@@ -1859,7 +1786,6 @@ async function runConsole(): Promise<void> {
       return;
     }
 
-    // Unknown slash command — don't send to AI
     if (line.startsWith('/')) {
       const typed = line.split(' ')[0].toLowerCase();
       const match = suggestCmd(typed);
@@ -1880,7 +1806,6 @@ async function runConsole(): Promise<void> {
     });
   });
 
-  // Session close — double Ctrl+C to exit, single Ctrl+C shows hint
   let sessionClosing = false;
   let lastSigintTime = 0;
   const DOUBLE_PRESS_WINDOW_MS = 1500;
@@ -1898,11 +1823,9 @@ async function runConsole(): Promise<void> {
   process.on('SIGINT', () => {
     const now = Date.now();
     if (now - lastSigintTime < DOUBLE_PRESS_WINDOW_MS) {
-      // Double press — exit
       if (ctrlCHintTimer) clearTimeout(ctrlCHintTimer);
       handleGracefulClose();
     } else {
-      // Single press — show exit hint, auto-revert after 1.5s
       lastSigintTime = now;
       const exitHint = chalk.yellow('▸ Ctrl+C') + chalk.gray(' to exit');
       rl.setPrompt(`\n${exitHint} `);

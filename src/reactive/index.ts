@@ -1,9 +1,3 @@
-/**
- * Reactive module barrel export + orchestrator.
- * Composes watch + scheduled modes via Promise.allSettled with a shared AbortSignal.
- * EventBus provides typed cross-mode communication without direct imports between modes.
- */
-
 export type {
   ReactiveSystemEvent,
   AssistantSystemEvent,
@@ -35,10 +29,8 @@ export async function startReactiveMode(
   signal: AbortSignal,
   onEvent?: (event: ReactiveSystemEvent) => void,
 ): Promise<void> {
-  // a. Get EventBus singleton
   const bus = getEventBus();
 
-  // b. Wire onEvent adapter: transform BusEvent -> ReactiveSystemEvent
   if (onEvent) {
     bus.on('bus:event', (busEvent) => {
       const sourceEvent = busEvent.event;
@@ -54,10 +46,8 @@ export async function startReactiveMode(
     });
   }
 
-  // c. Register cross-mode rules (empty default — extensible later)
   registerCrossModeRules(bus);
 
-  // d. Log mode lifecycle events
   bus.on('mode:ready', (payload) => {
     log.info('Mode ready', { mode: payload.mode });
   });
@@ -65,7 +55,6 @@ export async function startReactiveMode(
     log.info('Mode stopped', { mode: payload.mode });
   });
 
-  // e. Watch adapter: forwards WatchSystemEvents to the bus
   const watchAdapter = (event: WatchSystemEvent): void => {
     bus.emit('watch:event', event);
     bus.emit('bus:event', { source: 'watch', event });
@@ -78,7 +67,6 @@ export async function startReactiveMode(
     }
   };
 
-  // f. Scheduled adapter: forwards ScheduledSystemEvents to the bus
   const scheduledAdapter = (event: ScheduledSystemEvent): void => {
     bus.emit('scheduled:event', event);
     bus.emit('bus:event', { source: 'scheduled', event });
@@ -91,7 +79,6 @@ export async function startReactiveMode(
     }
   };
 
-  // g. PID file check for existing reactive processes
   const fs = await import('node:fs');
   const path = await import('node:path');
   const pidDir = path.join(cwd, '.hakanmcp');
@@ -104,7 +91,7 @@ export async function startReactiveMode(
         const pid = parseInt(fs.readFileSync(pidPath, 'utf-8').trim(), 10);
         if (!isNaN(pid)) {
           try {
-            process.kill(pid, 0); // Check if process is alive
+            process.kill(pid, 0);
             log.warn('Existing process detected, exiting early', {
               pidFile,
               pid,
@@ -116,20 +103,16 @@ export async function startReactiveMode(
               timestamp: Date.now(),
             });
             return;
-          } catch {
-            // Process not alive — stale PID file, safe to continue
+          } catch { /* empty */
           }
         }
       }
-    } catch {
-      // PID file read error — continue anyway
+    } catch { /* empty */
     }
   }
 
   log.info('Starting reactive mode', { cwd });
 
-  // h. Run both modes in parallel with shared signal
-  // Add 10s shutdown timeout safety after signal abort
   const modesPromise = Promise.allSettled([
     startWatchMode(cwd, signal, watchAdapter),
     startScheduledMode(cwd, signal, scheduledAdapter),
@@ -160,7 +143,6 @@ export async function startReactiveMode(
     }
   }
 
-  // i. Report any rejected modes
   const modeNames = ['watch', 'scheduled'] as const;
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
@@ -178,10 +160,8 @@ export async function startReactiveMode(
     }
   }
 
-  // j. Cleanup EventBus (Pitfall 6)
   resetEventBus();
 
-  // k. Emit final stopped event
   onEvent?.({
     type: 'stopped',
     source: 'reactive',

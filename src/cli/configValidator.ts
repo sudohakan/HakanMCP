@@ -8,8 +8,6 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 
-// --- Workspace Entry Schema ---
-
 export const WorkspaceEntrySchema = z.object({
   name: z.string().min(1),
   path: z.string().min(1),
@@ -18,8 +16,6 @@ export const WorkspaceEntrySchema = z.object({
 });
 
 export type WorkspaceEntry = z.infer<typeof WorkspaceEntrySchema>;
-
-// --- Workspace Config Schema ---
 
 export const WorkspaceConfigSchema = z.object({
   version: z.string().default('1'),
@@ -105,7 +101,6 @@ export function loadWorkspaceConfig(dir: string): WorkspaceConfig {
   try {
     const config = WorkspaceConfigSchema.parse(parsed);
 
-    // Validate workspace name uniqueness
     if (config.workspaces && config.workspaces.length > 0) {
       const names = config.workspaces.map((w) => w.name);
       const dupes = names.filter((n, i) => names.indexOf(n) !== i);
@@ -165,7 +160,6 @@ export function validateWorkspaceConfig(
   const result = WorkspaceConfigSchema.safeParse(parsed);
 
   if (result.success) {
-    // Validate workspace name uniqueness
     if (result.data.workspaces && result.data.workspaces.length > 0) {
       const names = result.data.workspaces.map((w) => w.name);
       const dupes = names.filter((n, i) => names.indexOf(n) !== i);

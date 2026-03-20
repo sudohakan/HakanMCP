@@ -1,8 +1,3 @@
-/**
- * Mission context formatter for assistant mode system prompts.
- * Loads the primary mission and formats a concise ~500 token summary
- * suitable for injection into AI system prompts.
- */
 import { loadAllMissions } from './missionLoader.js';
 import { MissionStateManager } from './missionState.js';
 import type { ParsedMission } from './types.js';
@@ -17,10 +12,8 @@ const MAX_DESCRIPTION_LENGTH = 300;
 export function formatMissionForChat(mission: ParsedMission): string {
   const lines: string[] = [];
 
-  // Title
   lines.push(`Mission: ${mission.frontmatter.title}`);
 
-  // Goal (truncated)
   if (mission.description) {
     const desc =
       mission.description.length > MAX_DESCRIPTION_LENGTH
@@ -29,22 +22,18 @@ export function formatMissionForChat(mission: ParsedMission): string {
     lines.push(`Goal: ${desc}`);
   }
 
-  // Targets
   if (mission.frontmatter.targets && mission.frontmatter.targets.length > 0) {
     lines.push(`Targets: ${mission.frontmatter.targets.join(', ')}`);
   }
 
-  // Tags
   if (mission.frontmatter.tags && mission.frontmatter.tags.length > 0) {
     lines.push(`Tags: ${mission.frontmatter.tags.join(', ')}`);
   }
 
-  // Progress
   const completed = mission.tasks.filter((t) => t.completed).length;
   const total = mission.tasks.length;
   lines.push(`Progress: ${completed}/${total} tasks completed`);
 
-  // Next pending tasks
   const pending = mission.tasks
     .filter((t) => !t.completed)
     .slice(0, MAX_PENDING_TASKS);
@@ -78,11 +67,9 @@ export function buildMissionContextBlock(workspacePath: string): string {
     return '';
   }
 
-  // Use the first mission (primary, since loadAllMissions sorts primary first)
   const primary = missions[0];
   const formatted = formatMissionForChat(primary);
 
-  // Optionally include mission state
   let stateLine = '';
   try {
     const stateManager = new MissionStateManager(workspacePath);
@@ -90,8 +77,7 @@ export function buildMissionContextBlock(workspacePath: string): string {
     if (state) {
       stateLine = `\nStatus: ${state.status}`;
     }
-  } catch {
-    // State not available -- skip silently
+  } catch { /* empty */
   }
 
   return formatted + stateLine;

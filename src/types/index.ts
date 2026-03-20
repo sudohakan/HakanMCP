@@ -2,7 +2,6 @@
  * Shared type definitions for MCP server
  */
 
-// Tool response types
 export interface ToolResponse {
   content: ToolContent[];
   isError?: boolean;
@@ -16,10 +15,8 @@ export interface ToolContent {
   mimeType?: string;
 }
 
-// Tool handler type
 export type ToolHandler<T = unknown> = (args: T) => Promise<ToolResponse>;
 
-// Tool definition interface
 export interface ToolDefinition<T = unknown> {
   name: string;
   description: string;
@@ -31,7 +28,6 @@ export interface ToolDefinition<T = unknown> {
   handler: ToolHandler<T>;
 }
 
-// HTTP types
 export interface HttpHeaders {
   [key: string]: string;
 }
@@ -51,7 +47,6 @@ export interface HttpResponse {
   body: string;
 }
 
-// Database types
 export interface DatabaseConfig {
   host: string;
   port: number;
@@ -78,7 +73,6 @@ export interface ColumnInfo {
   character_maximum_length: number | null;
 }
 
-// Git types
 export interface GitStatus {
   current: string;
   tracking: string | null;
@@ -100,7 +94,6 @@ export interface GitCommitInfo {
   author: string;
 }
 
-// File system types
 export interface FileInfo {
   name: string;
   type: 'file' | 'dir' | 'unknown';
@@ -115,7 +108,6 @@ export interface DirectoryListing {
   files: FileInfo[];
 }
 
-// Postman types
 export interface PostmanCollection {
   info: {
     name: string;
@@ -158,7 +150,6 @@ export interface PostmanResponse {
   body: string;
 }
 
-// Ollama types
 export interface OllamaMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -179,7 +170,6 @@ export interface OllamaChatResponse {
   done: boolean;
 }
 
-// System types
 export interface SystemInfo {
   platform: string;
   arch: string;
@@ -197,12 +187,10 @@ export interface ProcessInfo {
   memory?: number;
 }
 
-// Parser types
 export interface ParsedData {
   [key: string]: unknown;
 }
 
-// GitBook types
 export interface GitBookHeading {
   level: number;
   text: string;
@@ -226,7 +214,6 @@ export interface GitBookSearchResult {
   contextRange: string;
 }
 
-// Claude API content block types (for agentic tool-use loop)
 export interface ClaudeTextBlock {
   type: 'text';
   text: string;
@@ -286,7 +273,6 @@ export interface AgenticLoopResult {
   outputTokens: number;
 }
 
-// Error types
 export class ToolError extends Error {
   constructor(
     message: string,

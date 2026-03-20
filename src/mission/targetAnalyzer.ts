@@ -1,16 +1,8 @@
-/**
- * Target file resolver and analyzer for assistant mode.
- * Resolves glob patterns, literal files, and directories into
- * size-capped file summaries suitable for system prompt injection.
- */
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AnalyzedFile, TargetAnalysis } from './types.js';
 
-// Re-export types for convenience
 export type { AnalyzedFile, TargetAnalysis } from './types.js';
-
-// --- Constants ---
 
 const MAX_TARGET_FILES = 10;
 const MAX_SINGLE_FILE_BYTES = 4096;
@@ -38,13 +30,11 @@ const TEXT_EXTENSIONS = new Set([
   '.csv',
 ]);
 
-// --- Helpers ---
-
 /**
  * Check if a target string contains glob characters.
  */
 function isGlob(target: string): boolean {
-  return /[*?{}\[\]]/.test(target);
+  return /[*?{}[\]]/.test(target);
 }
 
 /**
@@ -54,8 +44,6 @@ function isTextFile(filePath: string): boolean {
   const ext = path.extname(filePath).toLowerCase();
   return TEXT_EXTENSIONS.has(ext);
 }
-
-// --- Resolution ---
 
 /**
  * Resolve target strings (globs, literal files, directories) into
@@ -69,7 +57,6 @@ export function resolveTargets(targets: string[], cwd: string): string[] {
 
     try {
       if (isGlob(target)) {
-        // Glob pattern -- use Node 22+ native fs.globSync
         const matches = fs.globSync(target, { cwd });
         for (const match of matches) {
           if (resolved.size >= MAX_TARGET_FILES) break;
@@ -81,7 +68,6 @@ export function resolveTargets(targets: string[], cwd: string): string[] {
 
         const stat = fs.statSync(abs);
         if (stat.isDirectory()) {
-          // Directory -- list top-level contents (up to 5)
           const entries = fs.readdirSync(abs).slice(0, 5);
           for (const entry of entries) {
             if (resolved.size >= MAX_TARGET_FILES) break;
@@ -90,23 +76,19 @@ export function resolveTargets(targets: string[], cwd: string): string[] {
               if (fs.statSync(entryPath).isFile()) {
                 resolved.add(entryPath);
               }
-            } catch {
-              // Skip inaccessible entries
+            } catch { /* empty */
             }
           }
         } else if (stat.isFile()) {
           resolved.add(abs);
         }
       }
-    } catch {
-      // Skip any target that fails to resolve
+    } catch { /* empty */
     }
   }
 
   return Array.from(resolved);
 }
-
-// --- Analysis ---
 
 /**
  * Analyze resolved target files with size caps.
@@ -126,7 +108,6 @@ export function analyzeTargets(targets: string[], cwd: string): TargetAnalysis {
       break;
     }
 
-    // Skip non-text files
     if (!isTextFile(filePath)) continue;
 
     try {
@@ -137,7 +118,6 @@ export function analyzeTargets(targets: string[], cwd: string): TargetAnalysis {
       const readSize = Math.min(stat.size, MAX_SINGLE_FILE_BYTES, remaining);
       const truncated = readSize < stat.size;
 
-      // Partial read using low-level API
       const fd = fs.openSync(filePath, 'r');
       const buffer = Buffer.alloc(readSize);
       fs.readSync(fd, buffer, 0, readSize, 0);
@@ -168,7 +148,6 @@ export function analyzeTargets(targets: string[], cwd: string): TargetAnalysis {
     }
   }
 
-  // Build summary
   const summaryLines = files.map((f) => {
     const trunc = f.truncated ? ', truncated' : '';
     return `- ${f.relativePath} (${f.size}B${trunc})`;
@@ -177,8 +156,6 @@ export function analyzeTargets(targets: string[], cwd: string): TargetAnalysis {
 
   return { files, summary, totalSize, truncated: anyTruncated, errors };
 }
-
-// --- Block Builder ---
 
 /**
  * Build a formatted text block of target file contents for system prompt injection.

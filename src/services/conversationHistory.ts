@@ -34,7 +34,6 @@ export class ConversationManager {
     };
     this.messages.push(fullMsg);
 
-    // FIFO cap
     if (this.messages.length > this.maxMessages) {
       this.messages = this.messages.slice(-this.maxMessages);
     }

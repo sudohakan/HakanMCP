@@ -126,37 +126,28 @@ jobs:
     if: always()
     steps:
       - name: Evaluate pipeline
+        env:
+          LINT: ${{ needs.lint.result }}
+          TYPECHECK: ${{ needs.typecheck.result }}
+          TEST: ${{ needs.test.result }}
+          BUILD: ${{ needs.build.result }}
+          SECURITY: ${{ needs.security.result }}
+          PACK: ${{ needs.pack.result }}
         run: |
-          echo "Lint:      ${{ needs.lint.result }}"
-          echo "Typecheck: ${{ needs.typecheck.result }}"
-          echo "Test:      ${{ needs.test.result }}"
-          echo "Build:     ${{ needs.build.result }}"
-          echo "Security:  ${{ needs.security.result }}"
-          echo "Pack:      ${{ needs.pack.result }}"
+          echo "Lint:      $LINT"
+          echo "Typecheck: $TYPECHECK"
+          echo "Test:      $TEST"
+          echo "Build:     $BUILD"
+          echo "Security:  $SECURITY"
+          echo "Pack:      $PACK"
 
           FAILED=0
-          for job in lint typecheck build; do
-            eval "RESULT=\${{ needs.${job}.result }}"
-          done
+          if [ "$LINT" != "success" ]; then echo "::error::Lint failed"; FAILED=1; fi
+          if [ "$TYPECHECK" != "success" ]; then echo "::error::Type check failed"; FAILED=1; fi
+          if [ "$BUILD" != "success" ]; then echo "::error::Build failed"; FAILED=1; fi
 
-          if [ "${{ needs.lint.result }}" != "success" ]; then
-            echo "::error::Lint failed"; FAILED=1
-          fi
-          if [ "${{ needs.typecheck.result }}" != "success" ]; then
-            echo "::error::Type check failed"; FAILED=1
-          fi
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            echo "::error::Build failed"; FAILED=1
-          fi
+          if [ "$TEST" = "failure" ]; then echo "::warning::Tests failed"; fi
+          if [ "$SECURITY" = "failure" ]; then echo "::warning::Security audit found vulnerabilities"; fi
 
-          if [ "${{ needs.test.result }}" == "failure" ]; then
-            echo "::warning::Tests failed — investigate before merging"
-          fi
-          if [ "${{ needs.security.result }}" == "failure" ]; then
-            echo "::warning::Security audit found vulnerabilities"
-          fi
-
-          if [ "$FAILED" -eq 1 ]; then
-            exit 1
-          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
           echo "Pipeline gate passed"

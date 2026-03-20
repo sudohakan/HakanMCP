@@ -447,7 +447,8 @@ function loadConfig(envValues: Record<string, string | undefined>): Config {
   return validatedConfig;
 }
 
-const envValues = loadEnvironment();
+const strictEnv = process.env.NODE_ENV === 'production';
+const envValues = loadEnvironment({ strict: strictEnv, warnOnly: !strictEnv });
 export const config = loadConfig(envValues);
 
 /**

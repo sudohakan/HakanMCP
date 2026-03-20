@@ -12,6 +12,8 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  HAKANMCP_ENV_STRICT: 'false'
 
 jobs:
   lint:

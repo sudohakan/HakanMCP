@@ -35,11 +35,23 @@ const setupConfigModule = async (options: SetupOptions = {}) => {
       files.set(newPath, content);
       files.delete(oldPath);
     }),
+    statSync: jest.fn(() => ({ mode: 0o600 })),
+    unlinkSync: jest.fn(),
   };
 
   await jest.unstable_mockModule('node:fs', () => ({
     default: fsMock,
     ...fsMock,
+  }));
+
+  // Mock PROJECT_ROOT so config.ts resolves paths relative to cwd (matching CONFIG_PATH)
+  await jest.unstable_mockModule('../src/utils/projectRoot.js', () => ({
+    PROJECT_ROOT: process.cwd(),
+  }));
+
+  // Mock dotenv so it doesn't try to read .env from the real filesystem
+  await jest.unstable_mockModule('dotenv', () => ({
+    config: jest.fn(),
   }));
 
   const logger = {
@@ -136,7 +148,7 @@ describe('config module', () => {
     });
 
     expect(mocks.fs.writeFileSync).toHaveBeenCalledWith(
-      CONFIG_PATH + '.tmp',
+      expect.stringContaining(CONFIG_PATH + '.tmp.'),
       expect.any(String),
       'utf8',
     );

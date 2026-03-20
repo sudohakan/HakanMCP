@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Lightweight rate limiter (token bucket per process)
 let bucket = 20;
 if (process.env.NODE_ENV !== 'test') {
   setInterval(() => {
@@ -55,7 +54,6 @@ export const apiTools = [
           content: [{ type: 'text', text: JSON.stringify(openapi, null, 2) }],
         };
       }
-      // action === 'info'
       return {
         content: [
           {

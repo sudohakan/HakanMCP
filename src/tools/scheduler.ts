@@ -22,7 +22,7 @@ interface ScheduledTask {
   nextRun?: string;
   runCount: number;
   failCount: number;
-  consecutiveFailCount?: number; // Plan 7: 3 in a row -> disable
+  consecutiveFailCount?: number;
   context?: Record<string, unknown>;
 }
 
@@ -140,9 +140,6 @@ class SchedulerManager {
   }
 
   private getNextRunTime(_schedule: string): Date | null {
-    // node-cron doesn't provide nextDates directly, return null for now
-    // This is a placeholder - actual next run time calculation would require
-    // parsing cron expression manually or using a different library
     return null;
   }
 
@@ -172,7 +169,6 @@ class SchedulerManager {
         runId,
       });
 
-      // Fast path: sync peer without LLM
       if (task.agentTask === 'sync-peer') {
         const peerPath = (task.context as Record<string, unknown>)?.peerPath as string | undefined;
         const syncResult = await syncPeerRepo(peerPath);
@@ -202,7 +198,6 @@ class SchedulerManager {
         return;
       }
 
-      // Use ai_chat for scheduled tasks (simple bridge, no agent orchestration)
       const { aiTools } = await import('./aiTools.js');
       const chatTool = aiTools?.find((t: { name: string }) => t.name === 'ai_chat');
 

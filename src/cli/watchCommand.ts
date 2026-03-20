@@ -23,9 +23,7 @@ function writePidFile(cwd: string, pid: number): void {
 function removePidFile(cwd: string): void {
   try {
     fs.unlinkSync(path.join(cwd, HAKANMCP_DIR, PID_FILE));
-  } catch {
-    // Ignore
-  }
+  } catch { /* empty */ }
 }
 
 function hasStopSignal(cwd: string): boolean {
@@ -35,9 +33,7 @@ function hasStopSignal(cwd: string): boolean {
 function removeStopSignal(cwd: string): void {
   try {
     fs.unlinkSync(path.join(cwd, HAKANMCP_DIR, STOP_SIGNAL_FILE));
-  } catch {
-    // Ignore
-  }
+  } catch { /* empty */ }
 }
 
 /**
@@ -47,7 +43,6 @@ function removeStopSignal(cwd: string): void {
 export async function runWatch(): Promise<void> {
   const cwd = process.cwd();
 
-  // 1. Load workspace config and check watch.enabled
   let config;
   try {
     config = loadWorkspaceConfig(cwd);
@@ -72,7 +67,6 @@ export async function runWatch(): Promise<void> {
     );
   }
 
-  // 2. Setup lifecycle
   writePidFile(cwd, process.pid);
   removeStopSignal(cwd);
 
@@ -85,7 +79,6 @@ export async function runWatch(): Promise<void> {
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
 
-  // Stop-signal polling for Windows compatibility
   const stopPollInterval = setInterval(() => {
     if (hasStopSignal(cwd)) {
       clearInterval(stopPollInterval);
@@ -99,7 +92,6 @@ export async function runWatch(): Promise<void> {
     color: 'magenta',
   }).start();
 
-  // 3. Event handler updates spinner
   const onEvent = (event: WatchSystemEvent): void => {
     switch (event.type) {
       case 'ready':
@@ -125,7 +117,6 @@ export async function runWatch(): Promise<void> {
     }
   };
 
-  // 4. Run watch mode
   try {
     await startWatchMode(cwd, signal, onEvent);
     console.log(chalk.hex('#6C5CE7')('\nWatch mode stopped.'));

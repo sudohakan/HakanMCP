@@ -4,9 +4,7 @@ import {
   PNCounter,
   ORSet,
 } from '../services/consensusEngine.js';
-import type { ConsensusProtocol, ConsensusResult } from '../services/consensusEngine.js';
-
-// ── ConsensusEngine ─────────────────────────────────────────────────
+import type { ConsensusProtocol } from '../services/consensusEngine.js';
 
 describe('ConsensusEngine', () => {
   let engine: ConsensusEngine;
@@ -15,8 +13,6 @@ describe('ConsensusEngine', () => {
   beforeEach(() => {
     engine = new ConsensusEngine();
   });
-
-  // ── Majority ────────────────────────────────────────────────────
 
   describe('majority protocol', () => {
     it('should return a ConsensusResult with correct protocol', async () => {
@@ -38,7 +34,6 @@ describe('ConsensusEngine', () => {
     });
 
     it('should set decision to proposal when consensus reached', async () => {
-      // Run many times — at least one should reach consensus (P(approve)=0.8)
       let reached = false;
       for (let i = 0; i < 50; i++) {
         const r = await engine.reachConsensus('majority', agents, 'yes');
@@ -52,7 +47,6 @@ describe('ConsensusEngine', () => {
     });
 
     it('should set decision to null when consensus not reached', async () => {
-      // Force failure by using a single agent with random — run many times
       let failed = false;
       for (let i = 0; i < 200; i++) {
         const r = await engine.reachConsensus('majority', ['a'], 'val');
@@ -62,19 +56,15 @@ describe('ConsensusEngine', () => {
           break;
         }
       }
-      // With P(reject)=0.2, P(fail in 200 tries) ~ 1-(0.8)^200 ≈ 1
       expect(failed).toBe(true);
     });
   });
-
-  // ── Byzantine ───────────────────────────────────────────────────
 
   describe('byzantine protocol', () => {
     it('should run 3 rounds with correct phase names', async () => {
       const result = await engine.reachConsensus('byzantine', agents, 'byz-prop');
       expect(result.protocol).toBe('byzantine');
       expect(result.rounds).toBe(3);
-      // 3 rounds × 5 agents = 15 votes
       expect(result.votes).toHaveLength(agents.length * 3);
     });
 
@@ -92,8 +82,6 @@ describe('ConsensusEngine', () => {
       }
     });
   });
-
-  // ── Raft ────────────────────────────────────────────────────────
 
   describe('raft protocol', () => {
     it('should run 2 rounds (election + append)', async () => {
@@ -127,8 +115,6 @@ describe('ConsensusEngine', () => {
     });
   });
 
-  // ── Gossip ──────────────────────────────────────────────────────
-
   describe('gossip protocol', () => {
     it('should always converge (consensusReached = true)', async () => {
       const result = await engine.reachConsensus('gossip', agents, 'gossip-data');
@@ -144,8 +130,6 @@ describe('ConsensusEngine', () => {
     });
   });
 
-  // ── CRDT protocol ──────────────────────────────────────────────
-
   describe('crdt protocol', () => {
     it('should always succeed', async () => {
       const result = await engine.reachConsensus('crdt', agents, { key: 'value' });
@@ -155,8 +139,6 @@ describe('ConsensusEngine', () => {
       expect(result.rounds).toBe(1);
     });
   });
-
-  // ── Protocol Info ──────────────────────────────────────────────
 
   describe('getProtocolInfo', () => {
     const protocols: ConsensusProtocol[] = ['majority', 'byzantine', 'raft', 'gossip', 'crdt'];
@@ -169,8 +151,6 @@ describe('ConsensusEngine', () => {
       expect(info.description.length).toBeGreaterThan(0);
     });
   });
-
-  // ── History ────────────────────────────────────────────────────
 
   describe('getHistory', () => {
     it('should start empty', () => {
@@ -197,8 +177,6 @@ describe('ConsensusEngine', () => {
     });
   });
 });
-
-// ── GCounter ────────────────────────────────────────────────────────
 
 describe('GCounter', () => {
   it('should start at 0', () => {
@@ -242,7 +220,6 @@ describe('GCounter', () => {
       b.increment('Y', 7);
 
       a.merge(b);
-      // X = max(5,3)=5, Y = max(3,7)=7
       expect(a.value()).toBe(12);
     });
 
@@ -280,13 +257,10 @@ describe('GCounter', () => {
       a1.merge(b);
       b.merge(a2);
 
-      // Both should converge to same value
       expect(a1.value()).toBe(b.value());
     });
   });
 });
-
-// ── PNCounter ───────────────────────────────────────────────────────
 
 describe('PNCounter', () => {
   it('should start at 0', () => {
@@ -319,7 +293,7 @@ describe('PNCounter', () => {
     c.increment('B', 5);
     c.decrement('A', 3);
     c.decrement('B', 2);
-    expect(c.value()).toBe(10); // (10+5) - (3+2) = 10
+    expect(c.value()).toBe(10);
   });
 
   describe('merge', () => {
@@ -334,7 +308,6 @@ describe('PNCounter', () => {
       b.decrement('X', 4);
 
       a.merge(b);
-      // P: max(10,6)=10, N: max(2,4)=4 → 10-4=6
       expect(a.value()).toBe(6);
     });
 
@@ -347,13 +320,10 @@ describe('PNCounter', () => {
       b.decrement('Y', 1);
 
       a.merge(b);
-      // P: X=10, Y=5; N: Y=1 → 10+5-1=14
       expect(a.value()).toBe(14);
     });
   });
 });
-
-// ── ORSet ───────────────────────────────────────────────────────────
 
 describe('ORSet', () => {
   it('should start empty', () => {
@@ -387,7 +357,6 @@ describe('ORSet', () => {
   it('should remove only clears existing tags', () => {
     const s = new ORSet<string>();
     s.add('A', 'x');
-    // After remove, all current tags are gone
     s.remove('x');
     expect(s.has('x')).toBe(false);
   });
@@ -423,19 +392,15 @@ describe('ORSet', () => {
     });
 
     it('should preserve elements added concurrently after remove', () => {
-      // Classic ORSet scenario: concurrent add wins over remove
       const a = new ORSet<string>();
       const b = new ORSet<string>();
 
-      // Both start with 'x' by adding to a, then merging to b
       a.add('A', 'x');
       b.merge(a);
 
-      // a removes 'x', b concurrently adds 'x' (new tag)
       a.remove('x');
       b.add('B', 'x');
 
-      // Merge: a gets b's new tag for 'x'
       a.merge(b);
       expect(a.has('x')).toBe(true);
     });

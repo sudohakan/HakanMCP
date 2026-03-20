@@ -1,6 +1,5 @@
 /**
  * Structured logging utility with file and console output.
- * Plan §7: winston-daily-rotate-file for rotation (max 5 files, 20MB).
  */
 
 import fs from 'node:fs';
@@ -75,7 +74,6 @@ class Logger {
   private static readonly BATCH_SIZE = 10;
   private static readonly FLUSH_MS = 100;
 
-  /** Plan §11 H: Buffer writes to reduce syscalls; flush on batch size or timer. */
   private writeToFile(formatted: string): void {
     this.writeBuffer.push(formatted + '\n');
     if (this.writeBuffer.length >= Logger.BATCH_SIZE) {
@@ -95,7 +93,7 @@ class Logger {
     try {
       this.fileLogger.info(toWrite.join(''));
     } catch {
-      // If file write fails, continue; stderr already logged
+      /* empty */
     }
   }
 
@@ -178,16 +176,13 @@ class Logger {
         console.error(`\x1b[90m\x1b[3m  › [${level}] ${message}${metaStr}\x1b[0m`);
       }
     } else {
-      // CRITICAL: MCP STDIO transport uses STDOUT for JSON-RPC messages.
-      // ALL logs must go to STDERR to avoid protocol corruption.
       console.error(formatted);
     }
 
-    // Also write to log file (tool/operation in JSON for filtering)
     try {
       this.writeToFile(formatted);
     } catch {
-      // Ignore errors in logging to prevent crashing
+      /* empty */
     }
   }
 
@@ -223,7 +218,7 @@ class Logger {
     if (this.secretCache.length > 0) {
       const escaped = this.secretCache
         .filter(Boolean)
-        .sort((a, b) => b.length - a.length) // Longer first to avoid substring partial matches
+        .sort((a, b) => b.length - a.length)
         .map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
         .join('|');
       this.maskRegex = new RegExp(escaped, 'g');
@@ -232,7 +227,6 @@ class Logger {
     }
   }
 
-  /** Plan §H: Pre-compiled regex to avoid per-call RegExp compilation */
   private maskString(input: string): string {
     if (input.length === 0) return input;
     this.loadSecretCache();
@@ -271,7 +265,6 @@ class Logger {
     return value;
   }
 
-  /** Plan §9: key, token, password pattern masking */
   private isSecretKey(key: string): boolean {
     const lower = key.toLowerCase();
     return (
@@ -285,10 +278,8 @@ class Logger {
   }
 }
 
-// Export singleton instance
 export const logger = new Logger();
 
-// Set log level from environment
 if (process.env.LOG_LEVEL) {
   const envLevel = process.env.LOG_LEVEL.toUpperCase();
   if (envLevel in LogLevel) {

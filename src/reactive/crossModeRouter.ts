@@ -21,15 +21,12 @@ export interface CrossModeRule {
  * Register cross-mode rules on the EventBus.
  * Each rule listens for its sourceEvent, checks its condition, and fires its action.
  * Default rules array is empty — extensible by callers.
- *
- * Pitfall 5: Async handlers wrapped with .catch() to prevent silent error loss.
  */
 export function registerCrossModeRules(bus: EventBus, rules: CrossModeRule[] = []): void {
   for (const rule of rules) {
     bus.on(rule.sourceEvent, (payload: EventMap[typeof rule.sourceEvent]) => {
       try {
         if (rule.condition(payload)) {
-          // Pitfall 5: wrap in Promise.resolve to catch both sync and async errors
           Promise.resolve().then(() => rule.action(bus, payload)).catch((err: unknown) => {
             log.error('Cross-mode rule async action failed', err as Error, {
               rule: rule.name,

@@ -1,7 +1,3 @@
-// ─── Consensus Engine ───────────────────────────────────────────────
-// Multi-protocol consensus + conflict-free replicated data types (CRDTs)
-
-// ── Types ───────────────────────────────────────────────────────────
 
 export type ConsensusProtocol = 'majority' | 'byzantine' | 'raft' | 'gossip' | 'crdt';
 
@@ -27,7 +23,6 @@ interface ProtocolInfo {
   latency: string;
 }
 
-// ── CRDT: GCounter ─────────────────────────────────────────────────
 
 export class GCounter {
   private counts: Map<string, number> = new Map();
@@ -58,7 +53,6 @@ export class GCounter {
   }
 }
 
-// ── CRDT: PNCounter ────────────────────────────────────────────────
 
 export class PNCounter {
   private p: GCounter = new GCounter();
@@ -90,8 +84,6 @@ export class PNCounter {
     return this.n;
   }
 }
-
-// ── CRDT: ORSet (Observed-Remove Set) ──────────────────────────────
 
 export class ORSet<T> {
   /** element (serialised) → set of unique tags */
@@ -136,7 +128,6 @@ export class ORSet<T> {
   }
 
   merge(other: ORSet<T>): void {
-    // Union of all tags for elements present in other
     for (const [key, otherTags] of other.elements.entries()) {
       if (!this.elements.has(key)) {
         this.elements.set(key, new Set());
@@ -154,8 +145,6 @@ export class ORSet<T> {
     );
   }
 }
-
-// ── Consensus Engine ────────────────────────────────────────────────
 
 export class ConsensusEngine {
   private history: ConsensusResult[] = [];
@@ -227,8 +216,6 @@ export class ConsensusEngine {
     return [...this.history];
   }
 
-  // ── Protocol Implementations ───────────────────────────────────
-
   private runMajority(
     agents: string[],
     proposal: unknown,
@@ -298,7 +285,6 @@ export class ConsensusEngine {
   ): ConsensusResult {
     const allVotes: ConsensusVote[] = [];
 
-    // Round 1: Leader election — each agent gets a random term
     const terms = agents.map((agentId) => {
       const term = Math.floor(Math.random() * 1000);
       const vote: ConsensusVote = {
@@ -313,7 +299,6 @@ export class ConsensusEngine {
 
     const leader = terms.reduce((a, b) => (a.term >= b.term ? a : b));
 
-    // Round 2: Log append — followers acknowledge leader's proposal
     const majority = Math.ceil(agents.length / 2);
     let acks = 0;
     for (const agentId of agents) {
@@ -359,7 +344,6 @@ export class ConsensusEngine {
       }
     }
 
-    // Gossip always converges in simulation
     return {
       protocol: 'gossip',
       decision: proposal,
@@ -382,7 +366,6 @@ export class ConsensusEngine {
       timestamp: Date.now(),
     }));
 
-    // CRDTs are conflict-free — always succeeds
     return {
       protocol: 'crdt',
       decision: proposal,

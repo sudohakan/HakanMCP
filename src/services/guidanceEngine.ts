@@ -63,7 +63,6 @@ export class GuidanceEngine {
   compilePolicy(content: string): PolicyRule[] {
     const rules: PolicyRule[] = [];
 
-    // Always include built-in destructive patterns
     for (const dp of DESTRUCTIVE_PATTERNS) {
       rules.push({
         id: crypto.randomUUID(),
@@ -74,7 +73,6 @@ export class GuidanceEngine {
       });
     }
 
-    // Scan content for keywords and generate additional rules
     for (const kw of POLICY_KEYWORDS) {
       if (kw.pattern.test(content)) {
         rules.push({
@@ -92,7 +90,6 @@ export class GuidanceEngine {
   }
 
   enforce(action: string, context: Record<string, unknown> = {}): EnforceResult {
-    // Check destructive patterns first (always block)
     for (const dp of DESTRUCTIVE_PATTERNS) {
       if (dp.pattern.test(action)) {
         const ruleId = this.rules.find((r) => r.condition === dp.label)?.id ?? 'builtin-destructive';
@@ -105,7 +102,6 @@ export class GuidanceEngine {
       }
     }
 
-    // Check context.files against secret patterns
     const files = context.files;
     if (Array.isArray(files)) {
       for (const file of files) {
@@ -125,7 +121,6 @@ export class GuidanceEngine {
       }
     }
 
-    // Action allowed
     this.recordAudit('none', action, 'allowed', context);
     return { allowed: true };
   }

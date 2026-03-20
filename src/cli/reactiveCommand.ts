@@ -24,7 +24,7 @@ function removePidFile(cwd: string): void {
   try {
     fs.unlinkSync(path.join(cwd, HAKANMCP_DIR, PID_FILE));
   } catch {
-    // Ignore
+    /* empty */
   }
 }
 
@@ -36,7 +36,7 @@ function removeStopSignal(cwd: string): void {
   try {
     fs.unlinkSync(path.join(cwd, HAKANMCP_DIR, STOP_SIGNAL_FILE));
   } catch {
-    // Ignore
+    /* empty */
   }
 }
 
@@ -71,7 +71,7 @@ function checkExistingModes(cwd: string): string | null {
         return mode.label;
       }
     } catch {
-      // PID file not found or unreadable — no conflict
+      /* empty */
     }
   }
 
@@ -85,10 +85,9 @@ function checkExistingModes(cwd: string): string | null {
 export async function runReactive(): Promise<void> {
   const cwd = process.cwd();
 
-  // 1. Load workspace config
-  let config;
+  let _config;
   try {
-    config = loadWorkspaceConfig(cwd);
+    _config = loadWorkspaceConfig(cwd);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const isMissing = msg.includes('not found');
@@ -103,7 +102,6 @@ export async function runReactive(): Promise<void> {
     return;
   }
 
-  // 2. Check for existing running modes (prevent double-registration)
   const existingMode = checkExistingModes(cwd);
   if (existingMode) {
     console.error(
@@ -113,7 +111,6 @@ export async function runReactive(): Promise<void> {
     return;
   }
 
-  // 3. Setup lifecycle
   writePidFile(cwd, process.pid);
   removeStopSignal(cwd);
 
@@ -126,7 +123,6 @@ export async function runReactive(): Promise<void> {
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
 
-  // Stop-signal polling for Windows compatibility
   const stopPollInterval = setInterval(() => {
     if (hasStopSignal(cwd)) {
       clearInterval(stopPollInterval);
@@ -140,7 +136,6 @@ export async function runReactive(): Promise<void> {
     color: 'magenta',
   }).start();
 
-  // 4. Event handler updates spinner
   const onEvent = (event: ReactiveSystemEvent): void => {
     switch (event.type) {
       case 'ready':
@@ -170,7 +165,6 @@ export async function runReactive(): Promise<void> {
     }
   };
 
-  // 5. Run reactive mode
   try {
     await startReactiveMode(cwd, signal, onEvent);
     console.log(chalk.hex('#6C5CE7')('\nReactive mode stopped.'));

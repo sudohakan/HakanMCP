@@ -3,7 +3,6 @@
  * Manages PostgreSQL and MySQL connection pools efficiently
  */
 
-// Lazy-loaded: all DB drivers are optional dependencies
 import type pg from 'pg';
 import type mysql from 'mysql2/promise';
 import type mssql from 'mssql';
@@ -44,15 +43,15 @@ export interface MSSQLConfig {
   server: string;
   port?: number;
   database: string;
-  user?: string; // Optional for Windows Auth
-  password?: string; // Optional for Windows Auth
-  domain?: string; // Windows domain
+  user?: string;
+  password?: string;
+  domain?: string;
   options?: {
     encrypt?: boolean;
     trustServerCertificate?: boolean;
     enableArithAbort?: boolean;
-    trustedConnection?: boolean; // Windows Authentication
-    integratedSecurity?: boolean; // Alternative for Windows Auth
+    trustedConnection?: boolean;
+    integratedSecurity?: boolean;
   };
 }
 
@@ -74,14 +73,13 @@ export class DatabasePoolManager {
 
   constructor(
     config: PoolConfig = {},
-    cleanupIntervalMs: number = 5 * 60 * 1000, // 5 minutes
-    maxIdleTime: number = 10 * 60 * 1000, // 10 minutes
+    cleanupIntervalMs: number = 5 * 60 * 1000,
+    maxIdleTime: number = 10 * 60 * 1000,
   ) {
     this.config = { ...DEFAULT_POOL_CONFIG, ...config };
     this.cleanupIntervalMs = cleanupIntervalMs;
     this.maxIdleTime = maxIdleTime;
 
-    // Start auto-cleanup
     this.startAutoCleanup();
 
     logger.info('DatabasePoolManager initialized', {
@@ -96,7 +94,6 @@ export class DatabasePoolManager {
    */
   async getPgPool(connectionString: string): Promise<pg.Pool> {
     const pgMod = await loadPg();
-    // Hash connection string for security (don't store raw credentials)
     const hash = this.hashConnectionString(connectionString);
 
     if (!this.pgPools.has(hash)) {
@@ -110,7 +107,6 @@ export class DatabasePoolManager {
         connectionTimeoutMillis: this.config.connectionTimeoutMillis,
       });
 
-      // Handle pool errors
       pool.on('error', (err) => {
         logger.error('PostgreSQL pool error', err, { hash });
       });
@@ -186,7 +182,6 @@ export class DatabasePoolManager {
         database: config.database,
       });
 
-      // Check for Windows Authentication
       const useWindowsAuth =
         config.options?.trustedConnection || config.options?.integratedSecurity;
 
@@ -196,7 +191,6 @@ export class DatabasePoolManager {
         database: config.database,
         ...(useWindowsAuth
           ? {
-              // Windows Authentication
               domain: config.domain,
               options: {
                 encrypt: config.options?.encrypt ?? true,
@@ -206,7 +200,6 @@ export class DatabasePoolManager {
               },
             }
           : {
-              // SQL Authentication
               user: config.user!,
               password: config.password!,
               options: {
@@ -226,10 +219,8 @@ export class DatabasePoolManager {
 
       const pool = new mssqlMod.ConnectionPool(poolConfig);
 
-      // Connect to the pool
       await pool.connect();
 
-      // Handle pool errors
       pool.on('error', (err: Error) => {
         logger.error('MSSQL pool error', err, { key });
       });
@@ -251,14 +242,13 @@ export class DatabasePoolManager {
    */
   private startAutoCleanup(): void {
     if (this.cleanupInterval) {
-      return; // Already started
+      return;
     }
 
     this.cleanupInterval = setInterval(() => {
       this.cleanupIdlePools();
     }, this.cleanupIntervalMs);
 
-    // Ensure cleanup runs on process exit
     process.on('beforeExit', () => {
       this.closeAll();
     });
@@ -353,7 +343,6 @@ export class DatabasePoolManager {
 
     const promises: Promise<void>[] = [];
 
-    // Close all PostgreSQL pools
     for (const [hash, entry] of this.pgPools.entries()) {
       promises.push(
         entry.pool.end().catch((error) => {
@@ -362,7 +351,6 @@ export class DatabasePoolManager {
       );
     }
 
-    // Close all MySQL pools
     for (const [key, entry] of this.mysqlPools.entries()) {
       promises.push(
         entry.pool.end().catch((error) => {
@@ -371,7 +359,6 @@ export class DatabasePoolManager {
       );
     }
 
-    // Close all MSSQL pools
     for (const [key, entry] of this.mssqlPools.entries()) {
       promises.push(
         entry.pool.close().catch((error) => {
@@ -461,10 +448,8 @@ export class DatabasePoolManager {
   }
 }
 
-// Singleton instance
 export const dbPoolManager = new DatabasePoolManager();
 
-// Export for backward compatibility
 export async function getPgPool(connectionString: string): Promise<pg.Pool> {
   return dbPoolManager.getPgPool(connectionString);
 }

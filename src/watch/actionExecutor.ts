@@ -2,7 +2,6 @@
  * ActionExecutor -- executes AI-driven actions when watch triggers fire.
  * Delegates to runAgenticLoop for AI processing.
  */
-import type { AgenticCallFn } from '../services/agenticLoop.js';
 import { runAgenticLoop } from '../services/agenticLoop.js';
 import { resolveAgenticProvider } from '../tools/aiTools.js';
 import { buildAgenticToolList, createToolExecutor } from '../services/toolExecutor.js';
@@ -20,8 +19,6 @@ interface ToolLike {
 }
 
 export type ActionEventHandler = (event: WatchSystemEvent) => void;
-
-// Provider resolution delegated to resolveAgenticProvider() in aiTools.ts
 
 /**
  * ActionExecutor receives TriggerResults and runs AI actions via runAgenticLoop.
@@ -54,17 +51,14 @@ export class ActionExecutor {
     log.info('Executing action for trigger', { trigger: triggerName, path: filePath, eventType });
 
     try {
-      // 1. Resolve provider
       const { callFn, label: providerLabel } = resolveAgenticProvider();
 
-      // 2. Build tool infrastructure
       const filteredTools = result.trigger.action.toolSubset
         ? this.tools.filter((t) => result.trigger.action.toolSubset!.includes(t.name))
         : this.tools;
       const toolDefs = buildAgenticToolList(filteredTools);
       const executor = createToolExecutor(filteredTools);
 
-      // 3. Build prompt with trigger context
       const systemPrompt = [
         `Watch trigger "${triggerName}" fired.`,
         `File: ${filePath}`,
@@ -74,7 +68,6 @@ export class ActionExecutor {
 
       const userPrompt = result.trigger.action.prompt;
 
-      // 4. Run agentic loop
       const loopResult = await runAgenticLoop(
         systemPrompt,
         [{ role: 'user' as const, content: [{ type: 'text' as const, text: userPrompt }] }],
@@ -108,7 +101,6 @@ export class ActionExecutor {
         error: errorMsg,
         timestamp: Date.now(),
       });
-      // Do NOT rethrow -- watch system must keep running
     }
   }
 

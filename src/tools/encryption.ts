@@ -36,7 +36,6 @@ function encrypt(plaintext: string, password: string): string {
 
   const tag = cipher.getAuthTag();
 
-  // Combine: salt + iv + tag + encrypted
   const combined = Buffer.concat([salt, iv, tag, Buffer.from(encrypted, 'hex')]);
 
   return combined.toString('base64');

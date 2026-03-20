@@ -51,7 +51,6 @@ export const cacheTools = [
         return { content: [{ type: 'text', text: `✓ cache_set ${key}` }] };
       }
 
-      // action === 'delete'
       await cache.delete(key);
       return { content: [{ type: 'text', text: `✓ cache_delete ${key}` }] };
     },

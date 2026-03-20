@@ -26,6 +26,7 @@ const setupAiProviders = async (overrides?: { decrypt?: string }) => {
         claudeKeyEncrypted: overrides?.decrypt ? 'encrypted-c' : undefined,
         geminiKeyEncrypted: overrides?.decrypt ? 'encrypted-g' : undefined,
         encryptionPasswordEnv: 'AI_PASSWORD_ENV',
+        localModels: true,
       },
       ollamaUrl: 'http://localhost:11434',
       ollamaModel: 'llama3',
@@ -125,8 +126,9 @@ describe('aiProviders', () => {
     });
 
     const module = await import('../src/tools/aiProviders');
-    const tool = module.aiProviderTools.find((t: { name: string }) => t.name === 'codex_chat');
+    const tool = module.aiProviderTools.find((t: { name: string }) => t.name === 'ai_provider_chat');
     const response = await tool!.handler({
+      provider: 'codex',
       messages: [{ role: 'user', content: 'Hello' }],
       allowLocalFallback: true,
     });
@@ -135,7 +137,7 @@ describe('aiProviders', () => {
     expect(response.content[0].text).toContain('local response');
   });
 
-  it('handles gemini_chat with Gemini API key', async () => {
+  it('handles gemini provider with Gemini API key', async () => {
     const { fetchMock } = await setupAiProviders();
     // Isolate cooldown state so real cooldowns don't filter out Gemini
     const tempDir = path.join(os.tmpdir(), `ai-providers-gemini-${Date.now()}`);
@@ -155,8 +157,11 @@ describe('aiProviders', () => {
     );
 
     const module = await import('../src/tools/aiProviders');
-    const tool = module.aiProviderTools.find((t: { name: string }) => t.name === 'gemini_chat');
-    const response = await tool!.handler({ messages: [{ role: 'user', content: 'Hello' }] });
+    const tool = module.aiProviderTools.find((t: { name: string }) => t.name === 'ai_provider_chat');
+    const response = await tool!.handler({
+      provider: 'gemini',
+      messages: [{ role: 'user', content: 'Hello' }],
+    });
 
     expect(response.content[0].text).toContain('Gemini');
     expect(response.content[0].text).toContain('gemini reply');

@@ -18,7 +18,7 @@ export type AiProviderId = 'codex' | 'claude' | 'gemini';
 export type CliProviderId = 'codex' | 'claude' | 'gemini' | 'cursor';
 
 export interface CooldownEntry {
-  until: number; // ms since epoch
+  until: number;
   reason?: string;
 }
 
@@ -36,13 +36,13 @@ export interface CooldownStatus {
 export interface ProviderAvailabilityEntry {
   status: 'unchecked' | 'available' | 'unavailable';
   reason?: string;
-  checkedAt: number; // ms epoch
+  checkedAt: number;
 }
 
 export interface CliUsageEntry {
-  date: string; // YYYY-MM-DD
+  date: string;
   dailyCount: number;
-  weekStart: string; // YYYY-MM-DD (Monday)
+  weekStart: string;
   weeklyCount: number;
 }
 
@@ -77,7 +77,7 @@ const CLI_LABELS: Record<CliProviderId, string> = {
   cursor: 'Cursor CLI',
 };
 
-const DEFAULT_COOLDOWN_MS = 60_000; // 1 min when Retry-After not provided
+const DEFAULT_COOLDOWN_MS = 60_000;
 /** 15 min fallback when CLI limit message cannot be parsed. Exported for aiTools. */
 export const CLI_LIMIT_FALLBACK_MS = 15 * 60 * 1000;
 const DEFAULT_DAILY_LIMIT = 50;
@@ -129,8 +129,6 @@ export function setCooldownsBasePath(basePath: string): void {
   usagePath = path.join(basePath, '.ai-provider-usage.json');
   statusPath = path.join(basePath, '.ai-provider-status.json');
 }
-
-// ─── Provider Availability Storage ────────────────────────────────
 
 type AvailabilityKey = `${AiProviderId}_api` | `${CliProviderId}_cli`;
 
@@ -219,7 +217,6 @@ function loadCooldowns(): Partial<Record<string, CooldownEntry>> {
           result[id] = entry;
         }
       }
-      // Migrate legacy keys (codex, claude, gemini, cursor) -> _cli, then rewrite file
       let migrated = false;
       for (const leg of LEGACY_KEYS) {
         const entry = data[leg];
@@ -616,9 +613,10 @@ export function parseRetryAfter(value: string | null): number | null {
 }
 
 function stripAnsi(str: string): string {
+  const esc = String.fromCharCode(0x1b);
+  const csi = String.fromCharCode(0x9b);
   return str.replace(
-    // eslint-disable-next-line no-control-regex
-    new RegExp('[\\u001b\\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]', 'g'),
+    new RegExp('[' + esc + csi + '][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]', 'g'),
     '',
   );
 }
@@ -649,8 +647,6 @@ export function parseCliLimitMessage(raw: string): number | null {
   const normalized = cleaned.toLowerCase();
   const now = Date.now();
 
-  // Try explicit time/date FIRST — relative "in 15 min" often wrong when "resets at 3pm" exists
-  // Codex: "Access resets on Feb 24th, 2026 5:28 PM"
   const resetsOnMatch = normalized.match(
     /resets on\s+([A-Za-z]{3})\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\s+(\d{1,2}):(\d{2})\s*(am|pm)?/i,
   );
@@ -661,7 +657,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     if (!Number.isNaN(ts)) return ts;
   }
 
-  // "try again at Mon 24th, 2026 5:28 pm"
   const tryAgainMatch = normalized.match(
     /at\s+([a-z]{3})\s+(\d{1,2})(?:st|nd|rd|th)?,\s+(\d{4})\s+(\d{1,2}):(\d{2})\s+(am|pm)/i,
   );
@@ -671,7 +666,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     if (!Number.isNaN(ts)) return ts;
   }
 
-  // Claude CLI: "resets Feb 23, 3pm" or "resets Feb 20 at 12am" or "resets Feb 20, 5pm (Africa/Libreville)"
   const claudeDateMatch = normalized.match(
     /resets\s+([a-z]{3})\s+(\d{1,2})(?:\s+at\s+|\s*,\s*)(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s*\([^)]+\))?/i,
   );
@@ -688,7 +682,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     if (!Number.isNaN(ts)) return ts;
   }
 
-  // Gemini: "Access resets at 4:16 PM GMT+3" or "resets at 4:16 PM"
   const timeResetsMatch = normalized.match(
     /resets(?:\s+at)?\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s+GMT[+-]\d+)?/i,
   );
@@ -699,7 +692,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     return parseTimeToday(timeStr, timeResetsMatch[3]);
   }
 
-  // Gemini: "Your quota will reset after 4h58m24s" or "reset after 4h"
   const resetAfterMatch = normalized.match(
     /reset[s]?\s+after\s+(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/i,
   );
@@ -712,7 +704,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     }
   }
 
-  // Claude CLI: "You've hit your limit · resets 3pm (Europe/Istanbul)" or "resets 4pm (Asia/Kuala_Lumpur)"
   const claudeResetsMatch = normalized.match(
     /(?:hit your limit|you've hit your limit)\s*[·•.]\s*resets\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:\([^)]+\))?/i,
   );
@@ -723,7 +714,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     return parseTimeToday(timeStr, claudeResetsMatch[3]);
   }
 
-  // "resets 4pm" or "resets 4:30 PM" or "resets at 3pm" (standalone, e.g. Claude CLI stderr)
   const bareResetsMatch = normalized.match(
     /\bresets(?:\s+at)?\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s*\([^)]+\))?/i,
   );
@@ -734,7 +724,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     return parseTimeToday(timeStr, bareResetsMatch[3]);
   }
 
-  // Claude CLI: "resets in 2 hours" / "resets in 30 minutes"
   const resetsInMatch = normalized.match(
     /\bresets\s+in\s+(\d+)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)\b/i,
   );
@@ -748,7 +737,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     }
   }
 
-  // Claude CLI: full month "resets February 23, 3pm" or "resets March 15, 4:30pm"
   const monthNames =
     'january|february|march|april|may|june|july|august|september|october|november|december';
   const claudeFullMonthMatch = normalized.match(
@@ -789,7 +777,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     }
   }
 
-  // Claude CLI: 24-hour format "resets 15:00" or "resets at 15:00 (Europe/Istanbul)"
   const claude24hMatch = normalized.match(
     /\bresets(?:\s+at)?\s+(\d{1,2}):(\d{2})(?:\s*\([^)]+\))?/i,
   );
@@ -804,7 +791,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     }
   }
 
-  // Claude CLI: "Resets: 3pm" or "Resets: 4:30 PM (Europe/Istanbul)" (colon after resets)
   const claudeColonMatch = normalized.match(
     /\bresets\s*:\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s*\([^)]+\))?/i,
   );
@@ -815,7 +801,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     return parseTimeToday(timeStr, claudeColonMatch[3]);
   }
 
-  // Claude CLI: "limit resets at 3pm" (limit before resets)
   const limitResetsMatch = normalized.match(
     /\blimit\s+resets\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s*\([^)]+\))?/i,
   );
@@ -826,7 +811,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     return parseTimeToday(timeStr, limitResetsMatch[3]);
   }
 
-  // Claude: "Your limit will reset at 7pm (Asia/Tokyo)" or "limit resets at 10pm today"
   const resetAtMatch = normalized.match(
     /\b(?:limit\s+will\s+)?reset[s]?\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s+(?:today|\([^)]+\)))?/i,
   );
@@ -835,7 +819,6 @@ export function parseCliLimitMessage(raw: string): number | null {
     return parseTimeToday(timeStr, resetAtMatch[3]);
   }
 
-  // Relative (LAST — prefer explicit time): "try again in 20s", "retry in 5 minutes"
   const relativeMatch = normalized.match(
     /(?:try again in|retry in|in)\s+(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)\b/i,
   );
@@ -900,7 +883,6 @@ export function getApiCooldownStatus(): CooldownStatus[] {
     const entry = map[key];
     const label = PROVIDER_LABELS[provider];
 
-    // Cooldown takes priority
     if (entry && entry.until > now) {
       result.push({
         provider,
@@ -913,14 +895,12 @@ export function getApiCooldownStatus(): CooldownStatus[] {
       continue;
     }
 
-    // Check availability (stale-while-revalidate)
     const avail = getProviderAvailability(key);
     if (avail.status === 'unchecked') {
       result.push({ provider, label, status: 'unchecked', reason: 'not yet verified', source: 'api' });
       continue;
     }
 
-    // Inline recheck if stale
     if (isProviderStale(key)) {
       const check = checkApiKeyExists(provider);
       const newStatus = check.found ? 'available' : 'unavailable';
@@ -947,7 +927,6 @@ export function getCliCooldownStatus(): CooldownStatus[] {
     const entry = map[key];
     const label = CLI_LABELS[provider];
 
-    // Cooldown takes priority
     if (entry && entry.until > now) {
       result.push({
         provider,
@@ -960,7 +939,6 @@ export function getCliCooldownStatus(): CooldownStatus[] {
       continue;
     }
 
-    // Check availability
     const avail = getProviderAvailability(key);
     if (avail.status === 'unchecked') {
       result.push({ provider, label, status: 'unchecked', reason: 'not yet verified', source: 'cli' });
@@ -981,7 +959,7 @@ export interface OllamaModelInfo {
   name: string;
   size: string;
   modifiedAt: string;
-  stale: boolean; // true if not updated in 30+ days
+  stale: boolean;
 }
 
 export interface OllamaStatusResult {
@@ -1025,7 +1003,6 @@ export async function getOllamaStatus(): Promise<OllamaStatusResult> {
     disabled,
   };
 
-  // Always probe Ollama (even when disabled) to show model info
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
@@ -1137,7 +1114,6 @@ export function logActiveCooldowns(): void {
     );
   }
 
-  // Log Ollama status (async, fire-and-forget)
   getOllamaStatus()
     .then((ollama) => {
       const modelCount = ollama.models.length;
@@ -1172,13 +1148,11 @@ export function filterAvailableProviders<T extends AiProviderId>(providers: T[])
   });
 }
 
-// ── CLI Provider Version Info ───────────────────────────────────────
-
 export interface CliVersionInfo {
   provider: string;
   installed: string | null;
   latest: string | null;
-  upToDate: boolean | null; // null if either version unknown
+  upToDate: boolean | null;
   updateCommand: string;
 }
 
@@ -1202,7 +1176,6 @@ const UPDATE_COMMANDS: Record<string, string> = {
 };
 
 async function getInstalledVersion(provider: string): Promise<string | null> {
-  // For providers that block nested sessions (claude), use npm ls instead of --version
   const npmPkg = NPM_PACKAGES[provider];
   if (npmPkg && !CLI_VERSION_COMMANDS[provider]) {
     return getInstalledNpmVersion(npmPkg);
@@ -1212,11 +1185,9 @@ async function getInstalledVersion(provider: string): Promise<string | null> {
   try {
     const { stdout } = await execAsync(cmd, { timeout: 15000, maxBuffer: 1024 });
     const out = stdout.trim();
-    // Parse various formats: "0.31.0", "codex-cli 0.105.0", "ollama version is 0.17.4"
     const m = out.match(/(\d+\.\d+\.\d+(?:-[\w.]+)?)/);
     return m ? m[1] : out;
   } catch {
-    // Fallback to npm ls if --version fails
     if (npmPkg) return getInstalledNpmVersion(npmPkg);
     return null;
   }
@@ -1225,7 +1196,7 @@ async function getInstalledVersion(provider: string): Promise<string | null> {
 async function getInstalledNpmVersion(pkg: string): Promise<string | null> {
   try {
     const { stdout } = await execAsync(`npm ls -g ${pkg} --depth=0`, { timeout: 30000, maxBuffer: 2048 });
-    const escapedPkg = pkg.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+    const escapedPkg = pkg.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
     const m = stdout.match(new RegExp(`${escapedPkg}@(\\d+\\.\\d+\\.\\d+(?:-[\\w.]+)?)`));
     return m ? m[1] : null;
   } catch {
@@ -1288,8 +1259,6 @@ export async function getCliVersions(): Promise<CliVersionInfo[]> {
   return results;
 }
 
-// ── Ollama Model Update ─────────────────────────────────────────────
-
 export interface OllamaUpdateProgress {
   model: string;
   status: string;
@@ -1320,10 +1289,10 @@ export async function pullOllamaModel(
     const decoder = new TextDecoder();
     let buffer = '';
     let lastPercent = 0;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    let reading = true;
+    while (reading) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) { reading = false; break; }
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() ?? '';
@@ -1365,19 +1334,16 @@ export async function pullOllamaModel(
   }
 }
 
-// ── Ollama Model Upgrade Detection ──────────────────────────────────
-
 export interface ParsedModelName {
-  raw: string;            // original full name e.g. "llama3.1:8b"
-  family: string;         // e.g. "llama"
-  version: string | null; // e.g. "3.1"
-  tag: string;            // e.g. "8b" or "latest"
+  raw: string;
+  family: string;
+  version: string | null;
+  tag: string;
 }
 
 export function parseOllamaModelName(fullName: string): ParsedModelName {
   const [name, ...tagParts] = fullName.split(':');
   const tag = tagParts.join(':') || 'latest';
-  // Extract version from end of name: llama3.1 → family="llama", version="3.1"
   const m = name.match(/^(.+?)(\d+(?:\.\d+)*)$/);
   if (m) {
     return { raw: fullName, family: m[1], version: m[2], tag };
@@ -1391,11 +1357,9 @@ export function getNextVersionCandidates(version: string): string[] {
   if (parts.length >= 2) {
     const major = parseInt(parts[0], 10);
     const minor = parseInt(parts[1], 10);
-    // Try incrementing minor: 3.1 → 3.2, 3.3, ..., 3.9
     for (let m = minor + 1; m <= minor + 8 && m <= 99; m++) {
       candidates.push(`${major}.${m}`);
     }
-    // Try next major with minor 0
     candidates.push(`${major + 1}`);
   } else {
     const num = parseInt(parts[0], 10);
@@ -1422,8 +1386,8 @@ export async function checkOllamaModelInRegistry(model: string, tag: string): Pr
 }
 
 export interface ModelUpgradeInfo {
-  current: string;        // e.g. "llama3.1:8b"
-  upgrade: string;        // e.g. "llama3.3:8b"
+  current: string;
+  upgrade: string;
   family: string;
   currentVersion: string;
   newVersion: string;
@@ -1462,7 +1426,7 @@ export async function findOllamaModelUpgrades(
 
   for (const model of ollama.models) {
     const parsed = parseOllamaModelName(model.name);
-    if (!parsed.version) continue; // Can't determine version, skip
+    if (!parsed.version) continue;
 
     onProgress?.(model.name, 'checking for newer version...');
 
@@ -1471,13 +1435,11 @@ export async function findOllamaModelUpgrades(
     let bestVersion: string | null = null;
 
     const baseTag = getBaseParamTag(parsed.tag);
-    // Tags to try: exact first, then base param tag, then nearby sizes (±10%)
     const nearbyTags = getNearbyParamTags(baseTag).filter((t) => t !== baseTag);
     const tagsToTry = parsed.tag !== baseTag
       ? [parsed.tag, baseTag, ...nearbyTags]
       : [parsed.tag, ...nearbyTags];
 
-    // Check candidates from highest to lowest (reverse), take the first one that exists
     for (const candidateVer of candidates.reverse()) {
       const candidateModel = `${parsed.family}${candidateVer}`;
       let foundTag: string | null = null;
@@ -1491,7 +1453,7 @@ export async function findOllamaModelUpgrades(
       if (foundTag) {
         bestUpgrade = `${candidateModel}:${foundTag}`;
         bestVersion = candidateVer;
-        break; // Found highest available version
+        break;
       }
     }
 
@@ -1526,7 +1488,6 @@ export async function updateAllOllamaModels(
   const updated: string[] = [];
   const failed: string[] = [];
 
-  // Step 1: Pull (re-download) existing models to get latest layers
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
     const basePercent = Math.round((i / models.length) * 100);
@@ -1545,12 +1506,10 @@ export async function updateAllOllamaModels(
   }
   onProgress(100, '', 100, 'checking for version upgrades...');
 
-  // Step 2: Check for version upgrades
   const upgrades = await findOllamaModelUpgrades((model, status) => {
     onProgress(100, model, 0, status);
   });
 
-  // Step 3: Pull upgrade models
   if (upgrades.length > 0) {
     for (let i = 0; i < upgrades.length; i++) {
       const u = upgrades[i];
@@ -1559,7 +1518,6 @@ export async function updateAllOllamaModels(
         onProgress(upgradeOverall, `\u2191 ${u.current} \u2192 ${u.upgrade}`, p.percent, p.status);
       });
       if (ok) {
-        // Delete old model after successful upgrade
         const ollamaUrl = config.ollamaUrl || 'http://localhost:11434';
         try {
           await fetch(`${ollamaUrl}/api/delete`, {

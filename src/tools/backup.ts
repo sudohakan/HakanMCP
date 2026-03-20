@@ -77,8 +77,7 @@ export const backupTools = [
             try {
               fs.unlinkSync(backup.path);
               deleted++;
-            } catch {
-              // Continue with other backups
+            } catch { /* empty */
             }
           }
           return createTextResponse(

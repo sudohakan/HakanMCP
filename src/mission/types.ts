@@ -1,15 +1,7 @@
-/**
- * Mission system type definitions — shared contract for all mission modules.
- * (loader, runner, state, report)
- */
 import { z } from 'zod';
 import { MissionFrontmatterSchema } from './schemas/stateSchemas.js';
 
-// --- Re-export MissionFrontmatter from Zod schema ---
-
 export type MissionFrontmatter = z.infer<typeof MissionFrontmatterSchema>;
-
-// --- Step Status ---
 
 export type StepStatus =
   | 'pending'
@@ -18,8 +10,6 @@ export type StepStatus =
   | 'completed'
   | 'failed'
   | 'skipped';
-
-// --- Mission Parsing Types ---
 
 export interface MissionTask {
   id: string;
@@ -41,8 +31,6 @@ export interface ParsedMission {
   sections: MissionSection[];
   raw: string;
 }
-
-// --- Mission State Types ---
 
 export interface MissionStepState {
   id: string;
@@ -67,8 +55,6 @@ export interface MissionState {
   provider?: string;
 }
 
-// --- History & Learning Types ---
-
 export interface HistoryEntry {
   missionId: string;
   title: string;
@@ -90,8 +76,6 @@ export interface LearnedPattern {
   createdAt: number;
 }
 
-// --- Report Types ---
-
 export interface ReportData {
   missionId: string;
   title: string;
@@ -104,8 +88,6 @@ export interface ReportData {
   learnedPatterns: LearnedPattern[];
 }
 
-// --- Runner Config ---
-
 export interface MissionRunnerConfig {
   maxIterationsPerStep: number;
   stepTimeoutMs: number;
@@ -114,8 +96,6 @@ export interface MissionRunnerConfig {
   continueOnFailure: boolean;
   toolSubset?: string[];
 }
-
-// --- Runner Events ---
 
 export interface MissionEvent {
   type:
@@ -131,16 +111,12 @@ export interface MissionEvent {
   error?: string;
 }
 
-// --- Runner Result ---
-
 export interface MissionRunResult {
   status: 'completed' | 'failed' | 'timeout' | 'aborted';
   steps: MissionStepState[];
   duration: number;
   provider: string;
 }
-
-// --- Target Analysis Types (Phase 6: Assistant Mode) ---
 
 export interface AnalyzedFile {
   path: string;

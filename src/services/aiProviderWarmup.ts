@@ -74,7 +74,6 @@ async function probeAllClis(): Promise<ChatProviderId[]> {
     })),
   );
 
-  // Set CLI provider availability based on probe results
   for (const r of results) {
     setProviderAvailability(
       `${r.provider}_cli`,
@@ -113,7 +112,6 @@ function resolveApiKeys(): void {
     gemini: gemini.key,
   };
 
-  // Set provider availability based on key resolution
   for (const provider of ['codex', 'claude', 'gemini'] as AiProviderId[]) {
     const check = checkApiKeyExists(provider);
     setProviderAvailability(
@@ -138,8 +136,7 @@ function warmApiConnections(): void {
         headers: headers ?? {},
         signal: controller.signal,
       });
-    } catch {
-      /* ignore — connection attempt established */
+    } catch { /* empty */
     } finally {
       clearTimeout(to);
     }
@@ -172,7 +169,7 @@ function warmApiConnections(): void {
  */
 export function startWarmup(basePath?: string, force?: boolean): void {
   if (!force && state.ready && state.completedAt && Date.now() - state.completedAt < 60_000) {
-    return; // Already warmed recently
+    return;
   }
   runWarmup(basePath).catch(() => {});
 }
@@ -205,7 +202,6 @@ async function runWarmup(basePath?: string): Promise<void> {
  */
 export function getWarmedCliOrder(fallback: ChatProviderId[]): ChatProviderId[] {
   if (!state.ready) return fallback;
-  // If we have lastSuccessProvider, put it first
   if (lastSuccessProvider && state.cliOrder.includes(lastSuccessProvider)) {
     const rest = state.cliOrder.filter((p) => p !== lastSuccessProvider);
     return [lastSuccessProvider, ...rest];
@@ -244,7 +240,7 @@ export function loadLastSuccessFromDisk(): ChatProviderId | null {
       const provider = data?.provider as ChatProviderId | undefined;
       if (provider && ['codex', 'claude', 'gemini', 'cursor'].includes(provider)) {
         const age = Date.now() - (data.at ?? 0);
-        if (age < 24 * 60 * 60 * 1000) return provider; // 24h TTL
+        if (age < 24 * 60 * 60 * 1000) return provider;
       }
     }
   } catch {

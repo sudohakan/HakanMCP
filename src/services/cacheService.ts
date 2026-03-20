@@ -48,8 +48,7 @@ export class MultiLevelCache<T = unknown> {
     const p = this.diskPath(key);
     try {
       await fs.promises.unlink(p);
-    } catch {
-      // ignore if file doesn't exist
+    } catch { /* empty */
     }
   }
 
@@ -64,8 +63,7 @@ export class MultiLevelCache<T = unknown> {
           }),
         ),
       );
-    } catch {
-      // ignore
+    } catch { /* empty */
     }
   }
 
@@ -81,8 +79,7 @@ export class MultiLevelCache<T = unknown> {
   private async writeDisk(key: string, entry: CacheEntry<T>): Promise<void> {
     try {
       await fs.promises.writeFile(this.diskPath(key), JSON.stringify(entry), { mode: 0o600 });
-    } catch {
-      // ignore disk errors
+    } catch { /* empty */
     }
   }
 

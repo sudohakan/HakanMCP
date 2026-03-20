@@ -1,58 +1,54 @@
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
-![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey)
-![Tools](https://img.shields.io/badge/tools-107-orange)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
+<div align="center">
+
+<img src="https://img.shields.io/badge/HakanMCP-AI%20Agent%20Platform-blueviolet?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+PHBhdGggZD0iTTEyIDJMMyA3djEwbDkgNSA5LTVWN2wtOS01eiIvPjwvc3ZnPg==" alt="HakanMCP" />
 
 # HakanMCP
 
-Comprehensive MCP server with 107 tools + 9 on-demand MCP servers for AI-powered development workflows.
+**Unified AI Agent Orchestration & MCP Tool Platform**
 
-Run autonomous AI agents with mission-based task execution, or use as a Model Context Protocol server for Claude Code, Cursor, and other MCP-compatible clients.
+107 MCP tools · 9 on-demand servers · 5 AI providers · 4 operating modes
 
----
+[![Version](https://img.shields.io/badge/version-2.1.1-blue?style=flat-square)](CHANGELOG.md)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square)](https://www.typescriptlang.org)
+[![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey?style=flat-square)](#quick-start)
+[![CI](https://img.shields.io/github/actions/workflow/status/sudohakan/HakanMCP/ci.yml?style=flat-square&label=CI)](https://github.com/sudohakan/HakanMCP/actions)
 
-## Table of Contents
+[Quick Start](#-quick-start) · [Features](#-features) · [Architecture](#-architecture) · [CLI Reference](#-cli-commands) · [Contributing](#-contributing)
 
-- [Highlights](#highlights)
-- [Quick Start](#quick-start)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Configuration](#configuration)
-- [CLI Commands](#cli-commands)
-- [AI Provider System](#ai-provider-system)
-- [Project Structure](#project-structure)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [License](#license)
+</div>
 
 ---
 
-## Highlights
+## Why HakanMCP?
 
-- **131 MCP tools** covering databases, git, web, file ops, AI, security, monitoring, and more
-- **Multi-provider AI** with automatic fallback chain -- Codex, Claude, Gemini, Cursor, Ollama
-- **Mission Agent CLI** for autonomous task execution driven by markdown mission files
-- **4 operating modes** -- Watch, Scheduled, Assistant, and Reactive -- for flexible automation
-- **Agentic mode** -- Multi-turn tool-use loops with automatic provider selection
-- **Lazy-loaded dependencies** -- only installs what you actually use
-- **Graceful error handling** -- process-level crash protection with clean shutdown
-- **Rate limit detection** -- automatic cooldown management across all providers
+> Most MCP servers give you a handful of tools. HakanMCP gives you **107** — databases, AI providers, security, monitoring, workflows — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
+
+| What you get | Details |
+|:---|:---|
+| **107 MCP tools** | Databases, git, web, file ops, AI, security, monitoring, encryption, workflows |
+| **Multi-provider AI** | Automatic fallback: Codex → Claude → Gemini → Cursor → Ollama |
+| **Mission Agent CLI** | Autonomous task execution from markdown mission files |
+| **4 operating modes** | Watch, Scheduled, Assistant, Reactive |
+| **Agentic mode** | Multi-turn tool-use loops with automatic provider selection |
+| **Lazy dependencies** | Only installs what you actually use — no bloat |
+| **Rate limit handling** | Automatic cooldown management across all providers |
+| **9 on-demand MCP servers** | Connect additional servers from the built-in catalog at runtime |
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-### As MCP Server (for Claude Code)
-
-Add to your `claude_desktop_config.json` or via Claude Code CLI:
+<details open>
+<summary><strong>As MCP Server (Claude Code / Cursor)</strong></summary>
 
 ```bash
+# One-liner via Claude Code CLI
 claude mcp add hakanmcp node /path/to/HakanMCP/dist/src/index.js
 ```
 
-Or manually in config:
+Or add to your `claude_desktop_config.json`:
 
 ```json
 {
@@ -65,23 +61,28 @@ Or manually in config:
 }
 ```
 
-### From Source
+</details>
+
+<details>
+<summary><strong>From Source</strong></summary>
 
 ```bash
 git clone https://github.com/sudohakan/HakanMCP.git
 cd HakanMCP
 npm install
 cp .env.example .env    # Add your API keys
-npm run build           # Compile TypeScript -> dist/
+npm run build           # Compile TypeScript → dist/
 ```
 
-### As Mission Agent CLI
+</details>
+
+<details>
+<summary><strong>As Mission Agent CLI</strong></summary>
 
 ```bash
-# Install globally
 npm install -g hakanmcp
 
-# Interactive setup — creates config, workspace, and mission via Q&A
+# Interactive setup — config, workspace, mission via Q&A
 hakanmcp init
 
 # Start the mission agent
@@ -89,230 +90,216 @@ hakanmcp start                          # default workspace
 hakanmcp start --workspace my-project   # specific workspace
 hakanmcp start --all                    # all workspaces
 
-# Workspace dashboard — see all workspaces at a glance
+# Dashboard
 hakanmcp mission
-
-# Detailed status for one workspace
-hakanmcp mission --workspace my-project
 
 # View reports
 hakanmcp report
-
-# Stop the agent
-hakanmcp stop
-
-# Remove a workspace
-hakanmcp init --remove my-project
 ```
 
-Requires **Node.js >= 20.0.0**.
+</details>
 
-> For detailed installation and configuration, see [SETUP.md](SETUP.md)
+<details>
+<summary><strong>As npm package</strong></summary>
+
+```bash
+npm install hakanmcp
+```
+
+```typescript
+import { startServer } from 'hakanmcp';
+```
+
+</details>
+
+> **Requires Node.js >= 20.0.0** · See [SETUP.md](SETUP.md) for detailed installation
 
 ---
 
-## Features
+## 🛠 Features
 
-<details>
-<summary><strong>AI and Language Models</strong></summary>
+<table>
+<tr>
+<td width="50%" valign="top">
 
-- **AI Chat** -- Multi-provider AI chat with conversation history and stateful sessions
-- **AI Generate** -- Content generation via configurable AI providers
-- **AI Provider Chat** -- Direct provider-level chat (Claude, OpenAI, Gemini)
-- **AI History** -- Conversation history management with session tracking
-- **AI List Models** -- Enumerate available models across all providers
-- **AI Defence** -- AI safety, content filtering, and threat detection
-- **Agentic Mode** -- Multi-turn tool-use loops where the AI can call MCP tools autonomously
-- **Consensus** -- Multi-model consensus reaching across providers
-- **MoE Router** -- Mixture of Experts routing for intelligent task delegation
-- **Knowledge Graph** -- Entity, observation, and relation management with semantic search
-- **Consciousness Service** -- Periodic self-reflection and emotional state tracking
+### 🤖 AI & Language Models
+- Multi-provider chat with conversation history
+- Content generation via configurable providers
+- Direct provider-level chat (Claude, OpenAI, Gemini)
+- AI safety, content filtering, threat detection
+- Multi-turn agentic tool-use loops
+- Multi-model consensus reaching
+- Mixture of Experts routing
+- Knowledge graph with semantic search
+- Periodic self-reflection & emotional state
 
-</details>
+</td>
+<td width="50%" valign="top">
 
-<details>
-<summary><strong>Database Management</strong></summary>
+### 🗄 Database Management
+- **PostgreSQL** — Query, schema, pool stats
+- **MySQL** — Query execution, schema management
+- **MSSQL** — Query, schema, connection management
+- **SQLite** — Lightweight local operations
+- **MongoDB** — Full CRUD, aggregate, indexing
+- Connection pooling with health checks
+- Backup and restore operations
 
-- **PostgreSQL** -- Query, schema inspection, table listing, pool stats
-- **MySQL** -- Query execution, schema management
-- **MSSQL (SQL Server)** -- Query, schema, connection management
-- **SQLite** -- Lightweight local database operations
-- **MongoDB** -- Connect, find, insert, update, delete, aggregate, indexing, collection/database listing
-- **DB Monitoring** -- Connection pool stats, table schema inspection, backup and restore
-- **DB Pool Manager** -- Connection pooling with idle timeout, health checks, and automatic cleanup
+> Install only what you need: `npm install pg mysql2 mongodb`
 
-Database drivers are optional dependencies -- install only what you need:
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
 
-```bash
-npm install pg        # PostgreSQL
-npm install mysql2    # MySQL
-npm install mssql     # SQL Server
-npm install sqlite3 sqlite  # SQLite
-npm install mongodb   # MongoDB
-```
+### ⚙️ DevOps & System
+- OS, CPU, memory, disk information
+- Process management (list, kill, monitor)
+- System optimization suite (8-step pipeline)
+- Health checks with auto-healing
+- Performance benchmarking
+- Cron/interval task scheduling
+- Automated backup with retention policies
+- Daily tool health verification
 
-</details>
+</td>
+<td width="50%" valign="top">
 
-<details>
-<summary><strong>DevOps and System</strong></summary>
+### 🔒 Security & Encryption
+- AES-256 file and value encryption
+- Content safety filtering
+- Security policy enforcement & auditing
+- Guidance engine with compile/enforce/audit
+- Environment variable management
+- .env file protection
 
-- **System Info** -- OS, CPU, memory, disk information
-- **Process Management** -- List, kill, and monitor system processes
-- **System Optimization** -- Analyze, cleanup, optimize, quick status, admin commands, log viewing
-- **Monitoring** -- Health checks, auto-healing, dependency updates, sync, rollback, self-recovery
-- **Performance** -- Benchmarking and profiling tools
-- **Scheduled Tasks** -- Cron-based and interval-based task scheduling with overlap guard
-- **Backup Service** -- Automated backup with configurable retention, compression, and restore
-- **Tool Health Check** -- Daily automated verification of all registered tools
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
 
-</details>
+### 🔄 Workflow & Automation
+- Pipeline engine (define, validate, run, replay)
+- Multi-agent swarm orchestration
+- Self-improvement engine
+- Postman collection management
+- HTTP requests & file downloads
+- Rate limiting & webhook handling
+- Remote MCP server proxy (MCP Bridge)
 
-<details>
-<summary><strong>File and Data Processing</strong></summary>
+</td>
+<td width="50%" valign="top">
 
-- **File Operations** -- Read, write, copy, move, delete, search, list directory, make directory
-- **Parser** -- CSV, JSON, XML, YAML, and other data format parsing and transformation
-- **Template Engine** -- Handlebars-based template compilation and rendering
-- **Backup** -- File and directory backup with restore support
-- **Cache** -- Entry management, statistics, TTL-based expiration, and cache clearing
-- **Environment** -- Environment variable and .env file management
+### 📂 File & Data Processing
+- CSV, JSON, XML, YAML parsing
+- Handlebars template engine
+- File operations (CRUD, search, directory)
+- Cache with TTL-based expiration
+- GitBook documentation integration
+- Git operations & GitHub integration
 
-</details>
-
-<details>
-<summary><strong>Git and GitHub</strong></summary>
-
-- **Git Operations** -- Add, commit, checkout, reset, sync, repository info
-- **GitHub Integration** -- Create repos, push, pull, setup remote, status checks
-- **GitBook** -- Find, get page, headings, outline, search content, list links, metadata
-
-</details>
-
-<details>
-<summary><strong>Security and Encryption</strong></summary>
-
-- **Encryption** -- File and value encryption/decryption with AES-256
-- **AI Defence** -- Content safety filtering and threat detection
-- **Guidance Engine** -- Security policy compilation, enforcement, and auditing
-
-</details>
-
-<details>
-<summary><strong>Workflow and Automation</strong></summary>
-
-- **Flows** -- Define, validate, run, replay, and version workflow pipelines with execution history
-- **Scheduler** -- Task scheduling with cron expressions and interval syntax
-- **Swarm** -- Multi-agent swarm creation, agent management, task routing, and reconfiguration
-- **Self Improvement** -- Propose and apply changes for self-optimization
-- **DX Tooling** -- Developer experience tool scaffolding
-- **RuVector** -- Pattern learning, search, add, and remove for rule-based vector operations
-- **Postman** -- Collection and request management for API testing
-- **HTTP** -- HTTP requests and file downloads
-- **API** -- Rate limit status, REST wrapper info, webhook handling
-- **MCP Client** -- Connect, disconnect, list connections, list tools, and call tools on remote MCP servers
-- **MCP Bridge** -- Proxy remote MCP server tools into agentic mode
-
-</details>
+</td>
+</tr>
+</table>
 
 ---
 
-## Architecture
+## 🏗 Architecture
 
-```
-hakanmcp
-├── MCP Server (107 tools + 9 on-demand via Model Context Protocol)
-│   ├── Tool Registry (lazy-loaded, health-checked)
-│   ├── Agentic Loop (multi-turn tool-use with any API provider)
-│   └── MCP Bridge (proxy remote MCP server tools)
-│
-├── AI Provider System
-│   ├── CLI Chain: codex → claude → gemini → cursor
-│   ├── API Chain: codex → claude → gemini
-│   ├── Local Fallback: Ollama
-│   ├── Rate Limit Detection & Cooldown Management
-│   └── Provider Warmup (pre-resolve keys on startup)
-│
-└── Mission Agent CLI
-    ├── Workspace System — Multi-workspace config with isolated state
-    ├── Watch Mode       — File system monitoring → AI actions
-    ├── Scheduled Mode   — Cron/interval tasks → periodic execution
-    ├── Assistant Mode   — Interactive chat with mission context
-    └── Reactive Mode    — Watch + Scheduled unified event bus
+```mermaid
+graph TB
+    subgraph MCP["MCP Server (107 tools)"]
+        TR[Tool Registry<br/>lazy-loaded, health-checked]
+        AL[Agentic Loop<br/>multi-turn tool-use]
+        MB[MCP Bridge<br/>proxy remote servers]
+    end
+
+    subgraph AI["AI Provider System"]
+        CLI[CLI Chain<br/>codex → claude → gemini → cursor]
+        API[API Chain<br/>codex → claude → gemini]
+        OL[Ollama<br/>local fallback]
+        RL[Rate Limit<br/>detection & cooldown]
+    end
+
+    subgraph MISSION["Mission Agent CLI"]
+        WM[Watch Mode<br/>file monitoring → AI actions]
+        SM[Scheduled Mode<br/>cron/interval → periodic exec]
+        AM[Assistant Mode<br/>interactive chat + mission context]
+        RM[Reactive Mode<br/>watch + scheduled event bus]
+    end
+
+    MCP --> AI
+    AI --> MISSION
 ```
 
 <details>
-<summary><strong>Operating Modes</strong></summary>
+<summary><strong>📁 Project Structure</strong></summary>
 
-### Watch Mode
-
-Monitor files and directories for changes, triggering AI-driven actions automatically.
-
-```bash
-hakanmcp watch
 ```
-
-- Uses chokidar for file system monitoring
-- Configurable file patterns and triggers
-- Actions execute when trigger conditions match (file extension, content pattern, directory filter)
-
-### Scheduled Mode
-
-Run tasks on cron schedules or time intervals.
-
-```bash
-hakanmcp scheduled
+HakanMCP/
+├── src/                    # TypeScript source
+│   ├── index.ts            # MCP server entry point
+│   ├── config.ts           # Zod-validated config loader
+│   ├── toolRegistry.ts     # Lazy-loaded tool discovery
+│   ├── tools/              # 30 tool modules (~107 tools)
+│   ├── services/           # Core services (agentic, backup, cache, consensus...)
+│   ├── cli/                # CLI command handlers
+│   ├── mission/            # Mission system (loader, runner, state)
+│   ├── flows/              # Workflow pipeline engine
+│   ├── reactive/           # Event bus & cross-mode routing
+│   ├── scheduled/          # Cron/interval executor
+│   └── watch/              # File watcher & triggers
+├── bin/hakanmcp.ts         # CLI entry point
+├── agents/                 # Agent YAML definitions
+├── tests/                  # Jest test suite
+├── .github/workflows/      # CI/CD (7 workflows)
+└── docs/                   # Documentation
 ```
-
-- Supports cron expressions (`0 */6 * * *`)
-- Supports interval syntax (`every 30m`, `every 2h`)
-- Overlap guard prevents concurrent executions of the same task
-- Mission file reloaded fresh on each execution
-
-### Assistant Mode
-
-Interactive chat with full mission context awareness.
-
-```bash
-npm run console:chat
-```
-
-- `PRIMARY_MISSION.md` content automatically injected into AI context
-- Target files/directories analyzed and included
-- Mission state (progress, history) available during conversation
-- Supports bare commands (type `mission` instead of `/mission`)
-
-### Reactive Mode
-
-Combines Watch + Scheduled modes in a unified event-driven architecture.
-
-```bash
-hakanmcp reactive
-```
-
-- Runs file watchers and scheduled tasks simultaneously
-- Event bus enables cross-mode communication (watch events can trigger scheduled tasks)
-- Single process manages all event sources
 
 </details>
 
 <details>
-<summary><strong>Mission System</strong></summary>
+<summary><strong>🔄 Operating Modes</strong></summary>
 
-HakanMCP uses markdown files to define tasks for autonomous execution.
+| Mode | Command | Description |
+|:---|:---|:---|
+| **Watch** | `hakanmcp watch` | File system monitoring → AI-driven actions |
+| **Scheduled** | `hakanmcp scheduled` | Cron/interval tasks with overlap guard |
+| **Assistant** | `npm run console:chat` | Interactive chat with mission context |
+| **Reactive** | `hakanmcp reactive` | Watch + Scheduled in unified event bus |
 
-### Mission File Format
+</details>
 
-`hakanmcp init` walks you through an interactive Q&A to create workspace-scoped missions:
+<details>
+<summary><strong>🤖 AI Provider Fallback Chain</strong></summary>
 
-1. **Workspace name** — identifier (e.g. `crash-analyzer`)
-2. **Target directory** — the folder this workspace monitors/analyzes
-3. **Mission title & description** — what the agent should do
-4. **Tasks** — checklist items the agent will execute (add as many as needed)
-5. **Schedule mode** — manual, watch, or cron
-6. **Tags** — for categorization
-7. **Secondary mission** — optional additional mission
+```
+Request → CLI Chain (codex → claude → gemini → cursor)
+              ↓ all CLIs failed
+          API Chain (codex → claude → gemini)
+              ↓ all APIs failed
+          Local Fallback (Ollama)
+```
 
-Generated mission file example:
+Configure priority in `config.yaml`:
+
+```yaml
+aiProviders:
+  cliPriority: [codex, claude, gemini, cursor]
+  apiPriority: [codex, claude, gemini]
+  fallbackOrder: [cli, api, ollama]
+  agenticEnabled: true
+  agenticMaxIterations: 10
+```
+
+Rate limit detection supports: relative (`try again in 20s`), absolute (`resets at 4:16 PM`), and duration (`reset after 4h58m`) formats.
+
+</details>
+
+<details>
+<summary><strong>📋 Mission System</strong></summary>
+
+Missions are markdown files that define autonomous agent tasks:
 
 ```markdown
 ---
@@ -334,22 +321,35 @@ Analyze Windows crash dump files and identify root causes.
 - [ ] Generate analysis report
 ```
 
-### How It Works
+Create via interactive Q&A: `hakanmcp init`
 
-1. `hakanmcp init` creates config, mission files, and workspace state directory
-2. Each workspace has isolated state in `.hakanmcp/workspaces/<name>/`
-3. The agent reads the mission file and executes tasks via the configured AI provider
-4. State is tracked per-workspace (`state.json`, `history.json`, `learned.json`)
-5. Reports are generated in `data/reports/` after completion
-6. Use `hakanmcp mission` for a dashboard of all workspace statuses
+Each workspace gets isolated state in `.hakanmcp/workspaces/<name>/`.
 
 </details>
 
 ---
 
-## Configuration
+## 💻 CLI Commands
 
-Running `hakanmcp init` interactively creates a `hakanmcp.config.yaml` file with workspace definitions:
+| Command | Description |
+|:---|:---|
+| `hakanmcp init` | Interactive workspace setup (config + mission via Q&A) |
+| `hakanmcp init --remove <name>` | Remove a workspace |
+| `hakanmcp start [--workspace <name>] [--all]` | Start mission agent |
+| `hakanmcp stop` | Stop running agent |
+| `hakanmcp mission [--workspace <name>] [--all]` | Workspace dashboard |
+| `hakanmcp report [-n 5]` | View reports |
+| `hakanmcp watch` | File watcher mode |
+| `hakanmcp scheduled` | Scheduled task mode |
+| `hakanmcp reactive` | Reactive mode (watch + scheduled) |
+| `hakanmcp doctor [fix]` | Health check / AI-driven auto-repair |
+
+---
+
+## ⚙️ Configuration
+
+<details>
+<summary><strong>Workspace Config (hakanmcp.config.yaml)</strong></summary>
 
 ```yaml
 version: "1"
@@ -358,198 +358,99 @@ mission:
   primary: PRIMARY_MISSION.md
 
 agent:
-  provider: claude          # claude | openai | gemini
+  provider: claude
   maxIterationsPerStep: 10
   stepTimeoutMs: 120000
   continueOnFailure: false
 
 workspaces:
   - name: my-project
-    path: C:/path/to/target
+    path: /path/to/target
     primary: missions/my-project/PRIMARY_MISSION.md
-    secondary: missions/my-project/SECONDARY_MISSION.md   # optional
+    secondary: missions/my-project/SECONDARY_MISSION.md
 ```
 
-Each workspace has its own mission files and isolated state directory (`.hakanmcp/workspaces/<name>/`).
+</details>
 
-### Environment Variables
-
-Copy `.env.example` to `.env` and set your keys:
-
-```bash
-cp .env.example .env
-```
+<details>
+<summary><strong>Environment Variables (.env)</strong></summary>
 
 ```bash
-# GitHub (required for GitHub integration tools)
+# AI API Keys (at least one recommended)
+CODEX_API_KEY=sk-...
+CLAUDE_CODE_API_KEY=sk-ant-...
+GEMINI_API_KEY=AI...
+
+# GitHub (for git integration tools)
 GITHUB_TOKEN=ghp_...
 
-# AI API Keys (at least one recommended for chat/agentic mode)
-CODEX_API_KEY=sk-...           # OpenAI / Codex
-CLAUDE_CODE_API_KEY=sk-ant-... # Anthropic / Claude
-GEMINI_API_KEY=AI...           # Google / Gemini
-
-# GitBook documentation URL
+# GitBook (optional)
 GITBOOK_URL=https://your-instance.gitbook.io/your-api
 ```
 
-> See `.env.example` for the full list of supported environment variables.
+See `.env.example` for the full list.
 
----
+</details>
 
-## CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `hakanmcp init` | Interactive workspace setup (config + mission via Q&A) |
-| `hakanmcp init --remove <name>` | Remove a workspace (config, files, state) |
-| `hakanmcp start` | Start mission agent (default workspace) |
-| `hakanmcp start --workspace <name>` | Start specific workspace |
-| `hakanmcp start --all` | Start all workspaces |
-| `hakanmcp stop` | Stop running agent (any mode) |
-| `hakanmcp mission` | Workspace dashboard (all workspaces overview) |
-| `hakanmcp mission --workspace <name>` | Detailed status for one workspace |
-| `hakanmcp mission --all` | Detailed status for all workspaces |
-| `hakanmcp report` | Show most recent report |
-| `hakanmcp report -n 5` | Show last 5 reports |
-| `hakanmcp watch` | Start file watcher mode |
-| `hakanmcp scheduled` | Start scheduled task mode |
-| `hakanmcp reactive` | Start reactive mode (watch + scheduled combined) |
-| `hakanmcp doctor` | Health check (version, build, config) |
-| `hakanmcp doctor fix` | AI-driven auto-repair for detected issues |
-| `hakanmcp help` | Show help for all commands |
-
-### Interactive Chat Commands (inside `npm run console:chat`)
-
-The chat REPL supports both `/command` and bare `command` syntax:
-
-| Command | Description |
-|---------|-------------|
-| `providers` | Show AI provider status and usage stats |
-| `config` | Show current configuration |
-| `init` | Initialize workspace from chat |
-| `start` | Start mission agent |
-| `stop` | Stop running agent |
-| `mission` | Workspace dashboard |
-| `report` | Show recent reports |
-| `watch` | Start watch mode |
-| `scheduled` | Start scheduled mode |
-| `reactive` | Start reactive mode |
-| `doctor` | Run health checks |
-| `help` | Show all commands |
-
----
-
-## AI Provider System
-
-HakanMCP supports multiple AI providers with automatic fallback:
-
-```
-Request → CLI Chain (codex → claude → gemini → cursor)
-              ↓ all CLIs failed
-          API Chain (codex → claude → gemini)
-              ↓ all APIs failed
-          Local Fallback (Ollama)
-```
-
-### Provider Priority
-
-Priority is configured in `config.yaml`:
+<details>
+<summary><strong>Server Config (config.yaml)</strong></summary>
 
 ```yaml
+server:
+  name: hakanmcp
+  logLevel: info
+
+cache:
+  defaultTTL: 300
+  maxEntries: 1000
+
 aiProviders:
   cliPriority: [codex, claude, gemini, cursor]
   apiPriority: [codex, claude, gemini]
   fallbackOrder: [cli, api, ollama]
-```
-
-### Agentic Mode
-
-When enabled, HakanMCP uses multi-turn tool-use loops where the AI model can call any registered MCP tool:
-
-```yaml
-aiProviders:
   agenticEnabled: true
-  agenticMaxIterations: 10
-```
 
-Agentic mode respects the CLI/API priority chain -- if higher-priority CLI providers are available, they are used before falling back to a lower-priority API provider.
-
-### Rate Limit Handling
-
-- Automatic detection of rate limit messages from all providers
-- Cooldown tracking with per-provider timers
-- Supports relative (`try again in 20s`), absolute (`resets at 4:16 PM`), and duration (`reset after 4h58m`) formats
-- Providers in cooldown are automatically skipped
-
----
-
-<details>
-<summary><strong>Project Structure</strong></summary>
-
-```
-HakanMCP/
-├── src/                    # TypeScript source code
-│   ├── index.ts            # MCP server entry point
-│   ├── config.ts           # Configuration loader (Zod-validated)
-│   ├── toolRegistry.ts     # Tool registration and discovery (lazy-loaded)
-│   ├── tools/              # MCP tool implementations (~35 modules)
-│   ├── services/           # Core services (agentic loop, backup, cache, etc.)
-│   ├── cli/                # CLI command handlers
-│   │   ├── cliUtils.ts     # Shared rendering utilities
-│   │   ├── configValidator.ts  # Workspace config schema (Zod)
-│   │   ├── initCommand.ts  # Interactive workspace setup
-│   │   ├── missionCommand.ts   # Workspace dashboard & status
-│   │   └── startCommand.ts # Workspace execution modes
-│   ├── mission/            # Mission system (loader, runner, state)
-│   ├── flows/              # Workflow pipeline engine
-│   ├── reactive/           # Event bus and cross-mode routing
-│   ├── scheduled/          # Cron/interval task executor
-│   ├── watch/              # File system watcher and trigger engine
-│   ├── types/              # Shared TypeScript type definitions
-│   └── utils/              # Utilities (logger, HTTP client, DB pool, etc.)
-├── scripts/                # Development and maintenance scripts
-│   └── console_chat.ts     # Interactive chat REPL
-├── bin/                    # CLI entry points
-│   └── hakanmcp.ts         # Premium CLI with gradient UI (Commander.js)
-├── missions/               # Workspace mission files (per-workspace subdirs)
-├── agents/                 # Agent YAML definitions (architect, coder, reviewer, etc.)
-├── tests/                  # Jest test suite
-├── .github/workflows/      # CI/CD and release automation (7 workflows)
-├── .hakanmcp/              # Runtime state (gitignored)
-│   └── workspaces/         # Per-workspace state directories
-├── hakanmcp.config.yaml    # Workspace configuration (gitignored)
-├── config.yaml             # Server configuration (gitignored)
-├── .env                    # API keys and secrets (gitignored)
-├── .env.example            # Environment variable template
-├── SETUP.md                # Installation guide
-├── CONTRIBUTING.md         # Development guidelines
-├── SECURITY.md             # Security policy
-├── CHANGELOG.md            # Version history
-└── LICENSE                 # MIT License
+backup:
+  maxBackups: 10
+  compression: true
 ```
 
 </details>
 
 ---
 
-## Documentation
+## 📊 At a Glance
 
-| Document | Description |
-|----------|-------------|
-| [SETUP.md](SETUP.md) | Installation and configuration guide |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow and code style |
-| [SECURITY.md](SECURITY.md) | Vulnerability reporting and security policy |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| Metric | Value |
+|:---|:---|
+| Total MCP tools | 107 |
+| On-demand MCP servers | 9 |
+| Tool modules | 30 |
+| AI providers supported | 5 (Codex, Claude, Gemini, Cursor, Ollama) |
+| Database engines | 5 (PostgreSQL, MySQL, MSSQL, SQLite, MongoDB) |
+| Operating modes | 4 (Watch, Scheduled, Assistant, Reactive) |
+| CI/CD workflows | 7 |
+| Test suite | 247 tests |
+| License | MIT |
 
 ---
 
-## Contributing
+## 📖 Documentation
 
-We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, and pull request guidelines.
+| Document | Description |
+|:---|:---|
+| **[SETUP.md](SETUP.md)** | Installation, platform-specific setup, IDE integration |
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | Development workflow, code style, PR guidelines |
+| **[SECURITY.md](SECURITY.md)** | Vulnerability reporting and security policy |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history and release notes |
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
-# Development setup
 git clone https://github.com/sudohakan/HakanMCP.git
 cd HakanMCP
 npm install
@@ -559,6 +460,12 @@ npm test
 
 ---
 
-## License
+## 📄 License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — free for personal and commercial use.
+
+<div align="center">
+
+Built with TypeScript · Powered by [Model Context Protocol](https://modelcontextprotocol.io)
+
+</div>

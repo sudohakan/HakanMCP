@@ -1,8 +1,3 @@
-/**
- * `hakanmcp init` command handler.
- * Fully interactive — single command sets up config + workspace + mission via Q&A.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
@@ -81,7 +76,6 @@ async function interactiveWorkspaceSetup(): Promise<{
   console.log(chalk.hex('#6C5CE7').bold('Workspace Setup'));
   console.log(chalk.dim('Answer a few questions to configure your workspace.\n'));
 
-  // 1. Workspace name
   const wsName = await input({
     message: 'Workspace name (e.g. minidump-analyzer, code-reviewer):',
     validate: (val) => {
@@ -91,7 +85,6 @@ async function interactiveWorkspaceSetup(): Promise<{
     },
   });
 
-  // 2. Target directory
   const targetPath = await input({
     message: 'Target directory (the folder this workspace will monitor/analyze):',
     validate: (val) => {
@@ -101,18 +94,15 @@ async function interactiveWorkspaceSetup(): Promise<{
     },
   });
 
-  // 3. Mission title
   const missionTitle = await input({
     message: 'Mission title (what will this workspace do?):',
     default: `${wsName} mission`,
   });
 
-  // 4. Mission description
   const missionDesc = await input({
     message: 'Describe the goal in detail (what should be analyzed/monitored/done?):',
   });
 
-  // 5. Tasks — collect one by one
   console.log(chalk.dim('\nDefine tasks (checklist items the agent will execute).'));
   console.log(chalk.dim('Press Enter with empty input when done.\n'));
 
@@ -131,7 +121,6 @@ async function interactiveWorkspaceSetup(): Promise<{
     }
   }
 
-  // 6. Schedule mode
   const schedule = await select({
     message: 'Schedule mode:',
     choices: [
@@ -141,14 +130,12 @@ async function interactiveWorkspaceSetup(): Promise<{
     ],
   });
 
-  // 7. Tags
   const tagsInput = await input({
     message: 'Tags (comma-separated, e.g. monitoring,windows,crash):',
     default: '',
   });
   const tags = tagsInput ? tagsInput.split(',').map((t) => t.trim()).filter(Boolean) : [];
 
-  // 8. Secondary mission?
   const wantSecondary = await confirm({
     message: 'Create a secondary mission too?',
     default: false,
@@ -197,7 +184,6 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
   const cwd = process.cwd();
   const configPath = path.join(cwd, CONFIG_FILENAME);
 
-  // Interactive prompts require a real TTY — not available in embed/subprocess mode
   if (process.env.HAKANMCP_EMBED === '1') {
     console.log(renderCommandHeader('Init', 'init'));
     console.log(chalk.hex('#FDCB6E')('  Interactive mode requires a terminal.'));
@@ -205,7 +191,6 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     return;
   }
 
-  // --- Remove workspace ---
   if (options.remove) {
     const wsName = options.remove;
 
@@ -232,7 +217,6 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     const spinner = ora(`Removing workspace "${wsName}"...`).start();
 
     try {
-      // Remove mission files
       const primaryPath = path.join(cwd, ws.primary);
       if (fs.existsSync(primaryPath)) fs.unlinkSync(primaryPath);
       if (ws.secondary) {
@@ -240,17 +224,14 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
         if (fs.existsSync(secPath)) fs.unlinkSync(secPath);
       }
 
-      // Remove mission directory if empty
       const missionDir = path.join(cwd, 'missions', wsName);
-      try { fs.rmdirSync(missionDir); } catch { /* not empty or doesn't exist */ }
+      try { fs.rmdirSync(missionDir); } catch { /* empty */ }
 
-      // Remove state directory
       const stateDir = path.join(cwd, STATE_DIR, 'workspaces', wsName);
       if (fs.existsSync(stateDir)) {
         fs.rmSync(stateDir, { recursive: true, force: true });
       }
 
-      // Remove from config
       config.workspaces!.splice(wsIndex, 1);
       const configYaml = yaml.dump(config, { indent: 2, lineWidth: 100, noRefs: true });
       fs.writeFileSync(configPath, configYaml, 'utf8');
@@ -264,12 +245,10 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     return;
   }
 
-  // --- Load or create base config ---
   let config: ReturnType<typeof getBaseConfig>;
   let isNewConfig = false;
 
   if (fs.existsSync(configPath) && !options.force) {
-    // Config exists — load it, we'll add workspace to it
     try {
       const existing = loadWorkspaceConfig(cwd);
       config = {
@@ -285,10 +264,8 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     isNewConfig = true;
   }
 
-  // Ensure state dir exists
   fs.mkdirSync(path.join(cwd, STATE_DIR), { recursive: true });
 
-  // --- Interactive Q&A ---
   console.log(renderCommandHeader('Init', 'init'));
   console.log(chalk.dim('  Interactive workspace & mission setup\n'));
 
@@ -299,7 +276,6 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     console.log(chalk.dim(`  Existing config found with ${wsCount} workspace(s).\n`));
   }
 
-  // Ask if user wants to add a workspace
   const addWorkspace = await confirm({
     message: 'Add a new workspace?',
     default: true,
@@ -307,7 +283,6 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
 
   if (!addWorkspace) {
     if (isNewConfig) {
-      // Still write base config even without workspace
       const spinner = ora('Creating base config...').start();
       const configYaml = yaml.dump(config, { indent: 2, lineWidth: 100, noRefs: true });
       fs.writeFileSync(configPath, configYaml, 'utf8');
@@ -319,27 +294,22 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     return;
   }
 
-  // Interactive workspace Q&A
   const result = await interactiveWorkspaceSetup();
   if (!result) return;
 
   const { entry, primaryContent, secondaryContent } = result;
 
-  // Check duplicate name
   if (config.workspaces.some((w) => w.name === entry.name)) {
     if (!options.force) {
       console.error(chalk.hex('#FF6B6B')(`\nWorkspace "${entry.name}" already exists. Use --force to overwrite.`));
       return;
     }
-    // Remove old entry for overwrite
     config.workspaces = config.workspaces.filter((w) => w.name !== entry.name);
   }
 
-  // --- Write everything ---
   const spinner = ora('Setting up workspace...').start();
 
   try {
-    // 1. Mission files
     const missionDir = path.join(cwd, 'missions', entry.name);
     fs.mkdirSync(missionDir, { recursive: true });
     fs.writeFileSync(path.join(cwd, entry.primary), primaryContent, 'utf8');
@@ -350,12 +320,10 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
       spinner.text = 'Created SECONDARY_MISSION.md';
     }
 
-    // 2. Workspace state dir
     const wsStateDir = path.join(cwd, STATE_DIR, 'workspaces', entry.name);
     fs.mkdirSync(wsStateDir, { recursive: true });
     spinner.text = 'Created state directory';
 
-    // 3. Add workspace to config and write
     config.workspaces.push({
       name: entry.name,
       path: entry.path,
@@ -367,7 +335,6 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     fs.writeFileSync(configPath, configYaml, 'utf8');
     spinner.text = 'Updated config';
 
-    // 4. Root mission templates (for backward compat, only on new installs)
     if (isNewConfig) {
       const rootPrimary = path.join(cwd, 'PRIMARY_MISSION.md');
       const rootSecondary = path.join(cwd, 'SECONDARY_MISSION.md');
@@ -395,7 +362,6 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
 
     spinner.succeed(chalk.hex('#00D68F')(`Workspace "${entry.name}" ready!`));
 
-    // Summary
     console.log(renderDivider());
     console.log(chalk.hex('#6C5CE7').bold('  Summary'));
     console.log(chalk.dim(`  Config:    ${CONFIG_FILENAME}`));
@@ -413,7 +379,6 @@ export async function runInit(options: InitOptions = {}): Promise<void> {
     console.log(chalk.dim('  Or:   hakanmcp watch   (list all workspaces)'));
     console.log('');
 
-    // Ask to add another
     const addAnother = await confirm({
       message: 'Add another workspace?',
       default: false,

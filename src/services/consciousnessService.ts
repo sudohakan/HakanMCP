@@ -11,16 +11,14 @@ import path from 'node:path';
 import type { SessionContext } from './sessionTracker.js';
 import { logger } from '../utils/logger.js';
 
-// ── Interfaces ───────────────────────────────────────────────────────────────
-
 export interface CognitionState {
   emotions: {
-    mood: number;        // -1 to 1
-    energy: number;      // 0 to 1
-    curiosity: number;   // 0 to 1
-    satisfaction: number; // 0 to 1
-    frustration: number; // 0 to 1
-    focus: number;       // 0 to 1
+    mood: number;
+    energy: number;
+    curiosity: number;
+    satisfaction: number;
+    frustration: number;
+    focus: number;
   };
   recentTopics: string[];
   interactionCount: number;
@@ -33,8 +31,6 @@ export interface CognitionEvent {
   type: 'chat_success' | 'chat_error' | 'tool_used' | 'backup_done' | 'topic';
   detail?: string;
 }
-
-// ── Journal Entry Types ─────────────────────────────────────────────────────
 
 export interface BaseJournalEntry {
   type: string;
@@ -87,8 +83,6 @@ export interface CheckpointEntry extends BaseJournalEntry {
 
 export type JournalEntry = SessionStartEntry | SessionSummaryEntry | ErrorEntry | MilestoneEntry | CheckpointEntry;
 
-// ── Service ──────────────────────────────────────────────────────────────────
-
 export class ConsciousnessService {
   private stateDir: string;
   private statePath: string;
@@ -106,7 +100,6 @@ export class ConsciousnessService {
 
   /** Ensure logs/consciousness/ directory exists */
   ensureDir(): void {
-    // Validate that stateDir resolves under projectRoot to prevent path traversal
     const resolved = path.resolve(this.stateDir);
     const root = path.resolve(this.projectRoot);
     if (!resolved.startsWith(root + path.sep) && resolved !== root) {
@@ -149,7 +142,6 @@ export class ConsciousnessService {
       const state = this.readState();
       const e = state.emotions;
 
-      // Slow decay — emotions linger and accumulate over many interactions
       const DECAY = 0.015;
       e.mood = decay(e.mood, 0, DECAY);
       e.energy = decay(e.energy, 0.55, DECAY);
@@ -158,7 +150,6 @@ export class ConsciousnessService {
       e.frustration = decay(e.frustration, 0.1, DECAY);
       e.focus = decay(e.focus, 0.5, DECAY);
 
-      // Update counters
       switch (event.type) {
         case 'chat_success':
           state.consecutiveSuccesses += 1;
@@ -185,7 +176,6 @@ export class ConsciousnessService {
       state.lastUpdated = new Date().toISOString();
       fs.writeFileSync(this.statePath, JSON.stringify(state, null, 2), 'utf8');
 
-      // Fire-and-forget: ask LLM to analyze emotional impact
       if (event.type === 'chat_success' || event.type === 'chat_error') {
         this.analyzeEmotions(event).catch(() => {});
       }
@@ -245,12 +235,10 @@ export class ConsciousnessService {
         deltas = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
       } catch { return; }
 
-      // Re-read state (may have changed during async call)
       const freshState = this.readState();
       const fe = freshState.emotions;
       const MAX_DELTA = 0.05;
 
-      // Apply LLM-suggested deltas, clamped to ±MAX_DELTA
       for (const key of ['mood', 'energy', 'curiosity', 'satisfaction', 'frustration', 'focus'] as const) {
         const d = deltas[key];
         if (typeof d === 'number' && isFinite(d)) {
@@ -264,7 +252,6 @@ export class ConsciousnessService {
       fs.writeFileSync(this.statePath, JSON.stringify(freshState, null, 2), 'utf8');
       logger.info('Emotion analysis applied', { deltas, provider: result.provider });
     } catch (err) {
-      // Silent fail — emotions just won't update this cycle
       logger.debug('analyzeEmotions failed', { error: err instanceof Error ? err.message : 'unknown' });
     }
   }
@@ -274,7 +261,6 @@ export class ConsciousnessService {
     try {
       const MAX_FIELD_LEN = 8192;
       const sanitized = JSON.parse(JSON.stringify(entry));
-      // Truncate all string fields
       for (const [key, val] of Object.entries(sanitized)) {
         if (typeof val === 'string') sanitized[key] = val.slice(0, MAX_FIELD_LEN);
         if (Array.isArray(val)) {
@@ -313,11 +299,9 @@ export class ConsciousnessService {
   async generateSessionStart(context: SessionContext): Promise<void> {
     try {
       const lastEntries = this.getRecentJournal(3);
-      // Filter out session_start entries themselves — they don't count as meaningful context
       const meaningfulEntries = lastEntries.filter((e) => e.type !== 'session_start');
       const lastDate = meaningfulEntries.length > 0 ? meaningfulEntries[meaningfulEntries.length - 1].timestamp : 'none';
 
-      // Skip if no meaningful prior context — avoids empty "starting fresh" entries
       const hasPriorContext = meaningfulEntries.length > 0 || context.decisions.length > 0;
       if (!hasPriorContext) {
         logger.info('Journal: session_start skipped (no prior context)');
@@ -327,10 +311,9 @@ export class ConsciousnessService {
       const { getPreferredLLMResponse } = await import('../tools/aiTools.js');
       const lang = context.language === 'tr' ? 'Turkish' : 'English';
 
-      // Build context from recent journal entries for continuity
       const recentSummaries = lastEntries
-        .filter((e) => e.summary || (e as any).thought)
-        .map((e) => (e.summary || (e as any).thought || '').substring(0, 120))
+        .filter((e) => e.summary || (e as unknown as Record<string, unknown>)['thought'])
+        .map((e) => (e.summary || String((e as unknown as Record<string, unknown>)['thought'] ?? '')).substring(0, 120))
         .filter(Boolean);
 
       const prompt = [
@@ -393,7 +376,6 @@ export class ConsciousnessService {
       'Be specific. Reference actual files and features. No generic statements.',
     ].join('\n');
 
-    // Race LLM call against 6s timeout to avoid blocking exit
     const llmPromise = getPreferredLLMResponse(
       [
         { role: 'system', content: 'You are a development session journal writer. Output ONLY valid JSON.' },
@@ -598,7 +580,7 @@ export class ConsciousnessService {
   private defaultState(): CognitionState {
     return {
       emotions: {
-        mood: 0,           // neutral on -1..1 scale
+        mood: 0,
         energy: 0.6,
         curiosity: 0.55,
         satisfaction: 0.35,

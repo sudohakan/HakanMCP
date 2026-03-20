@@ -58,7 +58,6 @@ async function runStep(step: Flow['steps'][number]): Promise<string> {
   const action = step.action;
   const args = step.args || {};
 
-  // Resolve connection if provided
   const connectionId = (args as Record<string, unknown>)?.connectionId as string | undefined;
   const connection = connectionId ? getConnection(connectionId) : undefined;
   if (connectionId && !connection) {
@@ -202,7 +201,6 @@ export async function runFlowFile(filePath: string): Promise<{ success: boolean;
 
 export const flowSchema = FlowSchema;
 
-/** Plan §H: JSONL append-only to avoid O(N) read+write per record */
 async function loadHistoryLines(): Promise<FlowRunLog[]> {
   try {
     const raw = await fs.promises.readFile(HISTORY_PATH, 'utf8');

@@ -40,19 +40,15 @@ export class ScheduledExecutor {
     log.info('Executing scheduled mission', { trigger: triggerName, path: mission.filePath });
 
     try {
-      // Create state manager for persistence
       const stateManager = new MissionStateManager(cwd);
       await stateManager.ensureDir();
 
-      // Build config from defaults
       const config: MissionRunnerConfig = { ...DEFAULT_CONFIG };
 
-      // Progress callback logs via winston
       const onProgress = (event: MissionEvent): void => {
         log.debug('Mission progress', { trigger: triggerName, event: event.type, step: event.stepId });
       };
 
-      // Run the mission
       const result = await runMission(mission, stateManager, config, signal, onProgress);
 
       log.info('Scheduled mission completed', {
@@ -77,7 +73,6 @@ export class ScheduledExecutor {
         error: errorMsg,
         timestamp: Date.now(),
       });
-      // Do NOT rethrow -- scheduler must keep running
     }
   }
 

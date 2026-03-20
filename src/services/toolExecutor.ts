@@ -70,14 +70,12 @@ export function createToolExecutor(
 
   return {
     getAvailableToolDefs(): ClaudeToolDefinition[] {
-      // MCP bridge tools would be added here if needed in the future
       return localDefs;
     },
 
     async execute(toolName: string, input: Record<string, unknown>) {
       const start = Date.now();
 
-      // Check if it's an MCP bridge tool (mcp:{connId}:{toolName} format)
       if (toolName.startsWith('mcp:') && mcpBridge) {
         const parts = toolName.split(':');
         if (parts.length >= 3) {
@@ -93,7 +91,6 @@ export function createToolExecutor(
         }
       }
 
-      // Local tool execution
       const tool = localMap.get(toolName);
       if (!tool) {
         return {

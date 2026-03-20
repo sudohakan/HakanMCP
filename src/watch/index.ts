@@ -1,7 +1,3 @@
-/**
- * Watch module barrel export + orchestrator.
- * Provides startWatchMode to wire FileWatcher -> TriggerEngine -> ActionExecutor.
- */
 export { FileWatcher } from './fileWatcher.js';
 export { TriggerEngine } from './triggerEngine.js';
 export { ActionExecutor } from './actionExecutor.js';
@@ -41,7 +37,6 @@ export function extractTriggersFromMissions(missions: ParsedMission[]): WatchTri
       continue;
     }
 
-    // Build prompt from mission description + task descriptions
     const taskList = mission.tasks
       .map((t) => `- ${t.description}`)
       .join('\n');
@@ -75,15 +70,12 @@ export async function startWatchMode(
   signal: AbortSignal,
   onEvent?: (event: WatchSystemEvent) => void,
 ): Promise<void> {
-  // 1. Load workspace config
   const config = loadWorkspaceConfig(cwd);
   const watchConfig = config.watch ?? { enabled: false, paths: [], debounceMs: 1000 };
 
-  // 2. Load missions and extract watch triggers
   const missions = loadAllMissions(cwd);
   const missionTriggers = extractTriggersFromMissions(missions);
 
-  // 3. Merge workspace paths with mission-derived patterns
   const allPatterns = [
     ...watchConfig.paths,
     ...missionTriggers.flatMap((t) => t.patterns),
@@ -95,7 +87,6 @@ export async function startWatchMode(
     return;
   }
 
-  // 4. Create components
   const fileWatcher = new FileWatcher(allPatterns, {
     cwd,
     ignoreInitial: true,
@@ -104,10 +95,8 @@ export async function startWatchMode(
   const triggerEngine = new TriggerEngine(watchConfig.debounceMs);
   const actionExecutor = new ActionExecutor([], onEvent, 5);
 
-  // 5. Add triggers
   triggerEngine.addTriggers(missionTriggers);
 
-  // 6. Wire: fileWatcher -> triggerEngine -> actionExecutor
   fileWatcher.onEvent((event) => {
     triggerEngine.evaluate(event, cwd);
   });
@@ -120,18 +109,15 @@ export async function startWatchMode(
         path: result.event.path,
         timestamp: Date.now(),
       });
-      // Fire-and-forget -- errors are handled inside ActionExecutor
       actionExecutor.execute(result).catch(() => {});
     }
   });
 
-  // 7. Start watching
   await fileWatcher.start();
 
   onEvent?.({ type: 'ready', timestamp: Date.now() });
   log.info('Watch mode started', { patterns: allPatterns.length, triggers: missionTriggers.length });
 
-  // 8. Wait for abort signal
   await new Promise<void>((resolve) => {
     if (signal.aborted) {
       resolve();
@@ -140,7 +126,6 @@ export async function startWatchMode(
     signal.addEventListener('abort', () => resolve(), { once: true });
   });
 
-  // 9. Cleanup
   await fileWatcher.stop();
   triggerEngine.clear();
 

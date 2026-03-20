@@ -45,7 +45,6 @@ import type { AgenticLoopResult } from '../types/index.js';
 
 export type ChatProviderId = 'codex' | 'claude' | 'gemini' | 'cursor';
 
-// Tool registry reference for agentic loop (injected from index.ts to avoid circular imports)
 let agenticToolsRef: Array<{
   name: string;
   description: string;
@@ -85,9 +84,9 @@ function execViaStdin(
   stdinData: string,
   options: {
     timeout?: number;
-    idleTimeout?: number;      // DEPRECATED — kept for backward compat, mapped to startupTimeout
-    startupTimeout?: number;   // max wait before first output (default 30s)
-    maxTimeout?: number;       // absolute upper bound (default 300s)
+    idleTimeout?: number;
+    startupTimeout?: number;
+    maxTimeout?: number;
     maxBuffer?: number;
     cwd?: string;
   } = {},
@@ -135,9 +134,6 @@ function execViaStdin(
       }
     };
 
-    // Periodic alive check (every 5s)
-    // Before first output: enforce startupTimeout, but only kill if process is dead
-    // After first output: no idle timeout — just check process is alive
     const aliveChecker = setInterval(() => {
       if (!hasReceivedOutput) {
         const elapsed = Date.now() - startTime;
@@ -152,12 +148,9 @@ function execViaStdin(
               err.stderr = stderr;
               reject(err);
             });
-          } else {
-            // Process alive but no output yet — give it more time (max timeout will catch it)
           }
         }
       } else {
-        // After first output: only check aliveness
         if (!isProcessAlive()) {
           cleanup();
           settle(() => {
@@ -172,7 +165,6 @@ function execViaStdin(
       }
     }, 5000);
 
-    // Absolute max timeout safety net
     const maxTimer = maxTimeoutMs > 0
       ? setTimeout(() => {
           cleanup();
@@ -232,8 +224,7 @@ function execViaStdin(
   });
 }
 
-/** Run a command and always attach stdout/stderr to thrown error for CLI limit parsing. */
-async function execWithOutput(
+async function _execWithOutput(
   command: string,
   options?: { timeout?: number; maxBuffer?: number; cwd?: string },
 ): Promise<{ stdout: string; stderr: string }> {
@@ -252,7 +243,6 @@ async function execWithOutput(
   });
 }
 
-// Allow config override for testing
 let currentConfig: Config = config;
 const localModelsDisabled = () =>
   !(currentConfig.aiProviders?.localModels) ||
@@ -284,10 +274,9 @@ async function ollamaRequestViaJsonFile(
 
     logger.debug('Ollama request', { endpoint, model: payload.model });
 
-    // CRITICAL: Use configured timeout
     const { stdout, stderr } = await execAsync(curlCmd, {
       timeout: currentConfig.ollamaTimeout,
-      maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+      maxBuffer: 50 * 1024 * 1024,
     });
 
     if (stderr) {
@@ -304,7 +293,6 @@ async function ollamaRequestViaJsonFile(
 
     return response;
   } catch (error: unknown) {
-    // Better error detection
     const err = error as { killed?: boolean; signal?: string };
     if (err?.killed || err?.signal === 'SIGTERM') {
       throw new Error('Request timeout - model may be loading for first time');
@@ -361,18 +349,15 @@ async function tryWithModelFallback(
         retries--;
 
         if (retries < 0) {
-          // If last model and no retries, throw
           if (i === modelsToTry.length - 1) {
             throw new Error(
               `All ${modelsToTry.length} models failed. Last error: ${error instanceof Error ? error.message : String(error)}`,
             );
           }
-          // Otherwise break to try next model
           logger.debug('Ollama trying fallback model');
           break;
         }
 
-        // Wait before retry
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
@@ -462,7 +447,6 @@ async function callCodexCli(prompt: string, model?: string): Promise<string> {
     }
   }
 
-  // Preserve stdout/stderr from the original error for limit detection
   const errorMessage = errors.length
     ? `Codex CLI failed (${errors.join(' | ')})`
     : 'Codex CLI failed';
@@ -574,7 +558,6 @@ export async function getPreferredLLMResponse(
   } = options;
   if (basePath) setCooldownsBasePath(basePath);
 
-  const cfgProviders = config.aiProviders;
   const defaultCliOrder: ChatProviderId[] = ['codex', 'claude', 'gemini', 'cursor'];
   const cliOrder: ChatProviderId[] = options.providerOrder ?? getWarmedCliOrder(defaultCliOrder);
   const disableLocal = localModelsDisabled();
@@ -585,7 +568,6 @@ export async function getPreferredLLMResponse(
   const tryCli = async (provider: ChatProviderId): Promise<string | null> => {
     if (isInCooldown(provider)) return null;
     if (checkCliLimits && isCliLimited(provider)) return null;
-    // Availability check: skip unavailable CLI providers
     const cliAvail = getProviderAvailability(`${provider}_cli`);
     if (cliAvail.status === 'unavailable') {
       diagnostics.push(`${provider} CLI skipped (${cliAvail.reason || 'unavailable'})`);
@@ -598,7 +580,6 @@ export async function getPreferredLLMResponse(
       else if (provider === 'gemini') result = await callGeminiCli(cliPrompt);
       else if (provider === 'cursor') result = await callCursorCli(cliPrompt);
       else return null;
-      // Check if successful output is actually a limit message (exit code 0 but limit hit)
       if (isCliLimitError(result)) {
         const untilMs = parseCliLimitMessage(result);
         if (untilMs != null) {
@@ -642,7 +623,6 @@ export async function getPreferredLLMResponse(
           ? `Gemini (${suffix})`
           : `Cursor (${suffix})`;
 
-  // 1. CLI: provider order (limit errors trigger cooldown, next runs)
   for (const provider of cliOrder) {
     onProgress?.(`Asking ${formatProvider(provider, 'CLI')}...`);
     const text = await tryCli(provider);
@@ -661,7 +641,6 @@ export async function getPreferredLLMResponse(
 
   onProgress?.('CLIs unavailable, trying API...');
 
-  // 2. API: Codex → Claude → Gemini (use warmed keys when available)
   const codexCached = getWarmedApiKey('codex');
   const codexKey = codexCached
     ? { key: codexCached, diagnostics: [] as string[] }
@@ -794,7 +773,6 @@ export async function getPreferredLLMResponse(
     }
   }
 
-  // 3. Cursor CLI (agent -p)
   const cursorCliAvail = getProviderAvailability('cursor_cli');
   if (cursorCliAvail.status !== 'unavailable') {
     onProgress?.('Running Cursor agent...');
@@ -817,9 +795,7 @@ export async function getPreferredLLMResponse(
     }
   }
 
-  // 4. Fallback to Ollama (if allowed)
   onProgress?.('Trying Ollama (local)...');
-  // When caller explicitly passes allowLocalFallback=true (e.g. interactive MCP chat), bypass config
   const mayUseOllama =
     allowLocalFallback === true || (!disableLocal && allowLocalFallback !== false);
   if (mayUseOllama) {
@@ -850,7 +826,6 @@ export async function getPreferredLLMResponse(
     diagnostics.push('Local model fallback disabled.');
   }
 
-  // ── Stage 5: codex CLI with gpt-5.1-codex-mini last resort ──
   if (isInCooldown('codex')) {
     diagnostics.push('Codex last resort skipped (in cooldown)');
   } else try {
@@ -874,7 +849,6 @@ export async function getPreferredLLMResponse(
  * Used by missionRunner and actionExecutor to get an AgenticCallFn.
  */
 export function resolveAgenticProvider(): { callFn: AgenticCallFn; label: string } {
-  const cfgProv = config.aiProviders;
   const apiOrder: Array<'codex' | 'claude' | 'gemini'> = ['codex', 'claude', 'gemini'];
 
   for (const provider of apiOrder) {
@@ -906,10 +880,6 @@ export function resolveAgenticProvider(): { callFn: AgenticCallFn; label: string
   );
 }
 
-// ============================================================================
-// AGENTIC CHAT HANDLER
-// ============================================================================
-
 async function handleAgenticChat(
   chatMessages: ChatMessage[],
   model: string | undefined,
@@ -917,7 +887,6 @@ async function handleAgenticChat(
   maxIterations: number | undefined,
   enableMcpBridge: boolean | undefined,
 ) {
-  // Build tool list from local tools
   if (agenticToolsRef.length === 0) {
     return {
       content: [{ type: 'text', text: 'Agentic tools not initialized. Server may not have injected tool registry.' }],
@@ -925,7 +894,6 @@ async function handleAgenticChat(
     };
   }
 
-  // Resolve provider — use config apiPriority with cooldown/availability checks
   const agenticApiOrder: Array<'codex' | 'claude' | 'gemini'> = ['codex', 'claude', 'gemini'];
   const providers: Array<{
     id: 'codex' | 'claude' | 'gemini';
@@ -946,17 +914,14 @@ async function handleAgenticChat(
   let targetModel = '';
   const diagnostics: string[] = [];
 
-  // Iterate in config-driven order with cooldown/availability checks
   for (const providerId of agenticApiOrder) {
     const p = providers.find((pr) => pr.id === providerId);
     if (!p) continue;
 
-    // Cooldown check
     if (isInCooldown(providerId)) {
       diagnostics.push(`${p.label} skipped for agentic mode (in cooldown)`);
       continue;
     }
-    // Availability check
     const avail = getProviderAvailability(`${providerId}_api`);
     if (avail.status === 'unavailable') {
       diagnostics.push(`${p.label} skipped for agentic mode (${avail.reason || 'unavailable'})`);
@@ -1038,10 +1003,6 @@ async function handleAgenticChat(
   };
 }
 
-// ============================================================================
-// MCP TOOLS
-// ============================================================================
-
 export const aiTools = [
   {
     name: 'ai_chat',
@@ -1114,11 +1075,9 @@ export const aiTools = [
       let chatMessages: ChatMessage[];
 
       if (message) {
-        // Stateful mode: add to conversation history, use full history
         conversationManager.addMessage({ role: 'user', content: message });
         chatMessages = conversationManager.getChatMessages();
       } else if (messages && messages.length > 0) {
-        // Stateless mode: use provided messages directly (backward compat)
         chatMessages = messages;
       } else {
         return {
@@ -1132,17 +1091,12 @@ export const aiTools = [
         };
       }
 
-      // ── Agentic mode: API with tool-use loop ──
-      // Only use agentic if the resolved API provider isn't lower priority than an available CLI.
-      // e.g. if cliPriority=[codex,claude,gemini] and only gemini has an API key,
-      // skip agentic so the CLI chain can try codex/claude CLI first.
       const agenticEnabled = parsed.agentic ?? currentConfig.aiProviders?.agenticEnabled ?? false;
       const agenticMaxIter = parsed.maxIterations ?? currentConfig.aiProviders?.agenticMaxIterations;
       if (agenticEnabled) {
         const cliPri: string[] = ['codex', 'claude', 'gemini', 'cursor'];
         const apiPri: string[] = ['codex', 'claude', 'gemini'];
 
-        // Find which API provider would be selected (first with a key)
         let firstApiProvider: string | null = null;
         for (const pid of apiPri) {
           const provDef = [
@@ -1156,7 +1110,6 @@ export const aiTools = [
           }
         }
 
-        // If a higher-priority CLI exists, skip agentic and use CLI chain
         const cliRank = (id: string) => { const idx = cliPri.indexOf(id); return idx === -1 ? 999 : idx; };
         const apiRank = firstApiProvider ? cliRank(firstApiProvider) : 999;
         const hasHigherCli = cliPri.some((c) => cliRank(c) < apiRank && c !== firstApiProvider);
@@ -1176,7 +1129,6 @@ export const aiTools = [
         }
       }
 
-      // ── Standard mode: CLI/API fallback chain ──
       const basePath = PROJECT_ROOT;
       const result = await getPreferredLLMResponse(
         chatMessages,
@@ -1199,7 +1151,6 @@ export const aiTools = [
           ? `No response from ${result.provider}.`
           : responseText || 'Empty response from model. Please try again.';
 
-      // If stateful mode, add assistant response to history
       if (message) {
         conversationManager.addMessage({
           role: 'assistant',
@@ -1335,7 +1286,6 @@ export const aiTools = [
         };
       }
 
-      // action === 'get'
       const messages = conversationManager.getMessages();
       const limited = limit ? messages.slice(-limit) : messages;
 

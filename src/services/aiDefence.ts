@@ -50,7 +50,6 @@ export class AIDefence {
     const start = performance.now();
     const threats: Threat[] = [];
 
-    // Prompt injection
     for (const pat of INJECTION_PATTERNS) {
       const match = input.match(pat);
       if (match) {
@@ -64,7 +63,6 @@ export class AIDefence {
       }
     }
 
-    // PII detection
     for (const [type, regex] of Object.entries(PII_PATTERNS)) {
       const re = new RegExp(regex.source, regex.flags);
       const match = input.match(re);
@@ -78,7 +76,6 @@ export class AIDefence {
       }
     }
 
-    // Jailbreak
     const jailbreakScore = this.detectJailbreak(input);
     if (jailbreakScore > 0.3) {
       threats.push({
@@ -88,7 +85,6 @@ export class AIDefence {
       });
     }
 
-    // Command injection
     if (COMMAND_INJECTION_PATTERN.test(input)) {
       threats.push({
         type: 'command_injection',
@@ -97,7 +93,6 @@ export class AIDefence {
       });
     }
 
-    // Path traversal
     if (PATH_TRAVERSAL_PATTERN.test(input)) {
       threats.push({
         type: 'path_traversal',
@@ -127,7 +122,6 @@ export class AIDefence {
 
   redactPii(text: string): string {
     let result = text;
-    // Order matters: IBAN and CREDIT_CARD before TC_KIMLIK to avoid partial matches
     result = result.replace(new RegExp(PII_PATTERNS.IBAN.source, PII_PATTERNS.IBAN.flags), '[IBAN]');
     result = result.replace(new RegExp(PII_PATTERNS.CREDIT_CARD.source, PII_PATTERNS.CREDIT_CARD.flags), '[CREDIT_CARD]');
     result = result.replace(new RegExp(PII_PATTERNS.EMAIL.source, PII_PATTERNS.EMAIL.flags), '[EMAIL]');

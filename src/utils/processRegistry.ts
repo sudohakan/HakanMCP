@@ -40,7 +40,6 @@ class ProcessRegistry {
       pids: entries.map(([pid, { label }]) => `${pid}(${label})`),
     });
 
-    // Send SIGTERM to all
     for (const [, { child, label }] of entries) {
       try {
         if (!child.killed) {
@@ -51,7 +50,6 @@ class ProcessRegistry {
       }
     }
 
-    // Wait for graceful exit or force-kill
     await new Promise<void>((resolve) => {
       const check = () => {
         if (this.processes.size === 0) {
@@ -60,15 +58,12 @@ class ProcessRegistry {
         }
       };
 
-      // Check immediately in case all already exited
       check();
 
-      // Set up listener for remaining processes
       const interval = setInterval(check, 100);
 
       const forceTimer = setTimeout(() => {
         clearInterval(interval);
-        // Force-kill remaining processes
         for (const [pid, { child, label }] of this.processes.entries()) {
           try {
             if (!child.killed) {
@@ -76,7 +71,7 @@ class ProcessRegistry {
               logger.warn(`Force-killed child process`, { pid, label });
             }
           } catch {
-            // Process may have already exited
+            /* empty */
           }
         }
         this.processes.clear();

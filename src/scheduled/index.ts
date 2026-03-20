@@ -1,8 +1,3 @@
-/**
- * Scheduled module barrel export + orchestrator.
- * Provides startScheduledMode to create cron jobs for missions with schedule.mode === 'scheduled'.
- * Mirrors src/watch/index.ts architecture.
- */
 export { ScheduledExecutor } from './scheduledExecutor.js';
 export { parseInterval } from './intervalParser.js';
 export type { ParsedInterval } from './intervalParser.js';
@@ -36,7 +31,6 @@ export function extractScheduledFromMissions(missions: ParsedMission[]): Schedul
     const schedule = mission.frontmatter.schedule;
     const name = mission.frontmatter.title.replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    // Resolve cron expression: direct cron takes priority, then interval
     if (schedule.cron) {
       triggers.push({
         name,
@@ -83,7 +77,6 @@ export async function startScheduledMode(
   signal: AbortSignal,
   onEvent?: (event: ScheduledSystemEvent) => void,
 ): Promise<void> {
-  // 1. Load workspace config
   const config = loadWorkspaceConfig(cwd);
   const scheduleConfig = config.schedule ?? { enabled: false };
 
@@ -91,7 +84,6 @@ export async function startScheduledMode(
     log.warn('Scheduled mode is disabled in workspace config. Proceeding anyway with mission-level schedules.');
   }
 
-  // 2. Load missions and extract scheduled triggers
   const missions = loadAllMissions(cwd);
   const triggers = extractScheduledFromMissions(missions);
 
@@ -101,19 +93,16 @@ export async function startScheduledMode(
     return;
   }
 
-  // 3. Track running state and cleanup handles
   const runningGuards = new Map<string, boolean>();
   const cronTasks: cron.ScheduledTask[] = [];
   const intervalTimers: ReturnType<typeof setInterval>[] = [];
 
-  // 4. Register each trigger
   for (const trigger of triggers) {
     if (!trigger.enabled) continue;
 
     runningGuards.set(trigger.name, false);
 
     const executeCallback = async (): Promise<void> => {
-      // Overlap guard: skip if already running
       if (runningGuards.get(trigger.name)) {
         log.warn('Skipping scheduled execution — previous run still active', {
           trigger: trigger.name,
@@ -131,7 +120,6 @@ export async function startScheduledMode(
 
       try {
         const executor = new ScheduledExecutor(onEvent);
-        // Load mission fresh each execution for up-to-date content
         const currentMissions = loadAllMissions(cwd);
         const mission = currentMissions.find((m) => m.filePath === trigger.missionPath);
 
@@ -150,7 +138,6 @@ export async function startScheduledMode(
     };
 
     if (!trigger.useCron && trigger.intervalMs) {
-      // Lossy interval (e.g., 45m) — use setInterval for accurate timing
       log.info('Registering interval timer for trigger', {
         trigger: trigger.name,
         intervalMs: trigger.intervalMs,
@@ -160,7 +147,6 @@ export async function startScheduledMode(
       }, trigger.intervalMs);
       intervalTimers.push(timer);
     } else {
-      // Cron-compatible expression — use node-cron
       if (!cron.validate(trigger.cronExpression)) {
         log.error('Invalid cron expression, skipping trigger', {
           trigger: trigger.name,
@@ -180,11 +166,9 @@ export async function startScheduledMode(
     }
   }
 
-  // 5. Emit ready event
   onEvent?.({ type: 'ready', timestamp: Date.now() });
   log.info('Scheduled mode started', { triggers: triggers.length });
 
-  // 6. Wait for abort signal
   await new Promise<void>((resolve) => {
     if (signal.aborted) {
       resolve();
@@ -193,7 +177,6 @@ export async function startScheduledMode(
     signal.addEventListener('abort', () => resolve(), { once: true });
   });
 
-  // 7. Cleanup: stop all cron jobs and clear all interval timers
   for (const task of cronTasks) {
     task.stop();
   }

@@ -21,13 +21,11 @@ export async function runReport(options: { n?: string }): Promise<void> {
   const cwd = process.cwd();
   const reportsDir = path.join(cwd, REPORTS_DIR);
 
-  // 1. Check if reports directory exists
   if (!fs.existsSync(reportsDir)) {
     console.log(chalk.hex(MUTED)('No reports found. Complete a mission to generate reports.'));
     return;
   }
 
-  // 2. Read and filter .md files
   let files: string[];
   try {
     files = fs.readdirSync(reportsDir).filter((f) => f.endsWith('.md'));
@@ -41,7 +39,6 @@ export async function runReport(options: { n?: string }): Promise<void> {
     return;
   }
 
-  // 3. Get stats and sort by modification time descending
   const fileStats = files
     .map((f) => {
       const fullPath = path.join(reportsDir, f);
@@ -55,18 +52,15 @@ export async function runReport(options: { n?: string }): Promise<void> {
     .filter((f): f is NonNullable<typeof f> => f !== null)
     .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 
-  // 4. Slice to requested count
   const count = options.n ? parseInt(options.n, 10) : DEFAULT_COUNT;
   const limit = Number.isFinite(count) && count > 0 ? count : DEFAULT_COUNT;
   const selected = fileStats.slice(0, limit);
 
-  // 5. Display
   console.log();
   console.log(chalk.bold(`Recent Reports (${selected.length}/${fileStats.length}):`));
   console.log();
 
   for (const file of selected) {
-    // Read first line as title
     let title = '';
     try {
       const content = fs.readFileSync(file.path, 'utf8');

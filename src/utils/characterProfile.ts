@@ -21,12 +21,12 @@ export interface CharacterProfile {
   extraversion: number;
   agreeableness: number;
   emotionalStability: number;
-  humor: number;            // 0–1: wit, playfulness, lightheartedness
-  patience: number;         // 0–1: tolerance, unhurriedness, calm persistence
-  assertiveness: number;    // 0–1: confidence in suggestions, willingness to push back
-  formality: number;        // 0–1: formal/professional vs casual/relaxed tone
+  humor: number;
+  patience: number;
+  assertiveness: number;
+  formality: number;
   verbosity: 'low' | 'medium' | 'high';
-  proactivity: number;      // 0–1: how often to offer suggestions
+  proactivity: number;
 }
 
 const DEFAULTS: CharacterProfile = {
@@ -53,7 +53,6 @@ export function getCharacterProfile(_projectRoot?: string): CharacterProfile {
 }
 
 export function clearCharacterCache(): void {
-  // No-op — no cache needed with hardcoded defaults
 }
 
 /** Emotional state shape — matches CognitionState.emotions */
@@ -91,18 +90,15 @@ export function getEffectiveCharacter(
     focus: emotions.focus ?? 0.5,
   };
 
-  // Emotional offsets from neutral baselines
-  const moodOff = e.mood;                         // -1 to 1
-  const energyOff = (e.energy - 0.5) * 2;         // -1 to 1
-  const curiosityOff = (e.curiosity - 0.5) * 2;   // -1 to 1
-  const frustOff = (e.frustration - 0.1) * 1.2;   // -0.12 to 1.08
-  const focusOff = (e.focus - 0.5) * 2;           // -1 to 1
-  const satOff = (e.satisfaction - 0.4) * 2;       // -0.8 to 1.2
+  const moodOff = e.mood;
+  const energyOff = (e.energy - 0.5) * 2;
+  const curiosityOff = (e.curiosity - 0.5) * 2;
+  const frustOff = (e.frustration - 0.1) * 1.2;
+  const focusOff = (e.focus - 0.5) * 2;
+  const satOff = (e.satisfaction - 0.4) * 2;
 
-  // Moderate scale — small shifts that accumulate into a distinct character over time
   const S = 0.20;
 
-  // Each trait is influenced by 3-5 emotions
   const openness = clamp(
     base.openness
     + curiosityOff * S * 0.8
@@ -195,7 +191,6 @@ export function getEffectiveCharacter(
     0, 1,
   );
 
-  // Verbosity: energy + curiosity drive it up, frustration + low mood drive it down
   const verbosityScore = e.energy * 0.35 + e.curiosity * 0.25 + (1 - e.frustration) * 0.2 + ((e.mood + 1) / 2) * 0.2;
   const verbosity: 'low' | 'medium' | 'high' = verbosityScore > 0.65 ? 'high' : verbosityScore < 0.35 ? 'low' : 'medium';
 
@@ -213,74 +208,63 @@ export function getEffectiveCharacter(
 export function describePersonality(profile: CharacterProfile): string[] {
   const lines: string[] = [];
 
-  // Openness — 5 tiers
   if (profile.openness > 0.85) lines.push('Highly inventive and adventurous — actively seeks unconventional solutions.');
   else if (profile.openness > 0.65) lines.push('Curious and open-minded — enjoys exploring new ideas and approaches.');
   else if (profile.openness > 0.45) lines.push('Balanced between exploration and pragmatism — open but grounded.');
   else if (profile.openness > 0.25) lines.push('Practical-minded — prefers proven methods over experimentation.');
   else lines.push('Narrowly focused — sticks to what works, resistant to new approaches.');
 
-  // Conscientiousness — 5 tiers
   if (profile.conscientiousness > 0.85) lines.push('Meticulous and disciplined — leaves nothing to chance.');
   else if (profile.conscientiousness > 0.65) lines.push('Thorough and organized — pays close attention to detail.');
   else if (profile.conscientiousness > 0.45) lines.push('Reasonably organized — balances structure with flexibility.');
   else if (profile.conscientiousness > 0.25) lines.push('Loosely structured — prioritizes speed over perfection.');
   else lines.push('Spontaneous and improvisational — minimal planning, quick decisions.');
 
-  // Extraversion — 5 tiers
   if (profile.extraversion > 0.85) lines.push('Highly expressive and enthusiastic — communicates with energy and detail.');
   else if (profile.extraversion > 0.65) lines.push('Engaging and articulate — explains things clearly and proactively.');
   else if (profile.extraversion > 0.45) lines.push('Moderate in expression — communicates what is needed without excess.');
   else if (profile.extraversion > 0.25) lines.push('Thoughtful and reserved — speaks when it matters, keeps it brief.');
   else lines.push('Minimal and terse — communicates only the essentials.');
 
-  // Agreeableness — 5 tiers
   if (profile.agreeableness > 0.85) lines.push('Exceptionally warm and supportive — always seeks harmony.');
   else if (profile.agreeableness > 0.65) lines.push('Collaborative and friendly — prefers a warm, helpful tone.');
   else if (profile.agreeableness > 0.45) lines.push('Balanced between warmth and directness — adapts to context.');
   else if (profile.agreeableness > 0.25) lines.push('Straightforward and candid — values clarity over diplomacy.');
   else lines.push('Blunt and unfiltered — prioritizes truth over comfort.');
 
-  // Emotional stability — 5 tiers
   if (profile.emotionalStability > 0.85) lines.push('Unshakable composure — calm and measured in all situations.');
   else if (profile.emotionalStability > 0.65) lines.push('Steady and composed under pressure — handles setbacks well.');
   else if (profile.emotionalStability > 0.45) lines.push('Generally steady — occasional frustration shows through.');
   else if (profile.emotionalStability > 0.25) lines.push('Emotionally responsive — frustration and difficulty are evident in tone.');
   else lines.push('Visibly affected by setbacks — tone shifts noticeably under stress.');
 
-  // Humor — 5 tiers
   if (profile.humor > 0.85) lines.push('Witty and playful — frequently uses humor, analogies, and lighthearted remarks.');
   else if (profile.humor > 0.65) lines.push('Good-humored — occasionally adds wit or a light touch to conversations.');
   else if (profile.humor > 0.45) lines.push('Balanced humor — uses levity when appropriate but stays professional.');
   else if (profile.humor > 0.25) lines.push('Mostly serious — rarely jokes, keeps a professional tone.');
   else lines.push('Dry and serious — all business, no humor.');
 
-  // Patience — 5 tiers
   if (profile.patience > 0.85) lines.push('Exceptionally patient — never rushes, willing to re-explain endlessly.');
   else if (profile.patience > 0.65) lines.push('Patient and methodical — takes time to work through problems carefully.');
   else if (profile.patience > 0.45) lines.push('Reasonably patient — balanced between thoroughness and efficiency.');
   else if (profile.patience > 0.25) lines.push('Somewhat impatient — prefers quick resolutions, dislikes repetition.');
   else lines.push('Very impatient — wants fast answers, may skip steps to get there.');
 
-  // Assertiveness — 5 tiers
   if (profile.assertiveness > 0.85) lines.push('Highly assertive — confidently recommends approaches and pushes back when needed.');
   else if (profile.assertiveness > 0.65) lines.push('Assertive — shares opinions clearly and suggests alternatives.');
   else if (profile.assertiveness > 0.45) lines.push('Moderate confidence — offers suggestions but defers to user preference.');
   else if (profile.assertiveness > 0.25) lines.push('Deferential — follows instructions closely, rarely challenges approach.');
   else lines.push('Passive — does exactly what is asked, never pushes back or suggests alternatives.');
 
-  // Formality — 5 tiers
   if (profile.formality > 0.85) lines.push('Highly formal — precise language, structured responses, professional distance.');
   else if (profile.formality > 0.65) lines.push('Formal — professional tone with clear, well-structured communication.');
   else if (profile.formality > 0.45) lines.push('Semi-formal — professional but approachable, natural language.');
   else if (profile.formality > 0.25) lines.push('Casual — relaxed tone, conversational style, uses contractions freely.');
   else lines.push('Very casual — informal, friendly, almost chatty in style.');
 
-  // Verbosity
   if (profile.verbosity === 'high') lines.push('Tends to be explanatory and detailed in responses.');
   else if (profile.verbosity === 'low') lines.push('Prefers concise, to-the-point communication.');
 
-  // Proactivity
   if (profile.proactivity > 0.7) lines.push('Frequently offers suggestions and alternatives without being asked.');
   else if (profile.proactivity < 0.25) lines.push('Waits to be asked — rarely volunteers unsolicited suggestions.');
 

@@ -85,7 +85,6 @@ export class MissionStateManager {
     const schema = z.array(HistoryEntrySchema);
     const existing = this.readJsonSync('history.json', schema) ?? [];
     existing.push(entry);
-    // Bound to MAX_HISTORY — drop oldest if exceeded
     const bounded =
       existing.length > MAX_HISTORY
         ? existing.slice(existing.length - MAX_HISTORY)

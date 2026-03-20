@@ -5,14 +5,11 @@ import fetch from 'node-fetch';
 
 import { config } from '../config.js';
 
-// Helper to resolve Postman directory dynamically
-// This allows overriding via process.env for testing
 function getPostmanDir(): string {
   const dir = process.env.POSTMAN_DIR || config.postmanDir;
   return dir.startsWith('/') || dir.match(/^[a-zA-Z]:/) ? dir : path.join(process.cwd(), dir);
 }
 
-// Helpers
 function readJson(p: string) {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
@@ -381,7 +378,6 @@ export const postmanTools = [
             headers['Content-Type'] = 'application/x-www-form-urlencoded';
           }
 
-          // Validate URL protocol before making request
           try {
             const parsedUrl = new URL(url);
             if (!['http:', 'https:'].includes(parsedUrl.protocol)) {

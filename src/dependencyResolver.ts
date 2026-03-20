@@ -1,13 +1,3 @@
-/**
- * Dependency resolver for optional native modules.
- *
- * Provides a feature-dependency map, availability checks, and
- * auto-install logic gated by config.dependencies.autoInstall.
- *
- * IMPORTANT: config is imported lazily inside function bodies to
- * avoid circular dependency issues (Pitfall 4 in research).
- */
-
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { PROJECT_ROOT } from './utils/projectRoot.js';
@@ -15,20 +5,12 @@ import { logger } from './utils/logger.js';
 
 const require_ = createRequire(import.meta.url);
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export interface FeatureDependency {
   packages: string[];
   description: string;
   installCommand: string;
   toolModulePath: string;
 }
-
-// ---------------------------------------------------------------------------
-// Feature-Dependency Map
-// ---------------------------------------------------------------------------
 
 export const FEATURE_DEPENDENCY_MAP: Record<string, FeatureDependency> = {
   postgresql: {
@@ -63,10 +45,6 @@ export const FEATURE_DEPENDENCY_MAP: Record<string, FeatureDependency> = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// Package availability check
-// ---------------------------------------------------------------------------
-
 /**
  * Checks whether a given npm package is resolvable from the project.
  * Uses createRequire().resolve() which handles scoped packages, monorepos,
@@ -80,10 +58,6 @@ export function isPackageAvailable(packageName: string): boolean {
     return false;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Feature dependency check
-// ---------------------------------------------------------------------------
 
 /**
  * Checks whether all required packages for a feature are installed.
@@ -104,15 +78,7 @@ export function checkFeatureDeps(featureName: string): {
   return { available: missing.length === 0, missing };
 }
 
-// ---------------------------------------------------------------------------
-// Install lock (prevents concurrent installs for the same feature)
-// ---------------------------------------------------------------------------
-
 const installLocks = new Map<string, Promise<void>>();
-
-// ---------------------------------------------------------------------------
-// ensureDependency
-// ---------------------------------------------------------------------------
 
 /**
  * Ensures all packages required by `featureName` are available.
@@ -135,7 +101,6 @@ export async function ensureDependency(featureName: string): Promise<void> {
   const missing = feature.packages.filter((pkg) => !isPackageAvailable(pkg));
   if (missing.length === 0) return;
 
-  // Deduplicate concurrent installs for the same feature
   if (installLocks.has(featureName)) {
     return installLocks.get(featureName)!;
   }
@@ -149,16 +114,11 @@ export async function ensureDependency(featureName: string): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Internal: install or throw
-// ---------------------------------------------------------------------------
-
 async function doInstallOrThrow(
   _featureName: string,
   feature: FeatureDependency,
   missing: string[],
 ): Promise<void> {
-  // Lazy import of config to avoid circular dependency (Pitfall 4)
   const { config } = await import('./config.js');
   const autoInstall =
     (config as Record<string, unknown> & { dependencies?: { autoInstall?: boolean } }).dependencies

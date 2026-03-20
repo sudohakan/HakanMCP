@@ -6,19 +6,16 @@ import NodeCache from 'node-cache';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 
-// Cache setup
 const cache = new NodeCache({ stdTTL: config.cacheTtl });
 const BASE = config.gitbookUrl;
 
 logger.info('GitBook initialized', { base: BASE, cacheTtl: config.cacheTtl });
 
-// Helper functions
 async function fetchHtml(pth: string) {
   const base = BASE.replace(/\/$/, '');
   const rel = (pth || '').replace(/^\//, '');
   const url = pth?.startsWith('http') ? pth : `${base}/${rel}`;
 
-  // Check cache first
   const cached = cache.get<string>(url);
   if (cached) {
     logger.debug('Cache hit', { url });
@@ -30,7 +27,6 @@ async function fetchHtml(pth: string) {
   if (!res.ok) throw new Error(`HTTP ${res.status} - ${url}`);
   const html = await res.text();
 
-  // Store in cache
   cache.set(url, html);
 
   return { html, url };
@@ -40,7 +36,6 @@ function dedupeLinks<T extends { href: string; text: string }>(arr: T[]) {
   return arr.filter((v, i, a) => a.findIndex((x) => x.href === v.href && x.text === v.text) === i);
 }
 
-// Tool Definitions
 export const gitbookTools = [
   {
     name: 'gb_getPage',
@@ -250,7 +245,7 @@ export const gitbookTools = [
                 url,
                 searchTerm,
                 matchCount: results.length,
-                matches: results.slice(0, 20), // Limit to 20 matches
+                matches: results.slice(0, 20),
               },
               null,
               2,

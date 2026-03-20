@@ -1,8 +1,3 @@
-/**
- * `hakanmcp start` command handler.
- * Starts the agent in foreground (default) or daemon mode.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -130,8 +125,7 @@ function removePidFile(cwd: string): void {
   const pidPath = path.join(cwd, HAKANMCP_DIR, PID_FILE);
   try {
     fs.unlinkSync(pidPath);
-  } catch {
-    // Ignore if already removed
+  } catch { /* empty */
   }
 }
 
@@ -142,8 +136,7 @@ function removeStopSignal(cwd: string): void {
   const signalPath = path.join(cwd, HAKANMCP_DIR, STOP_SIGNAL_FILE);
   try {
     fs.unlinkSync(signalPath);
-  } catch {
-    // Ignore if not present
+  } catch { /* empty */
   }
 }
 
@@ -166,10 +159,8 @@ export async function runStart(options: {
 }): Promise<void> {
   const cwd = process.cwd();
 
-  // 1. Load and validate workspace config
   const config = loadWorkspaceConfig(cwd);
 
-  // 2. Check for existing running agent
   const existingPid = readPidFile(cwd);
   if (existingPid !== null) {
     if (isProcessAlive(existingPid)) {
@@ -179,11 +170,9 @@ export async function runStart(options: {
       process.exitCode = 1;
       return;
     }
-    // Stale PID file — clean it up
     removePidFile(cwd);
   }
 
-  // --- Workspace modes ---
   if (options.all) {
     const workspaces = config.workspaces;
     if (!workspaces || workspaces.length === 0) {
@@ -262,9 +251,6 @@ export async function runStart(options: {
     return;
   }
 
-  // --- Default workspace (existing behavior below) ---
-
-  // 3. Load mission
   const missionFile = options.mission || 'PRIMARY_MISSION.md';
   const missionPath = path.join(cwd, missionFile);
   const mission = loadMission(missionPath);
@@ -277,7 +263,6 @@ export async function runStart(options: {
     return;
   }
 
-  // 4. Daemon mode
   if (options.daemon) {
     const logDir = path.join(cwd, HAKANMCP_DIR);
     fs.mkdirSync(logDir, { recursive: true });
@@ -305,21 +290,18 @@ export async function runStart(options: {
     return;
   }
 
-  // 5. Foreground mode
   writePidFile(cwd, process.pid);
   removeStopSignal(cwd);
 
   const abortController = new AbortController();
   const { signal } = abortController;
 
-  // Shutdown handlers
   const shutdown = () => {
     abortController.abort();
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
 
-  // Stop-signal polling for Windows compatibility
   const stopPollInterval = setInterval(() => {
     if (hasStopSignal(cwd)) {
       clearInterval(stopPollInterval);
@@ -338,7 +320,7 @@ export async function runStart(options: {
     maxIterationsPerStep: config.agent.maxIterationsPerStep,
     maxRetriesPerStep: 2,
     stepTimeoutMs: config.agent.stepTimeoutMs,
-    maxTotalTimeMs: 3_600_000, // 1 hour default
+    maxTotalTimeMs: 3_600_000,
     continueOnFailure: config.agent.continueOnFailure,
   };
 

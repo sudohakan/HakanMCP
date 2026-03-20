@@ -6,8 +6,6 @@ import {
   type Trajectory,
 } from '../services/ruvectorBridge.js';
 
-// ── cosineSimilarity ─────────────────────────────────────────────
-
 describe('cosineSimilarity', () => {
   it('returns 1 for identical vectors', () => {
     expect(cosineSimilarity([1, 2, 3], [1, 2, 3])).toBeCloseTo(1, 5);
@@ -26,12 +24,9 @@ describe('cosineSimilarity', () => {
   });
 
   it('computes correctly for non-trivial vectors', () => {
-    // [3,4] · [4,3] = 24, |[3,4]|=5, |[4,3]|=5 → 24/25 = 0.96
     expect(cosineSimilarity([3, 4], [4, 3])).toBeCloseTo(0.96, 2);
   });
 });
-
-// ── HnswBridge ───────────────────────────────────────────────────
 
 describe('HnswBridge', () => {
   const config: HnswConfig = { dimensions: 3 };
@@ -109,8 +104,6 @@ describe('HnswBridge', () => {
   });
 });
 
-// ── SonaEngine ───────────────────────────────────────────────────
-
 describe('SonaEngine', () => {
   const dims = 4;
 
@@ -127,7 +120,6 @@ describe('SonaEngine', () => {
   it('learn returns correct patternsLearned count', () => {
     const engine = new SonaEngine({ dimensions: dims });
     const result = engine.learn([makeTraj()]);
-    // 2 states → 2 patterns
     expect(result.patternsLearned).toBe(2);
     expect(result.ewcUpdated).toBe(true);
   });
@@ -145,7 +137,6 @@ describe('SonaEngine', () => {
 
     const results = engine.findPatterns([1, 0, 0, 0], 1);
     expect(results).toHaveLength(1);
-    // The closest pattern to [1,0,0,0] should be the one from state [1,0,0,0]
     expect(results[0].embedding).toEqual([1, 0, 0, 0]);
   });
 
@@ -153,13 +144,11 @@ describe('SonaEngine', () => {
     const engine = new SonaEngine({ dimensions: dims });
     engine.learn([makeTraj()]);
     const results = engine.findPatterns([1, 0, 0, 0], 100);
-    expect(results).toHaveLength(2); // only 2 patterns stored
+    expect(results).toHaveLength(2);
   });
 
   it('getEWCState tracks Fisher diagonal correctly', () => {
     const engine = new SonaEngine({ dimensions: dims });
-    // state=[1,0,0,0] reward=1.0 → fisher[0] += (1*1)^2 = 1
-    // state=[0,1,0,0] reward=0.5 → fisher[1] += (1*0.5)^2 = 0.25
     engine.learn([makeTraj()]);
 
     const ewc = engine.getEWCState();
@@ -181,13 +170,11 @@ describe('SonaEngine', () => {
     engine.learn([makeTraj()]);
     engine.learn([makeTraj()]);
     const ewc = engine.getEWCState();
-    // fisher[0] should be 1 + 1 = 2
     expect(ewc.fisherMatrix[0]).toBeCloseTo(2, 5);
   });
 
   it('getEWCState parameterMeans are averaged over all patterns', () => {
     const engine = new SonaEngine({ dimensions: dims });
-    // Two states: [1,0,0,0] and [0,1,0,0] → mean = [0.5, 0.5, 0, 0]
     engine.learn([makeTraj()]);
     const ewc = engine.getEWCState();
     expect(ewc.parameterMeans[0]).toBeCloseTo(0.5, 5);
@@ -196,7 +183,7 @@ describe('SonaEngine', () => {
 
   it('learn handles states with fewer dimensions than configured', () => {
     const engine = new SonaEngine({ dimensions: dims });
-    const traj = makeTraj({ states: [[1, 2]] }); // only 2 dims, should pad to 4
+    const traj = makeTraj({ states: [[1, 2]] });
     const result = engine.learn([traj]);
     expect(result.patternsLearned).toBe(1);
     const patterns = engine.findPatterns([1, 2, 0, 0], 1);

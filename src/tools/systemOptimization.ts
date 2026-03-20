@@ -1,5 +1,3 @@
-// System Optimization Tools v3.0 - Consolidated Edition
-// Admin authorized operation and comprehensive optimization tools
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
@@ -20,9 +18,7 @@ interface ToolResult {
 /**
  * Run PowerShell script as Administrator
  */
-// Used for future admin-elevated script execution
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for admin operations
-async function runAsAdmin(scriptPath: string): Promise<string> {
+async function _runAsAdmin(scriptPath: string): Promise<string> {
   assertScriptExists(scriptPath);
   const psCommand = `Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"' -Verb RunAs -Wait`;
 
@@ -70,7 +66,7 @@ async function runPowerShell(scriptPath: string, args: string = ''): Promise<str
   try {
     const { stdout, stderr } = await execAsync(
       `powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}" ${args}`,
-      { maxBuffer: 10 * 1024 * 1024 }, // 10MB buffer
+      { maxBuffer: 10 * 1024 * 1024 },
     );
     return stdout || stderr || 'Script has been run.';
   } catch (error: unknown) {
@@ -93,10 +89,7 @@ async function runPowerShellCommand(command: string): Promise<string> {
   }
 }
 
-// ==================== TOOL DEFINITIONS ====================
-
 export const systemOptimizationTools = [
-  // 1. CLEANUP (consolidated: auto_cleanup, ram_cleanup, docker_cleanup)
   {
     name: 'sysopt_cleanup',
     description:
@@ -139,7 +132,6 @@ export const systemOptimizationTools = [
     },
   },
 
-  // 2. OPTIMIZE (consolidated: registry, network, gaming, ssd, performance, startup)
   {
     name: 'sysopt_optimize',
     description:
@@ -190,7 +182,6 @@ export const systemOptimizationTools = [
     },
   },
 
-  // 3. RUN ADMIN TASK (consolidated: main_panel, service_optimize, scheduled_tasks)
   {
     name: 'sysopt_run_admin',
     description:
@@ -238,7 +229,6 @@ export const systemOptimizationTools = [
     },
   },
 
-  // 4. SYSTEM STATUS ANALYSIS (unchanged)
   {
     name: 'sysopt_analyze_system',
     description:
@@ -263,14 +253,13 @@ export const systemOptimizationTools = [
         content: [
           {
             type: 'text',
-            text: a?.jsonOutput ? result : `📊 Sistem Durumu Analizi:\n\n${result}`,
+            text: a?.jsonOutput ? result : `📊 System Status Analysis:\n\n${result}`,
           },
         ],
       };
     },
   },
 
-  // 5. QUICK STATUS (unchanged)
   {
     name: 'sysopt_quick_status',
     description: 'Gives quick system status summary (CPU, RAM, Disk usage)',
@@ -314,7 +303,6 @@ export const systemOptimizationTools = [
     },
   },
 
-  // 6. FULL OPTIMIZATION (unchanged)
   {
     name: 'sysopt_full_optimize',
     description:
@@ -333,22 +321,18 @@ export const systemOptimizationTools = [
       let results: string[] = [];
 
       try {
-        // 1. Analysis
-        results.push('📊 [1/8] Sistem Analizi...');
+        results.push('📊 [1/8] System Analysis...');
         const analysisPath = path.join(BASE_PATH, 'scripts', 'analysis', 'system_status.ps1');
         results.push(await runPowerShell(analysisPath));
 
-        // 2. Auto Cleanup
-        results.push('\n🧹 [2/8] Otomatik Temizlik...');
+        results.push('\n🧹 [2/8] Auto Cleanup...');
         const cleanupPath = path.join(BASE_PATH, 'scripts', 'cleanup', 'auto_cleanup.ps1');
         results.push(await runPowerShell(cleanupPath));
 
-        // 3. RAM Cleanup
         results.push('\\n💾 [3/8] RAM Cleaning...');
         const ramPath = path.join(BASE_PATH, 'scripts', 'cleanup', 'ram_cleanup.ps1');
         results.push(await runPowerShell(ramPath));
 
-        // 4. Docker Cleanup (optional)
         if (!(args as Record<string, unknown>)?.skipDocker) {
           results.push('\\n🐳 [4/8] Docker Cleanup...');
           const dockerPath = path.join(BASE_PATH, 'scripts', 'cleanup', 'docker_cleanup.ps1');
@@ -361,23 +345,19 @@ export const systemOptimizationTools = [
           results.push('\\n🐳 [4/8] Docker Cleanup skipped (user request)');
         }
 
-        // 5. Registry Optimization
-        results.push('\n⚙️ [5/8] Registry Optimizasyonu...');
+        results.push('\n⚙️ [5/8] Registry Optimization...');
         const registryPath = path.join(BASE_PATH, 'scripts', 'optimization', 'registry.ps1');
         results.push(await runPowerShell(registryPath));
 
-        // 6. Network Optimization
-        results.push('\n🌐 [6/8] Network Optimizasyonu...');
+        results.push('\n🌐 [6/8] Network Optimization...');
         const networkPath = path.join(BASE_PATH, 'scripts', 'optimization', 'network.ps1');
         results.push(await runPowerShell(networkPath));
 
-        // 7. SSD Optimization
-        results.push('\n💿 [7/8] SSD Optimizasyonu...');
+        results.push('\n💿 [7/8] SSD Optimization...');
         const ssdPath = path.join(BASE_PATH, 'scripts', 'optimization', 'ssd.ps1');
         results.push(await runPowerShell(ssdPath));
 
-        // 8. Performance Optimization
-        results.push('\n⚡ [8/8] Performans Optimizasyonu...');
+        results.push('\n⚡ [8/8] Performance Optimization...');
         const perfPath = path.join(BASE_PATH, 'scripts', 'optimization', 'performance.ps1');
         results.push(await runPowerShell(perfPath));
       } catch (error: unknown) {
@@ -395,7 +375,6 @@ export const systemOptimizationTools = [
     },
   },
 
-  // 7. VIEW LOGS (unchanged)
   {
     name: 'sysopt_view_logs',
     description: 'Displays optimization log files',

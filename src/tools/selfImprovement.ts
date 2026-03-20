@@ -7,11 +7,6 @@ import { config } from '../config.js';
 
 const execAsync = util.promisify(exec);
 
-/**
- * Self-Improvement Tools
- * Allows AI agents to improve their own code
- */
-
 interface ChangeLog {
   timestamp: string;
   operation: string;
@@ -144,7 +139,6 @@ export const selfImprovementTools = [
         })
         .parse(args);
 
-      // --- action='changelog' ---
       if (parsed.action === 'changelog') {
         const limit = parsed.limit ?? 10;
 
@@ -193,7 +187,6 @@ export const selfImprovementTools = [
         };
       }
 
-      // --- action='propose' ---
       const { operation, files, description, changes } = z
         .object({
           operation: z.enum(['optimize', 'refactor', 'fix', 'test', 'docs']),
@@ -214,7 +207,6 @@ export const selfImprovementTools = [
           changes: parsed.changes,
         });
 
-      // Check if self-improvement is enabled
       if (!config.selfImprovement?.enabled) {
         return {
           content: [
@@ -227,7 +219,6 @@ export const selfImprovementTools = [
         };
       }
 
-      // Check operation is allowed
       if (!isOperationAllowed(operation)) {
         return {
           content: [
@@ -240,7 +231,6 @@ export const selfImprovementTools = [
         };
       }
 
-      // Check restricted paths
       const restrictedFiles = files.filter(isPathRestricted);
       if (restrictedFiles.length > 0) {
         return {
@@ -254,7 +244,6 @@ export const selfImprovementTools = [
         };
       }
 
-      // Check daily limit
       const todayCount = getTodayChangeCount();
       const maxChanges = config.selfImprovement?.maxChangesPerDay ?? 10;
 
@@ -270,7 +259,6 @@ export const selfImprovementTools = [
         };
       }
 
-      // Save proposal to temporary directory
       const proposalDir = './proposals';
       fs.mkdirSync(proposalDir, { recursive: true });
 
@@ -359,7 +347,6 @@ export const selfImprovementTools = [
 
       const proposal = JSON.parse(fs.readFileSync(proposalPath, 'utf8'));
 
-      // Check approval if required
       const requireApproval = config.selfImprovement?.requireApproval ?? true;
       if (requireApproval && !approved) {
         return {
@@ -375,12 +362,10 @@ export const selfImprovementTools = [
 
       const results: string[] = [];
 
-      // Apply changes
       for (const change of proposal.changes) {
         try {
           const filePath = change.file;
 
-          // Verify old content matches
           if (fs.existsSync(filePath)) {
             const currentContent = fs.readFileSync(filePath, 'utf8');
             if (currentContent !== change.oldContent) {
@@ -389,7 +374,6 @@ export const selfImprovementTools = [
             }
           }
 
-          // Write new content
           const dir = path.dirname(filePath);
           fs.mkdirSync(dir, { recursive: true });
 
@@ -402,7 +386,6 @@ export const selfImprovementTools = [
         }
       }
 
-      // Log the change
       logChange({
         operation: proposal.operation,
         files: proposal.files,
@@ -410,7 +393,6 @@ export const selfImprovementTools = [
         approved,
       });
 
-      // Rebuild
       results.push('\n**Rebuilding...**');
       try {
         const { stderr } = await execAsync('npm run build', {
@@ -426,7 +408,6 @@ export const selfImprovementTools = [
         results.push(`✗ Build failed: ${error instanceof Error ? error.message : String(error)}`);
       }
 
-      // Auto-commit if enabled
       const autoCommit = config.selfImprovement?.autoCommit ?? false;
       if (autoCommit) {
         try {
@@ -438,7 +419,6 @@ export const selfImprovementTools = [
         }
       }
 
-      // Mark proposal as applied
       proposal.status = 'applied';
       fs.writeFileSync(proposalPath, JSON.stringify(proposal, null, 2), 'utf8');
 

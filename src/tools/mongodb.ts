@@ -9,7 +9,7 @@ import { logger } from '../utils/logger.js';
 class MongoConnectionManager {
   private connections = new Map<string, { client: MongoClient; lastUsed: number }>();
   private maxConnections = 5;
-  private maxIdleTime = 10 * 60 * 1000; // 10 minutes
+  private maxIdleTime = 10 * 60 * 1000;
 
   async connect(connectionString: string): Promise<string> {
     if (this.connections.size >= this.maxConnections) {
@@ -83,21 +83,17 @@ class MongoConnectionManager {
   }
 }
 
-// Singleton instance
 const connectionManager = new MongoConnectionManager();
 
-// Cleanup on process exit
 process.on('beforeExit', () => {
   connectionManager.disconnectAll();
 });
 
-// Periodic cleanup (skip in tests to avoid keeping Jest alive)
 let cleanupTimer: NodeJS.Timeout | undefined;
 if (process.env.NODE_ENV !== 'test') {
   cleanupTimer = setInterval(() => connectionManager.cleanup(), 5 * 60 * 1000);
 }
 
-// Allow manual cleanup stop (useful for tests or graceful shutdowns)
 export const stopMongoCleanup = () => {
   if (cleanupTimer) {
     clearInterval(cleanupTimer);
@@ -467,7 +463,6 @@ export const mongoTools = [
       const db = client.db(database);
       const coll = db.collection(collection);
 
-      // MongoDB IndexSpecification accepts object or array; keys validated by Zod
       const indexName = await coll.createIndex(
         keys as Parameters<typeof coll.createIndex>[0],
         options,

@@ -1,8 +1,3 @@
-/**
- * `hakanmcp stop` command handler.
- * Gracefully stops running agent/watch/scheduled/reactive processes via signal + stop-signal file.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import chalk from 'chalk';
@@ -10,7 +5,6 @@ import ora from 'ora';
 
 const HAKANMCP_DIR = '.hakanmcp';
 
-/** All known PID configurations for stoppable modes. */
 const PID_CONFIGS = [
   { pidFile: 'agent.pid', stopSignal: 'stop-signal', label: 'agent' },
   { pidFile: 'watch.pid', stopSignal: 'watch-stop-signal', label: 'watch' },
@@ -51,8 +45,7 @@ function removePidFile(cwd: string, pidFile: string): void {
   const pidPath = path.join(cwd, HAKANMCP_DIR, pidFile);
   try {
     fs.unlinkSync(pidPath);
-  } catch {
-    // Ignore if already removed
+  } catch { /* empty */
   }
 }
 
@@ -63,8 +56,7 @@ function removeStopSignal(cwd: string, signalFile: string): void {
   const signalPath = path.join(cwd, HAKANMCP_DIR, signalFile);
   try {
     fs.unlinkSync(signalPath);
-  } catch {
-    // Ignore
+  } catch { /* empty */
   }
 }
 
@@ -84,19 +76,15 @@ async function stopProcess(
   config: typeof PID_CONFIGS[number],
   pid: number,
 ): Promise<boolean> {
-  // Write stop-signal file for Windows-safe shutdown
   const signalPath = path.join(cwd, HAKANMCP_DIR, config.stopSignal);
   fs.mkdirSync(path.join(cwd, HAKANMCP_DIR), { recursive: true });
   fs.writeFileSync(signalPath, String(Date.now()), 'utf8');
 
-  // Send SIGTERM as secondary mechanism
   try {
     process.kill(pid, 'SIGTERM');
-  } catch {
-    // Process may have already exited from stop-signal
+  } catch { /* empty */
   }
 
-  // Poll until process exits
   const spinner = ora({
     text: `Stopping ${config.label} (PID ${pid})...`,
     color: 'magenta',
@@ -114,19 +102,16 @@ async function stopProcess(
     spinner.text = `Waiting for ${config.label} to stop (${i + 1}/${MAX_ATTEMPTS})...`;
   }
 
-  // Force kill if still alive
   if (!stopped) {
     spinner.text = `Force killing ${config.label}...`;
     try {
       process.kill(pid, 'SIGKILL');
-    } catch {
-      // Already dead
+    } catch { /* empty */
     }
     await sleep(500);
     stopped = !isProcessAlive(pid);
   }
 
-  // Cleanup
   removePidFile(cwd, config.pidFile);
   removeStopSignal(cwd, config.stopSignal);
 
@@ -156,7 +141,6 @@ export async function runStop(): Promise<void> {
     }
 
     if (!isProcessAlive(pid)) {
-      // Stale PID file — clean up silently
       removePidFile(cwd, config.pidFile);
       continue;
     }

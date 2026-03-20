@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import fs from 'node:fs';
 import path from 'node:path';
 import { exec, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -46,7 +45,6 @@ function assertPathAllowed(resolvedPath: string, label: string): void {
 }
 
 export const systemTools = [
-  // Command Execution
   {
     name: 'sys_runCommand',
     description: 'Shell runs the command.',
@@ -93,7 +91,6 @@ export const systemTools = [
     },
   },
 
-  // Process Management
   {
     name: 'sys_listProcesses',
     description:
@@ -119,7 +116,6 @@ export const systemTools = [
         .object({ name: z.string().optional(), limit: z.number().optional() })
         .parse(args);
 
-      // Filter by name: legacy sys_listProcessByName logic
       if (name !== undefined) {
         if (process.platform === 'win32') {
           try {
@@ -142,7 +138,6 @@ export const systemTools = [
         }
       }
 
-      // List all: legacy sys_listProcesses logic
       const maxRows = limit ?? 100;
       let cmd = 'tasklist /FO CSV';
       if (process.platform !== 'win32') {
@@ -196,7 +191,6 @@ export const systemTools = [
         throw new Error('At least one of "pid" or "name" must be provided.');
       }
 
-      // Kill by PID: legacy sys_killProcess logic
       if (pid !== undefined) {
         assertPidNumeric(pid);
         if (process.platform === 'win32') {
@@ -209,7 +203,6 @@ export const systemTools = [
         };
       }
 
-      // Kill by name: legacy sys_killProcessByName logic
       const processName = name!;
       const forceFlag = force !== false;
 
@@ -269,7 +262,7 @@ export const systemTools = [
           silent: z.boolean().optional(),
         })
         .parse(args);
-      void _silent; // schema supports it, reserved for future use
+      void _silent;
 
       if (process.platform !== 'win32') {
         return {
@@ -327,7 +320,6 @@ export const systemTools = [
           };
         }
 
-        // Show found apps
         const appList = apps
           .map((app: { Name?: string; Version?: string }) => `- ${app.Name} (v${app.Version})`)
           .join('\n');
@@ -339,14 +331,13 @@ export const systemTools = [
           };
         }
 
-        // Uninstall first matching app
         const appToUninstall = apps[0];
         const uninstallCmd = `(Get-WmiObject -Class Win32_Product | Where-Object { $_.IdentifyingNumber -eq "${appToUninstall.IdentifyingNumber}" }).Uninstall()`;
 
         let resultText = `📋 Found apps:\n${appList}\n\n🔄 Removing "${appToUninstall.Name}"...\n\n`;
 
         try {
-          await execAsync(`powershell -Command "${uninstallCmd}"`, { timeout: 300000 }); // 5 min timeout
+          await execAsync(`powershell -Command "${uninstallCmd}"`, { timeout: 300000 });
           resultText += `✅ Successfully removed "${appToUninstall.Name}".`;
         } catch (e: unknown) {
           resultText += `⚠ Error during uninstallation: ${e instanceof Error ? e.message : String(e)}\n\nNote: Some applications may require manual uninstallation.`;
@@ -369,7 +360,6 @@ export const systemTools = [
     },
   },
 
-  // Task Scheduler
   {
     name: 'sys_scheduledTask',
     description:
@@ -403,7 +393,6 @@ export const systemTools = [
         })
         .parse(args);
 
-      // action=list: legacy sys_listScheduledTasks logic
       if (action === 'list') {
         if (process.platform === 'win32') {
           const cmd = filter
@@ -430,7 +419,6 @@ export const systemTools = [
         }
       }
 
-      // action=run: legacy sys_runScheduledTask logic
       if (!taskName) {
         throw new Error('"taskName" is required when action is "run".');
       }

@@ -82,7 +82,6 @@ export function runToolHealthCheck(tools: ToolEntry[], projectRoot: string): Too
     results,
   };
 
-  // Persist
   try {
     const reportPath = getReportPath(projectRoot);
     const dir = path.dirname(reportPath);
@@ -115,7 +114,6 @@ export function shouldRunToday(projectRoot: string): boolean {
   if (!report) return true;
   const lastCheck = new Date(report.checkedAt);
   const now = new Date();
-  // Same calendar day → skip
   return lastCheck.toDateString() !== now.toDateString();
 }
 
@@ -124,17 +122,15 @@ export function scheduleDailyHealthCheck(
   tools: ToolEntry[],
   projectRoot: string,
 ): () => void {
-  // Run immediately if not yet run today
   if (shouldRunToday(projectRoot)) {
     runToolHealthCheck(tools, projectRoot);
   }
 
-  // Check every hour if we need to run today's check
   const interval = setInterval(() => {
     if (shouldRunToday(projectRoot)) {
       runToolHealthCheck(tools, projectRoot);
     }
-  }, 60 * 60 * 1000); // 1 hour
+  }, 60 * 60 * 1000);
 
   return () => clearInterval(interval);
 }

@@ -1,7 +1,6 @@
 import {
   SwarmCoordinator,
   type SwarmAgent,
-  type SwarmTopology,
 } from '../services/swarmCoordinator.js';
 
 function makeAgent(id: string, role: SwarmAgent['role'], load = 0): SwarmAgent {
@@ -14,8 +13,6 @@ describe('SwarmCoordinator', () => {
   beforeEach(() => {
     coord = new SwarmCoordinator();
   });
-
-  // ─── Topology creation ────────────────────────────────────────
 
   describe('createSwarm — hierarchical', () => {
     it('should build queen→lead→worker connections', () => {
@@ -30,7 +27,6 @@ describe('SwarmCoordinator', () => {
       expect(state.topology).toBe('hierarchical');
       expect(state.agents).toHaveLength(4);
       expect(state.leader).toBe('q1');
-      // queen→lead + lead→w1 + lead→w2 = 3
       expect(state.connections).toHaveLength(3);
       expect(state.connections.some((c) => c.from === 'q1' && c.to === 'l1' && c.type === 'leader')).toBe(true);
       expect(state.connections.some((c) => c.from === 'l1' && c.to === 'w1' && c.type === 'worker')).toBe(true);
@@ -56,7 +52,6 @@ describe('SwarmCoordinator', () => {
       const state = coord.createSwarm('mesh', agents);
 
       expect(state.topology).toBe('mesh');
-      // 4*(4-1)/2 = 6
       expect(state.connections).toHaveLength(6);
       expect(state.connections.every((c) => c.type === 'peer')).toBe(true);
     });
@@ -92,8 +87,6 @@ describe('SwarmCoordinator', () => {
     });
   });
 
-  // ─── routeTask ────────────────────────────────────────────────
-
   describe('routeTask', () => {
     it('hierarchical → routes to queen', () => {
       const agents: SwarmAgent[] = [
@@ -125,7 +118,6 @@ describe('SwarmCoordinator', () => {
       expect(coord.routeTask({ type: 'x', complexity: 1 })).toBe('a');
       expect(coord.routeTask({ type: 'x', complexity: 1 })).toBe('b');
       expect(coord.routeTask({ type: 'x', complexity: 1 })).toBe('c');
-      // wraps
       expect(coord.routeTask({ type: 'x', complexity: 1 })).toBe('a');
     });
 
@@ -147,15 +139,12 @@ describe('SwarmCoordinator', () => {
     });
   });
 
-  // ─── addAgent / removeAgent ───────────────────────────────────
-
   describe('addAgent', () => {
     it('should add agent and rebuild connections', () => {
       coord.createSwarm('mesh', [makeAgent('a', 'peer'), makeAgent('b', 'peer')]);
       const state = coord.addAgent(makeAgent('c', 'peer'));
 
       expect(state.agents).toHaveLength(3);
-      // mesh: 3*(3-1)/2 = 3
       expect(state.connections).toHaveLength(3);
     });
   });
@@ -170,7 +159,6 @@ describe('SwarmCoordinator', () => {
       const state = coord.removeAgent('c');
 
       expect(state.agents).toHaveLength(2);
-      // mesh: 2*(2-1)/2 = 1
       expect(state.connections).toHaveLength(1);
     });
 
@@ -189,8 +177,6 @@ describe('SwarmCoordinator', () => {
     });
   });
 
-  // ─── reconfigure ──────────────────────────────────────────────
-
   describe('reconfigure', () => {
     it('should switch topology and rebuild connections', () => {
       coord.createSwarm('mesh', [
@@ -198,12 +184,11 @@ describe('SwarmCoordinator', () => {
         makeAgent('b', 'peer'),
         makeAgent('c', 'peer'),
       ]);
-      expect(coord.getStatus().connections).toHaveLength(3); // mesh 3
+      expect(coord.getStatus().connections).toHaveLength(3);
 
       const state = coord.reconfigure('ring');
       expect(state.topology).toBe('ring');
-      expect(state.connections).toHaveLength(3); // ring 3, but different structure
-      // ring: a→b, b→c, c→a
+      expect(state.connections).toHaveLength(3);
       expect(state.connections[0].from).toBe('a');
       expect(state.connections[0].to).toBe('b');
     });
@@ -217,15 +202,11 @@ describe('SwarmCoordinator', () => {
       const state = coord.reconfigure('star');
 
       expect(state.topology).toBe('star');
-      // first agent becomes queen in star reconfigure
       const hub = state.agents.find((a) => a.role === 'queen');
       expect(hub).toBeDefined();
-      // star: hub → 2 others = 2 connections
       expect(state.connections).toHaveLength(2);
     });
   });
-
-  // ─── scaleAgents ──────────────────────────────────────────────
 
   describe('scaleAgents', () => {
     it('should add workers to reach target count', () => {
@@ -233,7 +214,6 @@ describe('SwarmCoordinator', () => {
       const state = coord.scaleAgents(4);
 
       expect(state.agents).toHaveLength(4);
-      // new agents are workers
       const newAgents = state.agents.filter((a) => a.id !== 'a');
       expect(newAgents).toHaveLength(3);
       expect(newAgents.every((a) => a.role === 'worker')).toBe(true);
@@ -246,8 +226,6 @@ describe('SwarmCoordinator', () => {
     });
   });
 
-  // ─── getStatus ────────────────────────────────────────────────
-
   describe('getStatus', () => {
     it('should return a snapshot (not a reference)', () => {
       coord.createSwarm('mesh', [makeAgent('a', 'peer'), makeAgent('b', 'peer')]);
@@ -255,7 +233,7 @@ describe('SwarmCoordinator', () => {
       const s2 = coord.getStatus();
 
       expect(s1).toEqual(s2);
-      expect(s1.agents).not.toBe(s2.agents); // different array reference
+      expect(s1.agents).not.toBe(s2.agents);
     });
   });
 });

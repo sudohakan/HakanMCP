@@ -56,7 +56,6 @@ export const envTools = [
         };
       }
 
-      // action === 'delete'
       delete process.env[key];
       return {
         content: [
@@ -94,7 +93,6 @@ export const envTools = [
         };
       }
 
-      // action === 'save'
       const content = Object.entries(process.env)
         .map(([key, value]) => `${key}=${value}`)
         .join('\n');

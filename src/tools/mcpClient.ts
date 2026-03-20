@@ -4,11 +4,6 @@ import { logger } from '../utils/logger.js';
 import { processRegistry } from '../utils/processRegistry.js';
 import { loadCatalog, getCatalogServer, listCatalogServers } from '../catalog/index.js';
 
-/**
- * MCP Client - Connect to other MCP servers and use their tools
- * Enables MCP server to act as a client to other MCP servers
- */
-
 type SpawnFunction = (
   command: string,
   args: readonly string[],
@@ -60,7 +55,6 @@ export class MCPConnectionManager {
    * Create a new connection to an MCP server
    */
   async connect(command: string, args: string[]): Promise<string> {
-    // Check connection limit
     if (this.connections.size >= this.maxConnections) {
       throw new Error(`Maximum connections (${this.maxConnections}) reached`);
     }
@@ -112,7 +106,6 @@ export class MCPConnectionManager {
                 connected = true;
                 clearTimeout(timeout);
 
-                // Send initialized notification
                 const notification = { jsonrpc: '2.0', method: 'notifications/initialized' };
                 child.stdin!.write(JSON.stringify(notification) + '\n');
 
@@ -133,8 +126,7 @@ export class MCPConnectionManager {
                 logger.info('MCP connection established', { connectionId });
                 resolve(connectionId);
               }
-            } catch {
-              // Not valid JSON yet, continue buffering
+            } catch { /* empty */
             }
           }
         }
@@ -159,7 +151,6 @@ export class MCPConnectionManager {
         this.connections.delete(connectionId);
       });
 
-      // Send MCP initialize request (JSON-RPC handshake)
       const initRequest = {
         jsonrpc: '2.0',
         id: 0,
@@ -214,7 +205,6 @@ export class MCPConnectionManager {
       const onData = (data: Buffer) => {
         responseBuffer += data.toString();
 
-        // Try to parse complete JSON responses
         const lines = responseBuffer.split('\n');
         for (let i = 0; i < lines.length - 1; i++) {
           const line = lines[i].trim();
@@ -232,13 +222,11 @@ export class MCPConnectionManager {
                 }
                 return;
               }
-            } catch {
-              // Not valid JSON, continue
+            } catch { /* empty */
             }
           }
         }
 
-        // Keep only the last incomplete line
         responseBuffer = lines[lines.length - 1];
       };
 
@@ -248,7 +236,6 @@ export class MCPConnectionManager {
 
       connection.process.stdout.on('data', onData);
 
-      // Send request
       connection.process.stdin.write(JSON.stringify(request) + '\n');
     });
   }
@@ -331,7 +318,6 @@ export class MCPConnectionManager {
   }
 }
 
-// Singleton instance
 export const connectionManager = new MCPConnectionManager();
 const BEFORE_EXIT_FLAG = Symbol.for('mcpClient.beforeExitRegistered');
 
@@ -468,7 +454,6 @@ export const mcpClientTools = [
           arguments: toolArguments || {},
         });
 
-        // Return the tool result as-is
         return result;
       } catch (error: unknown) {
         throw new Error(

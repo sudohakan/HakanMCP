@@ -3,7 +3,6 @@
  */
 import chalk from 'chalk';
 
-// Theme colors (must match bin/hakanmcp.ts THEME & MENU_COLORS)
 const COMMAND_COLORS: Record<string, string> = {
   init: '#6C5CE7',
   start: '#00D68F',

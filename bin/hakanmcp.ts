@@ -14,7 +14,6 @@ import boxen from 'boxen';
 import ora from 'ora';
 import gradient from 'gradient-string';
 import chalkAnimation from 'chalk-animation';
-import type { ChatMessage } from '../src/tools/aiProviders.js';
 import { getEffectiveCharacter, getCharacterProfile } from '../src/utils/characterProfile.js';
 import { runInit } from '../src/cli/initCommand.js';
 import { runStart } from '../src/cli/startCommand.js';
@@ -27,7 +26,6 @@ import { runReactive } from '../src/cli/reactiveCommand.js';
 
 process.env.HAKANMCP_CLI = '1';
 
-// ─── Process-level error handlers (graceful shutdown on unexpected errors) ────
 process.on('uncaughtException', (err: Error) => {
   console.error(chalk.red('Fatal error:'), err.message);
   process.exit(1);
@@ -41,7 +39,6 @@ process.on('unhandledRejection', (reason: unknown) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ─── Theme ────────────────────────────────────────────────────────
 const THEME = {
   gradient: gradient(['#6C5CE7', '#a29bfe']),
   gradientCelebration: gradient(['#00D68F', '#6C5CE7']),
@@ -73,7 +70,6 @@ const LOGO = `
 
 const LOGO_SUB = `                   ✦  M C P  ✦`;
 
-// ─── Helpers ──────────────────────────────────────────────────────
 function findProjectRoot(start: string): string {
   let dir = path.resolve(start);
   for (let i = 0; i < 5; i++) {
@@ -86,7 +82,6 @@ function findProjectRoot(start: string): string {
 }
 const PROJECT_ROOT = findProjectRoot(__dirname);
 
-// ─── Tool Manifest (build-time generated) ────────────────────────
 interface ToolManifestEntry { name: string; description?: string }
 interface ToolManifestModule { module: string; tools: ToolManifestEntry[]; error?: string }
 interface ToolManifest {
@@ -120,9 +115,7 @@ function getAppVersion(): string {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
       return pkg.version || '0.0.0';
     }
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
   return '0.0.0';
 }
 
@@ -164,7 +157,6 @@ async function checkStartupHealth(): Promise<StartupHealthResult> {
   let latestVersion: string | undefined;
   let checkFailed = false;
 
-  // 1. Version check (GitHub Releases API)
   try {
     const remote = await fetchLatestGitHubVersion();
     if (remote) {
@@ -179,7 +171,6 @@ async function checkStartupHealth(): Promise<StartupHealthResult> {
     checkFailed = true;
   }
 
-  // 2. Build check
   const distIndex = path.join(PROJECT_ROOT, 'dist', 'src', 'index.js');
   if (!fs.existsSync(distIndex)) {
     issues.push('Build missing (run npm run build)');
@@ -202,14 +193,12 @@ async function checkStartupHealth(): Promise<StartupHealthResult> {
     } catch { /* ignore */ }
   }
 
-  // 3. Node.js version check
   const nodeVer = process.versions.node;
   const major = parseInt(nodeVer.split('.')[0], 10);
   if (major < 20) {
     issues.push(`Node.js ${nodeVer} (requires >= 20)`);
   }
 
-  // 4. Config check
   const cfgPath = path.join(PROJECT_ROOT, 'config.yaml');
   if (fs.existsSync(cfgPath)) {
     try {
@@ -233,7 +222,6 @@ async function checkStartupHealth(): Promise<StartupHealthResult> {
   return { status, issues, latestVersion, localVersion };
 }
 
-// ─── Animated Intro ───────────────────────────────────────────────
 function playAnimatedIntro(): Promise<void> {
   return new Promise((resolve) => {
     const fullLogo = LOGO + '\n' + LOGO_SUB;
@@ -245,7 +233,6 @@ function playAnimatedIntro(): Promise<void> {
   });
 }
 
-// ─── Gradient Logo (static) ──────────────────────────────────────
 function renderGradientLogo(): string {
   const logoLines = LOGO.split('\n');
   const gradientLogo = THEME.gradient.multiline(logoLines.join('\n'));
@@ -253,8 +240,7 @@ function renderGradientLogo(): string {
   return gradientLogo + '\n' + sub;
 }
 
-// ─── Pill Menu (4 rows × 5 columns — same column = same color)
-const PILL_COL_WIDTHS = [10, 10, 10, 10, 10]; // fixed width per column for icon alignment
+const PILL_COL_WIDTHS = [10, 10, 10, 10, 10];
 const PILL_COL_COLORS = ['#6C5CE7', '#00D68F', '#FDCB6E', '#FF6B6B', '#a29bfe'];
 function renderPillMenu(): string {
   const rows = [
@@ -270,7 +256,6 @@ function renderPillMenu(): string {
   return rows.map((row) => '  ' + row.map((label, i) => fmt(label, i)).join('  ')).join('\n');
 }
 
-// ─── Status Bar ───────────────────────────────────────────────────
 function renderStatusBar(health?: StartupHealthResult): string {
   const version = getAppVersion();
 
@@ -320,7 +305,6 @@ function renderStatusBar(health?: StartupHealthResult): string {
   const pad = ' '.repeat(Math.max(2, 55 - usedLen));
   let line = `  ${dot} ${text}${pad}${ver}`;
 
-  // Hint line for actionable states
   if (health.status === 'update' || health.status === 'update-issues') {
     line += `\n  ${chalk.hex(THEME.textDim)('run /doctor fix to update')}`;
   } else if (health.status === 'issues') {
@@ -330,12 +314,10 @@ function renderStatusBar(health?: StartupHealthResult): string {
   return line;
 }
 
-// ─── Divider ──────────────────────────────────────────────────────
 function renderDivider(width = 60): string {
   return chalk.hex(THEME.textDim)('─'.repeat(width));
 }
 
-// Icon color map for text-based menus (matches pill menu)
 const MENU_COLORS: Record<string, string> = {
   doctor: THEME.primary,
   ralph: THEME.primary,
@@ -347,7 +329,6 @@ const MENU_COLORS: Record<string, string> = {
   tools: '#FF6B6B',
   providers: '#a29bfe',
   help: '#a29bfe',
-  // Mission Agent — colors match pill columns
   init: THEME.primary,
   start: THEME.success,
   stop: '#FDCB6E',
@@ -363,7 +344,6 @@ const isEmbedOutput = (): boolean => process.env.HAKANMCP_EMBED === '1';
 const isSimpleOutput = (): boolean =>
   process.env.HAKANMCP_QUIET === '1' || process.env.HAKANMCP_SIMPLE === '1';
 
-// ─── Simple text menu (no logo; for /providers, /doctor etc from console chat)
 function renderTextMenuSimple(
   taglineTitle: string,
   content: string,
@@ -380,7 +360,6 @@ function renderTextMenuSimple(
   return block;
 }
 
-// ─── Text-based menu (no boxen; used for doctor, status, backup, etc.)
 function renderTextMenu(
   taglineTitle: string,
   content: string,
@@ -393,7 +372,6 @@ function renderTextMenu(
 
   let block: string;
   if (isEmbedOutput()) {
-    // Chat mode: no banner/pills — just divider + content
     block = `\n${divider}\n`;
     if (content) {
       block += chalk.hex(titleColor)(`  ${taglineTitle}`) + '\n\n';
@@ -402,7 +380,6 @@ function renderTextMenu(
     if (hint) block += '\n' + hint.split('\n').map((l) => `  ${chalk.hex(THEME.textMuted).italic(l)}`).join('\n') + '\n';
     block += `\n${divider}\n`;
   } else {
-    // CLI mode: full banner
     clearScreen();
     const logo = renderGradientLogo();
     const pills = renderPillMenu();
@@ -420,7 +397,6 @@ function renderTextMenu(
   return block;
 }
 
-// ─── Unified Screen (chat mode only; uses boxen for main screen)
 function renderUnifiedScreen(taglineTitle: string, content?: string, customHint?: string, health?: StartupHealthResult): string {
   clearScreen();
   const logo = renderGradientLogo();
@@ -452,39 +428,19 @@ function renderUnifiedScreen(taglineTitle: string, content?: string, customHint?
   });
 }
 
-// ─── List Box → Text menu for CLI commands (no boxen)
 function renderListBox(title: string, content: string, hint?: string, cmdKey?: string): string {
   const cleanTitle = title.replace(/Hakan MCP\s*/gi, '').trim() || title;
   return renderTextMenu(cleanTitle, content, hint, cmdKey);
 }
 
-// ─── Capture stdout ──────────────────────────────────────────────
-async function captureStdout(fn: () => Promise<void>): Promise<string> {
-  const chunks: string[] = [];
-  const origWrite = process.stdout.write.bind(process.stdout);
-  process.stdout.write = ((chunk: unknown, ..._rest: unknown[]) => {
-    chunks.push(String(chunk));
-    return true;
-  }) as typeof process.stdout.write;
-  try {
-    await fn();
-  } finally {
-    process.stdout.write = origWrite;
-  }
-  // Strip ANSI codes for clean re-rendering inside boxen
-  return chunks.join('');
-}
 
-// ─── Chat Header (animated) ──────────────────────────────────────
 async function renderChatHeaderAnimated(): Promise<void> {
   clearScreen();
   await playAnimatedIntro();
 
-  // Show initial screen with "Checking..." status
   clearScreen();
   console.log(renderUnifiedScreen('Chat'));
 
-  // Run health checks, re-render with final status
   try {
     const health = await checkStartupHealth();
     clearScreen();
@@ -498,16 +454,13 @@ async function renderChatHeaderAnimated(): Promise<void> {
   console.log();
 }
 
-// ─── Dotenv ───────────────────────────────────────────────────────
 async function loadDotenv(): Promise<void> {
   const dotenvPath = path.join(PROJECT_ROOT, '.env');
   if (fs.existsSync(dotenvPath)) {
     try {
       const dotenv = await import('dotenv');
       dotenv.default.config({ path: dotenvPath, override: true, quiet: true });
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }
 }
 
@@ -539,7 +492,6 @@ function requireBuild(scriptName: string): string {
   return scriptPath;
 }
 
-// ─── Commands ─────────────────────────────────────────────────────
 async function runTools(): Promise<void> {
   const manifest = loadToolManifest();
   if (!manifest) {
@@ -557,7 +509,6 @@ async function runTools(): Promise<void> {
   const allTools = manifest.modules.flatMap((m) => m.tools);
   let body = `  ${chalk.hex(THEME.primary).bold(`${allTools.length} tools registered`)}\n\n`;
 
-  // Group by prefix (part before first underscore)
   const groups = new Map<string, typeof allTools>();
   for (const t of allTools) {
     const prefix = t.name.includes('_') ? t.name.split('_')[0] : 'other';
@@ -582,7 +533,6 @@ async function runTools(): Promise<void> {
   console.log(renderTextMenu('Tools', body.trimEnd(), undefined, 'tools'));
 }
 
-// ─── Scheduled Tasks Dashboard & Management ──────────────────────────────────
 async function runScheduledDashboard(): Promise<void> {
   const { schedulerManager } = await import('../src/tools/scheduler.js');
   const stats = schedulerManager.getStats();
@@ -591,7 +541,6 @@ async function runScheduledDashboard(): Promise<void> {
 
   let body = '';
 
-  // ── Workspace Schedule ──────────────────────────────────────────
   body += `  ${chalk.hex(THEME.primary).bold('Workspace Schedule')}\n`;
   const wsConfigPath = path.join(cwd, 'hakanmcp.config.yaml');
   if (fs.existsSync(wsConfigPath)) {
@@ -616,7 +565,6 @@ async function runScheduledDashboard(): Promise<void> {
     body += `  ${chalk.hex(THEME.textDim)(`Workspace: ${cwd}`)}\n`;
   }
 
-  // ── Scheduler Manager Tasks ─────────────────────────────────────
   body += `\n  ${chalk.hex(THEME.primary).bold('Scheduler Tasks')}\n`;
   body += `  ${chalk.hex('#F1F2F6')('Tasks:')} ${chalk.hex(stats.totalTasks > 0 ? THEME.success : THEME.textMuted)(`${stats.enabledTasks} active`)}`;
   if (stats.disabledTasks > 0) body += ` ${chalk.hex(THEME.textMuted)(`/ ${stats.disabledTasks} paused`)}`;
@@ -731,7 +679,6 @@ async function runDoctor(fix = false): Promise<void> {
   const checks: DoctorCheck[] = [];
   let body = '';
 
-  // ── 1. package.json ──────────────────────────────────────────────
   const pkgPath = path.join(PROJECT_ROOT, 'package.json');
   if (fs.existsSync(pkgPath)) {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
@@ -758,7 +705,6 @@ async function runDoctor(fix = false): Promise<void> {
     checks.push({ label: 'package.json', status: 'fail', detail: 'Not found' });
   }
 
-  // ── 2. config.yaml ──────────────────────────────────────────────
   const cfgPath = path.join(PROJECT_ROOT, 'config.yaml');
   if (fs.existsSync(cfgPath)) {
     try {
@@ -785,7 +731,6 @@ async function runDoctor(fix = false): Promise<void> {
     });
   }
 
-  // ── 3. Build (dist/) ────────────────────────────────────────────
   const distIndex = path.join(PROJECT_ROOT, 'dist', 'src', 'index.js');
   if (!fs.existsSync(distIndex)) {
     checks.push({
@@ -798,7 +743,6 @@ async function runDoctor(fix = false): Promise<void> {
       },
     });
   } else {
-    // Check all TypeScript source directories against dist
     const srcDirs = ['src', 'scripts', 'bin'].map((d) => path.join(PROJECT_ROOT, d));
     const newestSrc = Math.max(...srcDirs.map((d) => getNewestMtime(d, '.ts')));
     const distMtime = fs.statSync(distIndex).mtimeMs;
@@ -820,7 +764,6 @@ async function runDoctor(fix = false): Promise<void> {
     }
   }
 
-  // ── 4. .env ──────────────────────────────────────────────────────
   const envPath = path.join(PROJECT_ROOT, '.env');
   const envExamplePath = path.join(PROJECT_ROOT, '.env.example');
   if (fs.existsSync(envPath)) {
@@ -851,7 +794,6 @@ async function runDoctor(fix = false): Promise<void> {
     checks.push({ label: '.env', status: 'warn', detail: 'Missing (optional)' });
   }
 
-  // ── 5. Node.js ──────────────────────────────────────────────────
   const nodeVer = process.version;
   const major = parseInt(nodeVer.slice(1), 10);
   checks.push({
@@ -860,9 +802,7 @@ async function runDoctor(fix = false): Promise<void> {
     detail: major >= 20 ? nodeVer : `${nodeVer} (requires >= 20)`,
   });
 
-  // ── 6. MCP Tools ────────────────────────────────────────────────
   let manifest = loadToolManifest();
-  // Read health report if available
   const healthReportPath = path.join(PROJECT_ROOT, 'logs', 'tool-health.json');
   let healthReport: { checkedAt?: string; totalTools?: number; passed?: number; failed?: number; results?: Array<{ name: string; status: string; error?: string }> } | null = null;
   try {
@@ -874,7 +814,6 @@ async function runDoctor(fix = false): Promise<void> {
   if (manifest) {
     const failedModules = manifest.modules.filter((m) => m.error);
     if (healthReport && healthReport.totalTools) {
-      // Use health report for detailed status
       const hp = healthReport.passed ?? 0;
       const hf = healthReport.failed ?? 0;
       const total = healthReport.totalTools;
@@ -886,7 +825,6 @@ async function runDoctor(fix = false): Promise<void> {
           status: 'warn',
           detail: `${total} registered, ${hp} passed, ${hf} failed`,
         });
-        // Show failed tools
         const failedTools = (healthReport.results ?? []).filter((r) => r.status === 'fail');
         for (const ft of failedTools.slice(0, 5)) {
           checks.push({ label: '  └ Tool', status: 'fail', detail: `${ft.name}: ${ft.error}` });
@@ -895,7 +833,6 @@ async function runDoctor(fix = false): Promise<void> {
           checks.push({ label: '  └ ...', status: 'warn', detail: `+${failedTools.length - 5} more failures` });
         }
       }
-      // Show failed modules from manifest with repair actions
       for (const fm of failedModules) {
         const pkgMatch = fm.error?.match(/Cannot find package '([^']+)'/);
         checks.push({
@@ -909,7 +846,6 @@ async function runDoctor(fix = false): Promise<void> {
         });
       }
     } else {
-      // No health report — fallback to manifest-only
       if (failedModules.length === 0) {
         checks.push({ label: 'MCP Tools', status: 'ok', detail: `${manifest.totalTools} registered` });
       } else {
@@ -947,10 +883,8 @@ async function runDoctor(fix = false): Promise<void> {
     });
   }
 
-  // ── 7. Logs directory ───────────────────────────────────────────
   const logsDir = path.join(PROJECT_ROOT, 'logs');
   if (fs.existsSync(logsDir)) {
-    // Check writable
     const testFile = path.join(logsDir, `.doctor-write-test-${Date.now()}.tmp`);
     try {
       fs.writeFileSync(testFile, 'test', 'utf8');
@@ -971,7 +905,6 @@ async function runDoctor(fix = false): Promise<void> {
     });
   }
 
-  // ── 8. Consciousness ─────────────────────────────────────────────
   const consciousnessDir = path.join(PROJECT_ROOT, 'logs', 'consciousness');
   if (fs.existsSync(consciousnessDir)) {
     const stateFile = path.join(consciousnessDir, 'cognition_state.json');
@@ -1000,7 +933,6 @@ async function runDoctor(fix = false): Promise<void> {
   let repairCount = 0;
 
   if (fix) {
-    // ── Fix mode: repair then show final state ─────────────────────
     const issues = checks.filter((c) => c.status !== 'ok');
     if (issues.length === 0) {
       body += `  ${icons.ok} ${chalk.hex(THEME.success)('No issues found. System is healthy.')}\n`;
@@ -1010,7 +942,6 @@ async function runDoctor(fix = false): Promise<void> {
 
     let needsRebuild = false;
 
-    // 0) Auto-update if a newer version is available on GitHub
     const updateCheck = checks.find((c) => c.label === 'package.json' && c.status === 'warn');
     if (updateCheck) {
       body += `  ${icons.repair} ${chalk.hex('#6C5CE7')('Updating from GitHub...')}\n`;
@@ -1024,7 +955,6 @@ async function runDoctor(fix = false): Promise<void> {
         repairCount += 3;
         const newPkg = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, 'package.json'), 'utf8'));
         body += `  ${icons.ok} ${chalk.hex(THEME.success)(`Updated to v${newPkg.version}`)}\n\n`;
-        // Update the stale check entry so AI repair doesn't re-trigger version fix
         const pkgIdx = checks.findIndex((c) => c.label === 'package.json');
         if (pkgIdx !== -1) {
           checks[pkgIdx] = { label: 'package.json', status: 'ok', detail: `v${newPkg.version}` };
@@ -1035,7 +965,6 @@ async function runDoctor(fix = false): Promise<void> {
       }
     }
 
-    // 1) Run predefined repairActions
     for (const check of repairables) {
       const action = check.repairAction!;
       try {
@@ -1049,7 +978,6 @@ async function runDoctor(fix = false): Promise<void> {
       }
     }
 
-    // 2) AI-assisted repair for ALL remaining issues (including sub-items and failed predefined repairs)
     const stillBroken = checks.filter((c) => c.status !== 'ok');
     if (stillBroken.length > 0) {
       body += `\n  ${icons.repair} ${chalk.hex('#6C5CE7')('Consulting AI for remaining issues...')}\n`;
@@ -1122,7 +1050,6 @@ Rules:
       }
     }
 
-    // 3) Rebuild if packages changed
     if (needsRebuild) {
       try {
         execSync('npm run build', { cwd: PROJECT_ROOT, stdio: 'pipe', timeout: 120_000 });
@@ -1134,9 +1061,7 @@ Rules:
       }
     }
 
-    // 4) Re-run checks to show ACTUAL final state
     body += `\n  ${chalk.hex(THEME.primary).bold('Verification')}\n`;
-    // Reload manifest
     manifest = loadToolManifest();
     const postChecks: DoctorCheck[] = [];
     for (const orig of checks.filter((c) => !c.label.startsWith('  '))) {
@@ -1157,7 +1082,6 @@ Rules:
 
     console.log(renderTextMenu('Doctor Fix', body, 'doctor                              Run full health check', 'doctor'));
   } else {
-    // ── Normal mode: show all checks ─────────────────────────────
     for (const c of checks) {
       body += formatCheck(c) + '\n';
     }
@@ -1179,7 +1103,6 @@ Rules:
     console.log(renderTextMenu('Doctor', body, 'doctor fix                          Auto-repair detected issues', 'doctor'));
   }
 
-  // ── Re-run individual check helper ─────────────────────────────
   async function reRunCheck(label: string): Promise<DoctorCheck | null> {
     switch (label) {
       case 'config.yaml': {
@@ -1256,7 +1179,6 @@ async function runStatus(): Promise<void> {
   const mins = Math.floor((uptimeSec % 3600) / 60);
   const uptime = days > 0 ? `${days}d ${hours}h ${mins}m` : hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
-  // Backup stats
   let backupLine = chalk.hex(THEME.textMuted)('N/A');
   try {
     const { backupService } = await import('../src/services/backupService.js');
@@ -1266,7 +1188,6 @@ async function runStatus(): Promise<void> {
       : chalk.hex(THEME.textMuted)('disabled');
   } catch { /* ignore */ }
 
-  // Config
   let serverName = 'hakan-mcp';
   let aiProviderLine = '';
   let githubEnabled = false;
@@ -1366,7 +1287,6 @@ async function runBackupInfo(): Promise<void> {
 }
 
 async function runBackupRun(): Promise<void> {
-  // Render header (banner in CLI, divider in embed)
   const divider = renderDivider();
   const titleColor = MENU_COLORS['backup'] ?? THEME.primary;
 
@@ -1383,7 +1303,6 @@ async function runBackupRun(): Promise<void> {
     process.stdout.write(chalk.hex(titleColor)('  Backup') + '\n\n');
   }
 
-  // Spinner inside the design frame
   const spinner = ora({
     text: chalk.hex(THEME.primary)('Creating backup...'),
     spinner: THEMED_SPINNER,
@@ -1415,7 +1334,6 @@ async function runBackupRun(): Promise<void> {
     process.stdout.write(`  ${chalk.hex(THEME.error)('✗')} ${chalk.red(errMsg)}\n`);
   }
 
-  // Close the design frame
   if (isEmbedOutput()) {
     process.stdout.write(`\n${divider}\n`);
   } else {
@@ -1474,7 +1392,7 @@ async function runConfigSet(pathArg: string, valueArg: string): Promise<void> {
 }
 
 function runConfigYamlHelp(): void {
-  const icon = (s: string) => chalk.hex(THEME.primary)('  ✦ ');
+  const icon = (_s: string) => chalk.hex(THEME.primary)('  ✦ ');
   const p = (s: string) => chalk.hex('#F1F2F6')(s.padEnd(40));
   const d = (s: string) => chalk.hex(THEME.textMuted)(s);
   const cat = (s: string) => chalk.hex(THEME.primary).bold(`  ${s}`);
@@ -1570,7 +1488,6 @@ async function runLogsOverview(): Promise<void> {
   const lines: string[] = [];
   const areas: string[] = [];
 
-  // Scan subdirectories
   const entries = fs.readdirSync(logDir, { withFileTypes: true });
   const dirs = entries.filter((e) => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name));
   for (const dir of dirs) {
@@ -1591,7 +1508,6 @@ async function runLogsOverview(): Promise<void> {
     );
   }
 
-  // Scan root-level log files
   const rootFiles = entries.filter((e) => e.isFile() && isLogFile(e.name)).sort((a, b) => a.name.localeCompare(b.name));
   for (const f of rootFiles) {
     const stat = fs.statSync(path.join(logDir, f.name));
@@ -1626,19 +1542,16 @@ function logsResolve(name: string): { type: 'dir' | 'file'; resolved: string; la
   const logDir = path.join(PROJECT_ROOT, 'logs');
   if (!fs.existsSync(logDir)) { logsNotFound(name); return null; }
 
-  // 1. Exact subdirectory match
   const dirPath = path.join(logDir, name);
   if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
     return { type: 'dir', resolved: dirPath, label: name };
   }
 
-  // 2. Root-level file — exact match
   const asFile = path.join(logDir, name);
   if (fs.existsSync(asFile) && fs.statSync(asFile).isFile() && isLogFile(name)) {
     return { type: 'file', resolved: asFile, label: name };
   }
 
-  // 3. Root-level file — try adding extensions
   for (const ext of ['.json', '.jsonl', '.log']) {
     const withExt = path.join(logDir, name + ext);
     if (fs.existsSync(withExt) && fs.statSync(withExt).isFile()) {
@@ -1646,7 +1559,6 @@ function logsResolve(name: string): { type: 'dir' | 'file'; resolved: string; la
     }
   }
 
-  // 4. Partial match across root files
   const rootFiles = fs.readdirSync(logDir).filter((f) => {
     try { return fs.statSync(path.join(logDir, f)).isFile() && isLogFile(f) && f.includes(name); } catch { return false; }
   });
@@ -1686,10 +1598,8 @@ async function runLogsShowFile(area: string, file: string): Promise<void> {
   const target = logsResolve(area);
   if (!target) return;
   if (target.type === 'file') {
-    // area was actually a root file, ignore second arg
     return showLogFile(target.resolved, target.label);
   }
-  // Resolve file inside the directory
   const resolved = resolveFileInDir(target.resolved, file);
   if (!resolved) {
     const dirFiles = fs.readdirSync(target.resolved).filter((f) => {
@@ -1724,15 +1634,12 @@ async function runLogsTail(area: string): Promise<void> {
 }
 
 function resolveFileInDir(dirPath: string, file: string): { path: string; name: string } | null {
-  // Exact match
   const exact = path.join(dirPath, file);
   if (fs.existsSync(exact) && fs.statSync(exact).isFile()) return { path: exact, name: file };
-  // Try adding extensions
   for (const ext of ['.json', '.jsonl', '.log']) {
     const withExt = path.join(dirPath, file + ext);
     if (fs.existsSync(withExt) && fs.statSync(withExt).isFile()) return { path: withExt, name: file + ext };
   }
-  // Partial match
   const candidates = fs.readdirSync(dirPath).filter((f) => f.includes(file) && isLogFile(f));
   if (candidates.length === 1) return { path: path.join(dirPath, candidates[0]), name: candidates[0] };
   return null;
@@ -1874,6 +1781,24 @@ function runHelp(): void {
   console.log(renderTextMenu('Help', lines.join('\n'), hint, 'help'));
 }
 
+interface JournalEntryExtended {
+  timestamp?: string;
+  thought?: string;
+  result?: string;
+  type?: string;
+  provider?: string;
+  language?: string;
+  summary?: string;
+  decisions?: string[];
+  filesChanged?: string[];
+  nextSteps?: string[];
+  metrics?: { messagesExchanged: number; errorsEncountered: number };
+  previousState?: { lastSessionDate?: string };
+  resolution?: string;
+  milestone?: string;
+  messagesSoFar?: number | string;
+}
+
 async function runJournal(countStr: string): Promise<void> {
   const count = parseInt(countStr || '5', 10) || 5;
   const journalPath = path.join(PROJECT_ROOT, 'logs', 'consciousness', 'journal.jsonl');
@@ -1906,34 +1831,29 @@ async function runJournal(countStr: string): Promise<void> {
         return null;
       }
     })
-    .filter(Boolean) as Array<{
-    timestamp?: string;
-    thought?: string;
-    result?: string;
-    type?: string;
-    provider?: string;
-  }>;
+    .filter(Boolean) as JournalEntryExtended[];
 
   let body = '';
   entries.reverse().forEach((e, i) => {
     const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '?';
     const typeLabel = e.type ? chalk.hex(THEME.textMuted)(` (${e.type})`) : '';
-    const provLabel = (e as any).provider ? chalk.hex(THEME.textMuted)(` via ${(e as any).provider}`) : '';
-    const langLabel = (e as any).language ? chalk.hex(THEME.textMuted)(` [${(e as any).language}]`) : '';
+    const eExt = e as JournalEntryExtended;
+    const provLabel = eExt.provider ? chalk.hex(THEME.textMuted)(` via ${eExt.provider}`) : '';
+    const langLabel = eExt.language ? chalk.hex(THEME.textMuted)(` [${eExt.language}]`) : '';
 
     body += `  ${chalk.hex(THEME.primary)(`${i + 1}.`)} ${chalk.hex(THEME.textMuted)(`[${ts}]`)}${typeLabel}${provLabel}${langLabel}\n`;
 
     switch (e.type) {
       case 'session_summary': {
-        const ss = e as any;
+        const ss = e as JournalEntryExtended;
         body += `     ${chalk.hex('#F1F2F6')(ss.summary || '')}\n`;
-        if (ss.decisions?.length > 0) {
+        if (ss.decisions && ss.decisions.length > 0) {
           body += `     ${chalk.hex(THEME.primary)('Decisions:')} ${ss.decisions.join('; ')}\n`;
         }
-        if (ss.filesChanged?.length > 0) {
+        if (ss.filesChanged && ss.filesChanged.length > 0) {
           body += `     ${chalk.hex(THEME.primary)('Files:')} ${ss.filesChanged.length} changed\n`;
         }
-        if (ss.nextSteps?.length > 0) {
+        if (ss.nextSteps && ss.nextSteps.length > 0) {
           body += `     ${chalk.hex(THEME.primary)('Next:')} ${ss.nextSteps.join('; ')}\n`;
         }
         if (ss.metrics) {
@@ -1942,7 +1862,7 @@ async function runJournal(countStr: string): Promise<void> {
         break;
       }
       case 'session_start': {
-        const ss = e as any;
+        const ss = e as JournalEntryExtended;
         body += `     ${chalk.hex('#F1F2F6')(ss.summary || '')}\n`;
         if (ss.previousState?.lastSessionDate && ss.previousState.lastSessionDate !== 'none') {
           body += `     ${chalk.hex(THEME.textMuted)(`Previous: ${new Date(ss.previousState.lastSessionDate).toLocaleString()}`)}\n`;
@@ -1950,7 +1870,7 @@ async function runJournal(countStr: string): Promise<void> {
         break;
       }
       case 'error': {
-        const ee = e as any;
+        const ee = e as JournalEntryExtended;
         body += `     ${chalk.hex('#FF6B6B')(ee.summary || '')}\n`;
         if (ee.resolution) {
           body += `     ${chalk.hex('#00D68F')('Fix:')} ${ee.resolution}\n`;
@@ -1958,7 +1878,7 @@ async function runJournal(countStr: string): Promise<void> {
         break;
       }
       case 'milestone': {
-        const me = e as any;
+        const me = e as JournalEntryExtended;
         body += `     ${chalk.hex('#FFD700')('★')} ${chalk.hex('#F1F2F6')(me.summary || '')}\n`;
         if (me.milestone) {
           body += `     ${chalk.hex(THEME.primary)(me.milestone)}\n`;
@@ -1966,29 +1886,27 @@ async function runJournal(countStr: string): Promise<void> {
         break;
       }
       case 'checkpoint': {
-        const ce = e as any;
+        const ce = e as JournalEntryExtended;
         body += `     ${chalk.hex('#6C5CE7')('◆')} ${chalk.hex('#F1F2F6')(ce.summary || '')}\n`;
-        if (ce.filesChanged?.length > 0) {
+        if (ce.filesChanged && ce.filesChanged.length > 0) {
           body += `     ${chalk.hex(THEME.textMuted)(`${ce.filesChanged.length} files, ${ce.messagesSoFar || '?'} messages`)}\n`;
         }
         break;
       }
       default: {
-        // Backward compat: old entries with `thought` field
-        const thought = ((e as any).thought || (e as any).result || '').replace(/[\n\r]+/g, ' ').replace(/[#*_`~>]/g, '').trim();
+        const eDef = e as JournalEntryExtended;
+        const thought = (eDef.thought || eDef.result || '').replace(/[\n\r]+/g, ' ').replace(/[#*_`~>]/g, '').trim();
         body += `     ${chalk.hex('#F1F2F6')(thought)}\n`;
       }
     }
     body += '\n';
   });
-  // Prepend mood/emotion + character summary
   const cogPath = path.join(PROJECT_ROOT, 'logs', 'consciousness', 'cognition_state.json');
   if (fs.existsSync(cogPath)) {
     try {
       const cog = JSON.parse(fs.readFileSync(cogPath, 'utf8'));
       const em = cog.emotions;
       if (em) {
-        // Character traits (short labels from Big Five)
         const profile = em ? getEffectiveCharacter(PROJECT_ROOT, em) : getCharacterProfile(PROJECT_ROOT);
         const traitLabels: string[] = [];
         traitLabels.push(profile.openness >= 0.75 ? 'Inventive' : profile.openness >= 0.55 ? 'Curious' : profile.openness >= 0.35 ? 'Balanced' : profile.openness >= 0.2 ? 'Practical' : 'Narrow');
@@ -2001,23 +1919,19 @@ async function runJournal(countStr: string): Promise<void> {
         traitLabels.push(profile.assertiveness >= 0.75 ? 'Assertive' : profile.assertiveness >= 0.55 ? 'Confident' : profile.assertiveness >= 0.35 ? 'Moderate' : profile.assertiveness >= 0.2 ? 'Deferential' : 'Passive');
         traitLabels.push(profile.formality >= 0.75 ? 'Formal' : profile.formality >= 0.55 ? 'Professional' : profile.formality >= 0.35 ? 'Casual' : profile.formality >= 0.2 ? 'Relaxed' : 'Chatty');
 
-        // Mood description with emoji
         const moodDesc = em.mood > 0.6 ? 'positive' : em.mood > 0.2 ? 'calm' : em.mood > -0.2 ? 'neutral' : em.mood > -0.6 ? 'low' : 'frustrated';
         const moodIcon = em.mood > 0.6 ? chalk.hex('#00D68F')('▲') : em.mood > -0.2 ? chalk.hex('#6C5CE7')('●') : chalk.hex('#FF6B6B')('▼');
         const energyDesc = em.energy > 0.7 ? 'energetic' : em.energy > 0.4 ? 'alert' : 'tired';
         const curiosityDesc = em.curiosity > 0.7 ? 'very curious' : em.curiosity > 0.4 ? 'interested' : 'reflective';
 
-        // Progress bar helper
-        const bar = (val: number) => {
+        const _bar = (val: number) => {
           const filled = Math.round(val * 10);
           return '█'.repeat(filled) + '░'.repeat(10 - filled);
         };
 
-        // Mood bar uses normalized 0-1 scale (mood is -1 to 1, so shift)
         const moodNorm = (em.mood + 1) / 2;
         const moodColor = em.mood > 0.3 ? '#00D68F' : em.mood > -0.3 ? '#6C5CE7' : '#FF6B6B';
 
-        // Formatted bar with label, color, and percentage
         const fmtBar = (label: string, val: number, color: string, width = 8) => {
           const filled = Math.round(val * width);
           const barStr = '█'.repeat(filled) + '░'.repeat(width - filled);
@@ -2025,7 +1939,6 @@ async function runJournal(countStr: string): Promise<void> {
           return `${chalk.hex(THEME.primary)(label.padEnd(13))} ${chalk.hex(color)(barStr)} ${chalk.hex(THEME.textMuted)(pct)}`;
         };
 
-        // Two-column layout
         const col1 = [
           fmtBar('Mood', moodNorm, moodColor),
           fmtBar('Energy', em.energy, '#6C5CE7'),
@@ -2074,7 +1987,6 @@ async function runJournalReset(): Promise<void> {
   const journalPath = path.join(consciousnessDir, 'journal.jsonl');
   const cogPath = path.join(consciousnessDir, 'cognition_state.json');
 
-  // Clear journal and backup
   try {
     fs.writeFileSync(journalPath, '');
   } catch (err: unknown) {
@@ -2084,7 +1996,6 @@ async function runJournalReset(): Promise<void> {
     fs.unlinkSync(journalPath + '.bak');
   } catch { /* ignore if not exists */ }
 
-  // Reset cognition state (full wipe)
   const freshState = {
     emotions: { mood: 0.5, energy: 0.5, curiosity: 0.5, satisfaction: 0.5, frustration: 0.1, focus: 0.5 },
     recentTopics: [] as string[],
@@ -2116,13 +2027,11 @@ async function runProviderStatus(): Promise<void> {
   } = await import('../src/services/aiProviderCooldown.js');
   setCooldownsBasePath(PROJECT_ROOT);
 
-  // Fast data (file-based, instant)
   const apiStatus = getApiCooldownStatus();
   const cliCooldown = getCliCooldownStatus();
   const apiUsage = getApiUsageStatus();
   const cliUsage = getCliUsageStatus();
 
-  // Slow data — run all in parallel with spinner
   const spinner = ora({ text: chalk.hex(THEME.primary)('Probing providers...'), spinner: THEMED_SPINNER, isSilent: isEmbedOutput() }).start();
   let ollamaResult: Awaited<ReturnType<typeof getOllamaStatus>> | null = null;
   let versionsResult: Awaited<ReturnType<typeof getCliVersions>> | null = null;
@@ -2162,7 +2071,6 @@ async function runProviderStatus(): Promise<void> {
             }
           }
         }
-        // Truncate long reason to first line, max 50 chars
         let shortReason = (s.reason ?? '').split('\n')[0].trim();
         if (shortReason.length > 50) shortReason = shortReason.slice(0, 47) + '...';
         return chalk.hex(THEME.error)('● unavailable') + (shortReason ? '  ' + chalk.hex(THEME.textMuted)(shortReason) : '') + recheckSuffix;
@@ -2202,7 +2110,6 @@ async function runProviderStatus(): Promise<void> {
     body += `  ${chalk.hex(THEME.primary)(s.label.padEnd(20))} ${String(s.dailyUsed + '/' + s.dailyLimit).padEnd(10)} ${String(s.weeklyUsed + '/' + s.weeklyLimit).padEnd(10)} ${status}\n`;
   });
 
-  // Ollama (local fallback) status
   body += `\n  ${chalk.bold.hex('#F1F2F6')('Ollama (local fallback)')}\n\n`;
   try {
     const ollama = ollamaResult ?? await getOllamaStatus();
@@ -2242,7 +2149,6 @@ async function runProviderStatus(): Promise<void> {
     body += `  ${chalk.hex(THEME.primary)('Status'.padEnd(20))} ${chalk.hex(THEME.error)('● error')}  ${chalk.hex(THEME.textMuted)('status check failed')}\n`;
   }
 
-  // CLI Provider Versions
   body += `\n  ${chalk.bold.hex('#F1F2F6')('Provider Versions')}\n\n`;
   try {
     const versions = versionsResult ?? await getCliVersions();
@@ -2329,16 +2235,16 @@ async function runProviderReset(target?: string, provider?: string): Promise<voi
 
   switch (target) {
     case 'api':
-      resetApiCooldowns(provider as any);
+      resetApiCooldowns(provider as Parameters<typeof resetApiCooldowns>[0]);
       break;
     case 'cli':
-      resetCliCooldowns(provider as any);
+      resetCliCooldowns(provider as Parameters<typeof resetCliCooldowns>[0]);
       break;
     case 'apiusage':
-      resetApiUsage(provider as any);
+      resetApiUsage(provider as Parameters<typeof resetApiUsage>[0]);
       break;
     case 'cliusage':
-      resetCliUsageFor(provider as any);
+      resetCliUsageFor(provider as Parameters<typeof resetCliUsageFor>[0]);
       break;
   }
 
@@ -2593,7 +2499,6 @@ async function runProviderUpdate(provider?: string): Promise<void> {
 
   const targets = provider ? [provider] : validProviders;
 
-  // Update CLI tools via npm
   const npmTargets = targets.filter((t) => ['codex', 'claude', 'gemini'].includes(t));
   if (npmTargets.length > 0) {
     const versions = await getCliVersions();
@@ -2607,7 +2512,6 @@ async function runProviderUpdate(provider?: string): Promise<void> {
         console.log(`  ${chalk.hex(THEME.success)('✓')} ${chalk.hex(THEME.primary)(t.padEnd(12))} v${v.installed} ${chalk.hex(THEME.textMuted)('(already latest)')}`);
         continue;
       }
-      // Update via npm
       const spinner = ora({
         text: chalk.hex(THEME.primary)(`Updating ${t} ${v.installed} → ${v.latest ?? '?'}...`),
         spinner: THEMED_SPINNER,
@@ -2632,41 +2536,35 @@ async function runProviderUpdate(provider?: string): Promise<void> {
     }
   }
 
-  // Update Ollama (self + models)
   if (targets.includes('ollama')) {
     let interrupted = false;
-    let childProc: any = null;
+    let childProc: { kill: () => void } | null = null;
     const onSigint = () => { interrupted = true; childProc?.kill(); };
     process.on('SIGINT', onSigint);
 
     try {
-      // Step 1: Check if Ollama update available
       const ollamaSpinner = ora({ text: chalk.hex(THEME.primary)('Checking Ollama version...'), spinner: THEMED_SPINNER, isSilent: isEmbedOutput() }).start();
       try {
-        // Check current vs available
-        const { stdout: checkOut } = await new Promise<{ stdout: string }>((res, rej) => {
+        const { stdout: checkOut } = await new Promise<{ stdout: string }>((res) => {
           childProc = exec('winget upgrade --id Ollama.Ollama --accept-source-agreements', { timeout: 30_000 }, (err, stdout) => {
             childProc = null;
-            // winget exits non-zero when no upgrade available
-            res({ stdout: (stdout || '') + ((err as any)?.message || '') });
+            res({ stdout: (stdout || '') + ((err instanceof Error ? err.message : '')) });
           });
         });
 
         if (interrupted) throw new Error('interrupted');
 
         if (/No applicable upgrade|No installed package/i.test(checkOut)) {
-          // Get current version
           let ver = '';
           try {
-            const { stdout } = await new Promise<{ stdout: string }>((res, rej) => {
-              exec('ollama --version', { timeout: 5000 }, (err, stdout) => err ? rej(err) : res({ stdout }));
+            const { stdout } = await new Promise<{ stdout: string }>((res, _rej) => {
+              exec('ollama --version', { timeout: 5000 }, (err, stdout) => err ? res({ stdout: '' }) : res({ stdout }));
             });
             const m = stdout.match(/(\d+\.\d+\.\d+)/);
             ver = m ? m[1] : '';
-          } catch {}
+          } catch { /* ignore */ }
           ollamaSpinner.succeed(chalk.hex(THEME.success)(`Ollama ${ver ? 'v' + ver + ' ' : ''}(already latest)`));
         } else {
-          // Upgrade available — run silent install
           ollamaSpinner.text = chalk.hex(THEME.primary)('Updating Ollama...');
           await new Promise<void>((resolve, reject) => {
             childProc = exec('winget upgrade Ollama.Ollama --accept-source-agreements --accept-package-agreements --silent', { timeout: 600_000 }, (err) => {
@@ -2684,7 +2582,7 @@ async function runProviderUpdate(provider?: string): Promise<void> {
             });
             const m = stdout.match(/(\d+\.\d+\.\d+)/);
             newVer = m ? m[1] : '';
-          } catch {}
+          } catch { /* ignore */ }
           ollamaSpinner.succeed(chalk.hex(THEME.success)(`Ollama updated to ${newVer ? 'v' + newVer : 'latest'}`));
         }
       } catch (err: unknown) {
@@ -2695,7 +2593,6 @@ async function runProviderUpdate(provider?: string): Promise<void> {
 
       if (interrupted) throw new Error('interrupted');
 
-      // Step 2: Update installed models
       try {
         const ollama = await getOllamaStatus();
         if (!ollama.online) {
@@ -2734,7 +2631,6 @@ async function runProviderUpdate(provider?: string): Promise<void> {
             for (const u of upgrades) {
               console.log(`  ${chalk.hex(THEME.textMuted)(u.current)} → ${chalk.hex(THEME.success)(u.upgrade)}`);
             }
-            // Update default model if it was upgraded
             const { config: cfg } = await import('../src/config.js');
             const { updateConfig } = await import('../src/config.js');
             for (const u of upgrades) {
@@ -2850,7 +2746,6 @@ async function runSettings(): Promise<void> {
     {
       title: 'GitHub',
       rows: (() => {
-        // Auto-detect owner/repo from git remote, fallback to config
         let detectedOwner = config.github?.owner ?? '—';
         let detectedRepo = config.github?.repo ?? '—';
         try {
@@ -2898,9 +2793,9 @@ async function runSettings(): Promise<void> {
       rows: [
         ['enabled', config.consciousness?.enabled ?? false, 'Journal & emotion system on/off'],
         ['maxJournalEntries', config.consciousness?.maxJournalEntries ?? 500, 'Max journal entries to keep'],
-        ['reflection.maxLength', (config.consciousness as any)?.reflection?.maxLength ?? 200, 'Max reflection text length'],
-        ['reflection.maxEntriesInPrompt', (config.consciousness as any)?.reflection?.maxEntriesInPrompt ?? 3, 'Journal entries in AI prompt'],
-        ['reflection.style', (config.consciousness as any)?.reflection?.style ?? 'auto', 'Style: auto/emotional/mixed/minimal'],
+        ['reflection.maxLength', (config.consciousness as unknown as { reflection?: { maxLength?: number } }).reflection?.maxLength ?? 200, 'Max reflection text length'],
+        ['reflection.maxEntriesInPrompt', (config.consciousness as unknown as { reflection?: { maxEntriesInPrompt?: number } }).reflection?.maxEntriesInPrompt ?? 3, 'Journal entries in AI prompt'],
+        ['reflection.style', (config.consciousness as unknown as { reflection?: { style?: string } }).reflection?.style ?? 'auto', 'Style: auto/emotional/mixed/minimal'],
       ],
     },
     {
@@ -2928,9 +2823,9 @@ async function runSettings(): Promise<void> {
     {
       title: 'Assistant',
       rows: [
-        ['enabled', (config as any).assistant?.enabled ?? true, 'Assistant context on/off'],
-        ['includeTargets', (config as any).assistant?.includeTargets ?? true, 'Include target files in context'],
-        ['maxTargetSize', (config as any).assistant?.maxTargetSize ?? 8192, 'Max target file size (bytes)'],
+        ['enabled', (config as unknown as { assistant?: { enabled?: boolean; includeTargets?: boolean; maxTargetSize?: number } }).assistant?.enabled ?? true, 'Assistant context on/off'],
+        ['includeTargets', (config as unknown as { assistant?: { enabled?: boolean; includeTargets?: boolean; maxTargetSize?: number } }).assistant?.includeTargets ?? true, 'Include target files in context'],
+        ['maxTargetSize', (config as unknown as { assistant?: { enabled?: boolean; includeTargets?: boolean; maxTargetSize?: number } }).assistant?.maxTargetSize ?? 8192, 'Max target file size (bytes)'],
       ],
     },
     {
@@ -2960,8 +2855,7 @@ async function runSettings(): Promise<void> {
                   ? chalk.hex(THEME.warning)('(encrypted)')
                   : chalk.hex('#F1F2F6')(String(v));
       const valStr = typeof v === 'boolean' ? (v ? 'true' : 'false') : String(v);
-      // key is padded to 28, then space, then value — description starts at fixed column
-      const VAL_COL = 30; // value column width (pad value to this)
+      const VAL_COL = 30;
       const pad = Math.max(2, VAL_COL - valStr.length);
       body += `    ${chalk.hex(THEME.textMuted)('›')} ${chalk.hex('#F1F2F6')(k.padEnd(28))} ${val}${' '.repeat(pad)}${chalk.hex(THEME.textMuted)(desc)}\n`;
     }
@@ -3420,7 +3314,6 @@ async function runChat(verbose: boolean): Promise<void> {
   await import(pathToFileURL(chatPath).href);
 }
 
-// ─── Main ─────────────────────────────────────────────────────────
 async function main(): Promise<void> {
   ensureProjectRoot();
   await loadDotenv();
@@ -3463,7 +3356,6 @@ async function main(): Promise<void> {
       if (outputShown) return;
       outputShown = true;
       const raw = str.trim();
-      // Rewrite Commander's "error: unknown command 'X'" into a friendlier message
       const unknownMatch = raw.match(/^error:\s*unknown command '([^']+)'/i);
       if (unknownMatch) {
         const typed = unknownMatch[1];
@@ -3589,7 +3481,6 @@ async function main(): Promise<void> {
     .action(runProviderUpdate);
   providerCmd.action(runProviderStatus);
 
-  // ─── Ralph Loop Dashboard & Management ─────────────────────────────
 
   const RALPH_DIR = path.join(PROJECT_ROOT, 'logs', 'ralph');
 
@@ -3740,7 +3631,7 @@ async function main(): Promise<void> {
     const stateFile = path.join(RALPH_DIR, `loop-${id}.json`);
     if (!fs.existsSync(stateFile)) { process.exit(1); }
     let state: RalphLoopState = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
-    const ITER_TIMEOUT = 3 * 60 * 1000; // 3 min per iteration
+    const ITER_TIMEOUT = 3 * 60 * 1000;
     const deadline = Date.now() + (state.timeoutMs || 10 * 60 * 1000);
     const donePatterns = [/FINALIZE/i, /^Blocked:/m, /NO_CHANGES_NEEDED/i, /^DONE$/m];
     try {
@@ -3752,7 +3643,6 @@ async function main(): Promise<void> {
       const dryRun = state.mode === 'dry-run';
       let consecutiveTimeouts = 0;
       for (let i = 0; i < state.iterations.max; i++) {
-        // Total deadline check
         if (Date.now() >= deadline) {
           state.status = 'failed';
           state.error = `Total timeout exceeded (${Math.round((state.timeoutMs || 600000) / 60000)}m)`;
@@ -3760,7 +3650,7 @@ async function main(): Promise<void> {
           writeLoopState(state);
           break;
         }
-        let result: any;
+        let result: { content?: Array<{ text?: string }>; isError?: boolean } | undefined;
         try {
           result = await withTimeout(
             tool.handler({
@@ -3870,7 +3760,6 @@ async function main(): Promise<void> {
   ralphCmd.command('_worker <id>').action((id) => runRalphWorker(id));
   ralphCmd.action(() => runRalphOverview());
 
-  // Mission Agent Commands
   program.command('init')
     .description('Interactive workspace & mission setup')
     .option('--force', 'Overwrite existing config/workspace')
@@ -3918,15 +3807,12 @@ async function main(): Promise<void> {
     .description('Start reactive mode — watch + scheduled combined')
     .action(runReactive);
 
-  // Display commands: render output then fall through to chat REPL
   const displayCommands = ['doctor', 'health', 'tools', 'status', 'journal', 'providers', 'backup', 'config', 'help', 'logs', 'ralph', 'scheduled'];
-  // Action commands: run and exit (no chat fallthrough)
   const actionCommands: string[] = ['init', 'start', 'stop', 'mission', 'report', 'watch', 'scheduled', 'reactive'];
 
   const positionalArgs = process.argv.slice(2).filter((a) => !a.startsWith('-'));
   const invokedCmd = positionalArgs[0] || '';
-  const hasSubArg = positionalArgs.length > 1; // e.g. "backup run", "config set"
-  // Commands that stay in chat even with sub-args (e.g. "backup run")
+  const hasSubArg = positionalArgs.length > 1;
   const alwaysDisplayCmds = ['backup', 'logs', 'ralph', 'doctor', 'scheduled'];
   const isDisplayCmd = displayCommands.includes(invokedCmd) && (!hasSubArg || alwaysDisplayCmds.includes(invokedCmd));
   const isActionCmd = actionCommands.includes(invokedCmd) || (displayCommands.includes(invokedCmd) && hasSubArg && !alwaysDisplayCmds.includes(invokedCmd));
@@ -3934,7 +3820,6 @@ async function main(): Promise<void> {
   try {
     await program.parseAsync();
   } catch (err: unknown) {
-    // Commander exitOverride throws CommanderError — already rendered via writeErr
     if (err && typeof err === 'object' && 'exitCode' in err) {
       process.exit((err as { exitCode: number }).exitCode);
     }
@@ -3942,7 +3827,6 @@ async function main(): Promise<void> {
   }
 
   if (isDisplayCmd && !isEmbedOutput()) {
-    // Display command finished rendering → drop into chat REPL (no header animation)
     await runChat(false);
   } else if (!isDisplayCmd && !isActionCmd) {
     const opts = program.opts();

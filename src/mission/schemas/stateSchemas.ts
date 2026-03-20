@@ -4,8 +4,6 @@
  */
 import { z } from 'zod';
 
-// --- Frontmatter Schemas ---
-
 export const MissionScheduleSchema = z.object({
   mode: z.enum(['watch', 'scheduled', 'manual']).default('manual'),
   interval: z.string().optional(),
@@ -21,8 +19,6 @@ export const MissionFrontmatterSchema = z.object({
   tags: z.array(z.string()).default([]),
 });
 
-// --- Step State Schema ---
-
 export const MissionStepStateSchema = z.object({
   id: z.string(),
   description: z.string(),
@@ -35,8 +31,6 @@ export const MissionStepStateSchema = z.object({
   retryCount: z.number().default(0),
   error: z.string().optional(),
 });
-
-// --- Mission State Schema ---
 
 export const MissionStateSchema = z.object({
   missionId: z.string(),
@@ -52,8 +46,6 @@ export const MissionStateSchema = z.object({
   provider: z.string().optional(),
 });
 
-// --- History Entry Schema ---
-
 export const HistoryEntrySchema = z.object({
   missionId: z.string(),
   title: z.string(),
@@ -65,8 +57,6 @@ export const HistoryEntrySchema = z.object({
   stepsFailed: z.number().default(0),
   provider: z.string().default('unknown'),
 });
-
-// --- Learned Pattern Schema ---
 
 export const LearnedPatternSchema = z.object({
   id: z.string(),

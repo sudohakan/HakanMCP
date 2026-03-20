@@ -52,7 +52,6 @@ export function parseInterval(input: string): ParsedInterval {
     throw new Error(`Interval value must be positive, got ${value}.`);
   }
 
-  // Normalize unit to category
   const isMinutes = ['m', 'min', 'minute', 'minutes'].includes(unit);
   const isHours = ['h', 'hour', 'hours'].includes(unit);
   const isDays = ['d', 'day', 'days'].includes(unit);
@@ -70,7 +69,6 @@ export function parseInterval(input: string): ParsedInterval {
         `Minute interval must be between 1 and 59, got ${value}. Use hours for larger intervals.`,
       );
     }
-    // Cron can only represent minute intervals that evenly divide 60
     const useCron = 60 % value === 0;
     return {
       cronExpression: `*/${value} * * * *`,

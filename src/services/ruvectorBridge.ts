@@ -4,8 +4,6 @@
  * continual-learning engine with Elastic Weight Consolidation.
  */
 
-// ── Types ────────────────────────────────────────────────────────
-
 export interface HnswConfig {
   dimensions: number;
   maxElements?: number;
@@ -40,8 +38,6 @@ export interface EWCState {
   taskCount: number;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
-
 export function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0;
   let magA = 0;
@@ -54,8 +50,6 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   const denom = Math.sqrt(magA) * Math.sqrt(magB);
   return denom === 0 ? 0 : dot / denom;
 }
-
-// ── HnswBridge ───────────────────────────────────────────────────
 
 interface StoredVector {
   vector: number[];
@@ -106,8 +100,6 @@ export class HnswBridge {
   }
 }
 
-// ── SonaEngine ───────────────────────────────────────────────────
-
 export class SonaEngine {
   private readonly dimensions: number;
   private patterns: Pattern[] = [];
@@ -130,7 +122,6 @@ export class SonaEngine {
         const state = traj.states[si];
         const reward = si < traj.rewards.length ? traj.rewards[si] : 0;
 
-        // Pad or truncate to match dimensions
         const embedding = new Array<number>(this.dimensions).fill(0);
         for (let i = 0; i < Math.min(state.length, this.dimensions); i++) {
           embedding[i] = state[i];
@@ -149,7 +140,6 @@ export class SonaEngine {
         this.patterns.push(pattern);
         patternsLearned++;
 
-        // Update EWC Fisher diagonal: f[i] += (state[i] * reward)^2
         for (let i = 0; i < this.dimensions; i++) {
           const val = i < state.length ? state[i] : 0;
           this.fisher[i] += (val * reward) ** 2;
@@ -157,7 +147,6 @@ export class SonaEngine {
       }
     }
 
-    // Update parameter means from all stored patterns
     const means = new Array<number>(this.dimensions).fill(0);
     for (const p of this.patterns) {
       for (let i = 0; i < this.dimensions; i++) {

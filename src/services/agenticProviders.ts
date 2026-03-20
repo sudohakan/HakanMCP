@@ -1,8 +1,3 @@
-/**
- * Agentic provider adapters — Claude, OpenAI, Gemini.
- * Each adapter converts Claude-canonical message format ↔ native API format.
- */
-
 import type {
   ClaudeToolDefinition,
   ClaudeMessage,
@@ -13,8 +8,6 @@ import type {
 } from '../types/index.js';
 import type { AgenticCallFn } from './agenticLoop.js';
 import { parseRetryAfter, setCooldown } from './aiProviderCooldown.js';
-
-// ─────────────────────────── CLAUDE ───────────────────────────
 
 const CLAUDE_BASE_URL = process.env.CLAUDE_BASE_URL || 'https://api.anthropic.com/v1/messages';
 
@@ -44,7 +37,7 @@ export function createClaudeCallFn(model: string, apiKey: string): AgenticCallFn
           if (errJson?.error?.type === 'rate_limit_error' || errJson?.error?.type === 'overloaded_error') {
             durationMs = durationMs ?? 60_000;
           }
-        } catch { /* ignore */ }
+        } catch { /* empty */ }
         if (response.status >= 500 && !durationMs) durationMs = 30_000;
         setCooldown('claude', durationMs, errorText.slice(0, 200));
       }
@@ -55,11 +48,8 @@ export function createClaudeCallFn(model: string, apiKey: string): AgenticCallFn
   };
 }
 
-// ─────────────────────────── OPENAI ───────────────────────────
-
 const OPENAI_BASE_URL = process.env.CODEX_BASE_URL || 'https://api.openai.com/v1/chat/completions';
 
-/** Convert Claude-canonical messages to OpenAI chat format */
 function toOpenAIMessages(
   system: string | undefined,
   messages: ClaudeMessage[],
@@ -73,7 +63,6 @@ function toOpenAIMessages(
       continue;
     }
 
-    // Content block array
     const blocks = msg.content as ClaudeContentBlock[];
     const textParts = blocks.filter((b) => b.type === 'text').map((b) => (b as { text: string }).text).join('\n');
     const toolUses = blocks.filter((b) => b.type === 'tool_use') as ClaudeToolUseBlock[];
@@ -148,7 +137,7 @@ export function createOpenAICallFn(model: string, apiKey: string): AgenticCallFn
     if (msg?.tool_calls) {
       for (const tc of msg.tool_calls) {
         let input: Record<string, unknown> = {};
-        try { input = JSON.parse(tc.function.arguments || '{}'); } catch { /* bad json */ }
+        try { input = JSON.parse(tc.function.arguments || '{}'); } catch { /* empty */ }
         content.push({ type: 'tool_use', id: tc.id, name: tc.function.name, input });
       }
     }
@@ -168,11 +157,8 @@ export function createOpenAICallFn(model: string, apiKey: string): AgenticCallFn
   };
 }
 
-// ─────────────────────────── GEMINI ───────────────────────────
-
 const GEMINI_BASE_URL = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/models';
 
-/** Convert Claude-canonical messages to Gemini format */
 function toGeminiContents(messages: ClaudeMessage[]): unknown[] {
   const out: unknown[] = [];
 
@@ -195,7 +181,6 @@ function toGeminiContents(messages: ClaudeMessage[]): unknown[] {
         parts.push({ functionCall: { name: tu.name, args: tu.input } });
       } else if (b.type === 'tool_result') {
         const tr = b as ClaudeToolResultBlock;
-        // Gemini needs functionResponse with name — look up from previous assistant message
         const toolName = findToolNameForId(messages, tr.tool_use_id);
         parts.push({
           functionResponse: {
@@ -225,29 +210,24 @@ function findToolNameForId(messages: ClaudeMessage[], toolUseId: string): string
   return undefined;
 }
 
-/** Recursively fix schemas for Gemini: add missing `items` on arrays, remove unsupported fields */
 function sanitizeSchemaForGemini(schema: unknown): unknown {
   if (!schema || typeof schema !== 'object') return schema;
   const s = schema as Record<string, unknown>;
   const out: Record<string, unknown> = {};
 
   for (const [k, v] of Object.entries(s)) {
-    // Gemini doesn't support these JSON Schema fields
     if (k === 'additionalProperties' || k === 'default') continue;
     out[k] = v;
   }
 
-  // Array without items → add items: { type: "string" }
   if (out.type === 'array' && !out.items) {
     out.items = { type: 'string' };
   }
 
-  // Recurse into items
   if (out.items && typeof out.items === 'object') {
     out.items = sanitizeSchemaForGemini(out.items);
   }
 
-  // Recurse into properties
   if (out.properties && typeof out.properties === 'object') {
     const props: Record<string, unknown> = {};
     for (const [pk, pv] of Object.entries(out.properties as Record<string, unknown>)) {

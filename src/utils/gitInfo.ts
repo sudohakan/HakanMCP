@@ -20,13 +20,11 @@ let cached: GitHubInfo | null = null;
  *   git@github.com:owner/repo.git
  */
 function parseRemoteUrl(url: string): GitHubInfo | null {
-  // HTTPS: https://github.com/owner/repo.git or https://token@github.com/owner/repo.git
   const httpsMatch = url.match(/github\.com\/([^/]+)\/([^/.]+)/);
   if (httpsMatch) {
     return { owner: httpsMatch[1], repo: httpsMatch[2] };
   }
 
-  // SSH: git@github.com:owner/repo.git
   const sshMatch = url.match(/github\.com:([^/]+)\/([^/.]+)/);
   if (sshMatch) {
     return { owner: sshMatch[1], repo: sshMatch[2] };

@@ -74,12 +74,10 @@ describe('GuidanceEngine', () => {
       const trail = engine.getAuditTrail();
       expect(trail).toHaveLength(3);
 
-      // Each hash should be different
       const hashes = trail.map((e) => e.hash);
       const uniqueHashes = new Set(hashes);
       expect(uniqueHashes.size).toBe(3);
 
-      // Hashes should be hex strings (64 chars for SHA-256)
       for (const h of hashes) {
         expect(h).toMatch(/^[0-9a-f]{64}$/);
       }

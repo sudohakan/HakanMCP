@@ -12,7 +12,6 @@ import type { StepStatus } from '../mission/types.js';
 import { loadWorkspaceConfig } from './configValidator.js';
 import { renderCommandHeader, renderDivider } from './cliUtils.js';
 
-// Theme colors
 const SUCCESS = '#00D68F';
 const ERROR = '#FF6B6B';
 const INFO = '#6C5CE7';
@@ -61,7 +60,6 @@ function showWorkspaceDashboard(cwd: string): void {
   if (workspaces.length === 0) {
     console.log(chalk.hex(MUTED)('\n  No workspaces defined. Run hakanmcp init to add one.'));
 
-    // Show default workspace status if exists
     const defaultState = new MissionStateManager(cwd);
     const state = defaultState.getState();
     if (state) {
@@ -111,7 +109,6 @@ export async function runMission(options?: {
 }): Promise<void> {
   const cwd = process.cwd();
 
-  // --all: detailed status for all workspaces
   if (options?.all) {
     const config = loadWorkspaceConfig(cwd);
     if (!config.workspaces || config.workspaces.length === 0) {
@@ -126,7 +123,6 @@ export async function runMission(options?: {
     return;
   }
 
-  // --workspace: detailed status for specific workspace
   if (options?.workspace) {
     const config = loadWorkspaceConfig(cwd);
     const ws = config.workspaces?.find((w) => w.name === options.workspace);
@@ -140,7 +136,6 @@ export async function runMission(options?: {
     return;
   }
 
-  // Default: workspace dashboard
   showWorkspaceDashboard(cwd);
 }
 

@@ -78,8 +78,7 @@ export function readRecentRoutes(n = 10): RouteEntry[] {
             fallback: obj.fallback === true,
           });
         }
-      } catch {
-        /* skip malformed line */
+      } catch { /* empty */
       }
     }
     return entries;

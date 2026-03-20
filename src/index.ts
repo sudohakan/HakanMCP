@@ -1,5 +1,3 @@
-// ---- Hakan Personal MCP - GitBook + Postman Tools (Node 20, STDIO) ----
-// Raise max listeners to accommodate tool module beforeExit handlers
 process.setMaxListeners(20);
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -7,7 +5,6 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
 
-// Import Core Tools (no native dependencies — always available)
 import { gitbookTools } from './tools/gitbook.js';
 import { postmanTools } from './tools/postman.js';
 import { systemTools } from './tools/system.js';
@@ -40,11 +37,9 @@ import { moeRouterTools } from './tools/moeRouter.js';
 import { aiDefenceTools } from './tools/aiDefence.js';
 import { guidanceTools } from './tools/guidance.js';
 
-// Lazy loading infrastructure
-import { ToolRegistry, FEATURE_TOOL_MAP, FEATURE_TOOL_METADATA } from './toolRegistry.js';
+import { ToolRegistry, FEATURE_TOOL_METADATA } from './toolRegistry.js';
 import { isPackageAvailable } from './dependencyResolver.js';
 
-// Service & utility imports (no native deps)
 import { config } from './config.js';
 import { PROJECT_ROOT } from './utils/projectRoot.js';
 import { backupService } from './services/backupService.js';
@@ -53,21 +48,14 @@ import { logger } from './utils/logger.js';
 import { logActiveCooldowns } from './services/aiProviderCooldown.js';
 import { processRegistry } from './utils/processRegistry.js';
 import { schedulerManager } from './tools/scheduler.js';
-// NOTE: dbPoolManager and stopMongoCleanup are imported dynamically in shutdown
-// because they depend on native modules (pg, mysql2, mssql, mongodb)
 import { ConsciousnessService } from './services/consciousnessService.js';
 import { scheduleDailyHealthCheck } from './services/toolHealthCheck.js';
-
-// ---------------------------------------------------------------------------
-// ToolRegistry setup — core tools eager, feature tools lazy
-// ---------------------------------------------------------------------------
 
 const registry = new ToolRegistry({
   timeoutSec: config.system?.commandTimeout ?? 60,
   logger,
 });
 
-// Register all core tools (eagerly loaded, always available)
 const coreToolArrays = [
   gitbookTools, postmanTools, systemTools, httpTools, envTools,
   parserTools, templateTools, aiTools, systemOptimizationTools,
@@ -84,7 +72,6 @@ for (const toolArray of coreToolArrays) {
   }
 }
 
-// Register feature tools — eagerly if deps available, as placeholders if not
 const featureModules: Array<{
   prefix: string;
   check: () => boolean;
@@ -112,7 +99,6 @@ const featureModules: Array<{
 async function registerFeatureTools(): Promise<void> {
   for (const fm of featureModules) {
     if (fm.check()) {
-      // Dependencies available — eagerly load and register with full handlers
       try {
         const mod = await fm.loader();
         const tools = mod[fm.exportName] as Array<import('./types/index.js').ToolDefinition>;
@@ -121,14 +107,12 @@ async function registerFeatureTools(): Promise<void> {
         }
         logger.info(`Feature tools loaded eagerly: ${fm.prefix}`, { count: tools.length });
       } catch (err) {
-        // Import failed despite deps being detected — register placeholders
         logger.warn(`Failed to eagerly load ${fm.prefix} tools, using placeholders`, {
           error: err instanceof Error ? err.message : String(err),
         });
         registerPlaceholdersForPrefix(fm.prefix);
       }
     } else {
-      // Dependencies not available — register placeholders with metadata
       registerPlaceholdersForPrefix(fm.prefix);
       logger.info(`Feature tools registered as placeholders: ${fm.prefix}`, {
         reason: 'native dependencies not installed',
@@ -145,19 +129,12 @@ function registerPlaceholdersForPrefix(prefix: string): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// setAgenticToolsRef — adapt registry for agentic loop
-// ---------------------------------------------------------------------------
-
 function buildAgenticToolsRef(): Array<{
   name: string;
   description: string;
   inputSchema: { type: string; properties: Record<string, unknown>; required?: string[] };
   handler: (args: unknown) => Promise<{ content: Array<{ type: string; text?: string }>; isError?: boolean }>;
 }> {
-  // Return a proxy-like array that uses the registry for handler resolution.
-  // For tools/list metadata, we can return all tools. For handler execution,
-  // the agentic loop calls handler() which uses the registry under the hood.
   const tools = registry.listTools();
   return tools.map((t) => ({
     name: t.name,
@@ -175,10 +152,6 @@ function buildAgenticToolsRef(): Array<{
     },
   }));
 }
-
-// ---------------------------------------------------------------------------
-// Utility functions (preserved from original)
-// ---------------------------------------------------------------------------
 
 function isTruthy(value: string | undefined): boolean {
   if (!value) return false;
@@ -207,7 +180,6 @@ async function runGuardianPeerCheck(role: string): Promise<void> {
   }
 
   try {
-    // Use file-focused check to avoid noisy false alarms from external endpoints.
     const health = await healthTool.handler({ instancePath: peerPath, issueType: 'file' });
     const healthText = health.content?.[0]?.text || '';
     const unhealthy = healthText.includes('❌');
@@ -268,18 +240,15 @@ function startGuardianLoop(role: string): void {
   }, intervalSec * 1000);
 }
 
-// ------------------------------ Server --------------------------------------
 const server = new Server(
   { name: config.serverName, version: '1.0.0' },
   { capabilities: { tools: {} } },
 );
 
-// tools/list — returns metadata from registry (never triggers module loading)
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: registry.listTools(),
 }));
 
-// tools/call — resolves handler lazily via registry
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
   const { name, arguments: args } = req.params as {
     name: string;
@@ -313,7 +282,6 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   }
 });
 
-// ----------------------------- Bootstrap ------------------------------------
 async function syncOllamaModels() {
   try {
     const url = `${config.ollamaUrl}/api/tags`;
@@ -323,7 +291,6 @@ async function syncOllamaModels() {
       const models = data.models?.map((m) => m.name).filter((n): n is string => n != null) ?? [];
 
       if (models.length > 0) {
-        // Update config.yaml with fetched models ONLY if they changed
         import('./config.js').then(({ config, updateConfig }) => {
           const current = config.availableModels || [];
           const changed =
@@ -341,7 +308,6 @@ async function syncOllamaModels() {
 }
 
 async function main() {
-  // Process-level error handlers (graceful shutdown on unexpected errors)
   process.on('uncaughtException', (err: Error) => {
     logger.error('Uncaught exception', { error: err.message, stack: err.stack });
     process.exit(1);
@@ -352,10 +318,8 @@ async function main() {
     process.exit(1);
   });
 
-  // Register feature tools (lazy or eager depending on dependency availability)
   await registerFeatureTools();
 
-  // Inject tool registry for agentic loop (avoids circular imports)
   setAgenticToolsRef(buildAgenticToolsRef());
 
   logger.info(`ToolRegistry initialized: ${registry.getToolCount()} tools registered`);
@@ -369,7 +333,6 @@ async function main() {
 
   const role = (process.env.INSTANCE_ROLE || 'main').toLowerCase();
 
-  // Keep peer workspace immutable; only main updates tracked config.yaml model list.
   if (role === 'main') {
     logger.info('Auto-reload mechanism active', { version: 'v3' });
     if (config.aiProviders?.localModels && process.env.DISABLE_LOCAL_MODELS !== '1') {
@@ -379,7 +342,6 @@ async function main() {
     logger.info('Skipping Ollama model sync', { reason: 'non-main instance role', role });
   }
 
-  // Start automatic backup service
   try {
     backupService.start();
     const backupStats = backupService.getStats();
@@ -396,10 +358,8 @@ async function main() {
     logger.error('Failed to start backup service', error);
   }
 
-  // Always keep a lightweight guardian loop running between twin instances.
   startGuardianLoop(role);
 
-  // Start daily MCP tool health check (uses registry listTools for tool enumeration)
   const healthCheckTools = registry.listTools().map((t) => ({
     name: t.name,
     description: t.description,
@@ -413,8 +373,6 @@ async function main() {
   const stopToolHealthCheck = scheduleDailyHealthCheck(healthCheckTools, PROJECT_ROOT);
   logger.info('Tool health check scheduler active', { frequency: 'daily' });
 
-  // Consciousness service — periodic timer removed in Journal v2.
-  // Reflections are now event-driven (session start/end, errors, checkpoints, milestones).
   if (config.consciousness?.enabled !== false) {
     const maxEntries = config.consciousness?.maxJournalEntries ?? 500;
     const consciousnessService = new ConsciousnessService(PROJECT_ROOT, maxEntries);
@@ -422,7 +380,6 @@ async function main() {
     logger.info('Consciousness service initialized (event-driven mode)');
   }
 
-  // Graceful shutdown
   let shuttingDown = false;
   const gracefulShutdown = async (signal: string) => {
     if (shuttingDown) return;
@@ -434,12 +391,10 @@ async function main() {
       schedulerManager.shutdown();
       stopToolHealthCheck();
 
-      // Dynamic imports for cleanup modules that depend on native deps
       try {
         const { stopMongoCleanup } = await import('./tools/mongodb.js');
         stopMongoCleanup();
-      } catch {
-        // mongodb not installed — no cleanup needed
+      } catch { /* empty */
       }
 
       await processRegistry.killAll(3000);
@@ -447,8 +402,7 @@ async function main() {
       try {
         const { dbPoolManager } = await import('./utils/dbPoolManager.js');
         await dbPoolManager.closeAll();
-      } catch {
-        // db deps not installed — no pools to close
+      } catch { /* empty */
       }
     } catch (err) {
       logger.error('Cleanup error during shutdown', err);

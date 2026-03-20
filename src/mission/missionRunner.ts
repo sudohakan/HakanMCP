@@ -1,9 +1,3 @@
-/**
- * Mission Runner — Orchestrates step-by-step mission execution.
- * Delegates each step to the existing runAgenticLoop() from services/agenticLoop.
- * Does NOT reimplement API calls, tool routing, or provider fallback.
- */
-import type { AgenticCallFn } from '../services/agenticLoop.js';
 import { runAgenticLoop } from '../services/agenticLoop.js';
 import { resolveAgenticProvider } from '../tools/aiTools.js';
 import type { ToolExecutor } from '../services/toolExecutor.js';
@@ -20,8 +14,6 @@ import type { MissionStateManager } from './missionState.js';
 import { logger } from '../utils/logger.js';
 
 const log = logger.child({ component: 'missionRunner' });
-
-// --- Helpers ---
 
 /**
  * Returns a promise that rejects after `ms` milliseconds or on abort signal.
@@ -47,8 +39,6 @@ function timeoutPromise(ms: number, signal?: AbortSignal): Promise<never> {
   });
 }
 
-// Provider resolution delegated to resolveAgenticProvider() in aiTools.ts
-
 /**
  * Filter tools by name subset. If no subset provided, return all.
  */
@@ -68,8 +58,6 @@ function filterToolsForMission(
   return allTools.filter((t) => allowed.has(t.name));
 }
 
-// --- Main Export ---
-
 /**
  * Run a mission by executing each step sequentially via runAgenticLoop.
  * State is persisted before and after each step for crash resilience.
@@ -84,7 +72,6 @@ export async function runMission(
 ): Promise<MissionRunResult> {
   const startTime = Date.now();
 
-  // 1. Resolve provider
   const { callFn, label: providerLabel } = resolveAgenticProvider();
   log.info('Mission started', {
     missionId: mission.frontmatter.title,
@@ -92,12 +79,10 @@ export async function runMission(
     steps: mission.tasks.length,
   });
 
-  // 2. Build tool infrastructure
   const filteredTools = tools ? filterToolsForMission(tools, config.toolSubset) : [];
   const toolDefs = buildAgenticToolList(filteredTools);
   const executor: ToolExecutor = createToolExecutor(filteredTools);
 
-  // 3. Convert tasks to MissionStepState[]
   const steps: MissionStepState[] = mission.tasks.map((task) => ({
     id: task.id,
     description: task.description,
@@ -105,7 +90,6 @@ export async function runMission(
     retryCount: 0,
   }));
 
-  // 4. Create initial state and persist
   const missionState: MissionState = {
     missionId: mission.tasks.length > 0 ? mission.tasks[0].id : 'unknown',
     filePath: mission.filePath,
@@ -120,12 +104,10 @@ export async function runMission(
   await stateManager.ensureDir();
   stateManager.saveState(missionState);
 
-  // 5. Step loop — sequential execution
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
     missionState.currentStepIndex = i;
 
-    // Check abort
     if (signal.aborted) {
       log.info('Mission aborted, skipping remaining steps', { fromStep: i });
       for (let j = i; j < steps.length; j++) {
@@ -134,7 +116,6 @@ export async function runMission(
       break;
     }
 
-    // Check total time budget
     if (Date.now() - startTime > config.maxTotalTimeMs) {
       log.warn('Mission total time exceeded', {
         elapsed: Date.now() - startTime,
@@ -153,14 +134,11 @@ export async function runMission(
       };
     }
 
-    // Mark step as running
     step.status = 'running';
     step.startedAt = Date.now();
 
-    // Pre-step state write (crash resilience)
     stateManager.saveState(missionState);
 
-    // Emit step:start
     onProgress({
       type: 'step:start',
       stepId: step.id,
@@ -168,7 +146,6 @@ export async function runMission(
       total: steps.length,
     });
 
-    // Build context from previous completed steps
     const previousResults = steps
       .slice(0, i)
       .filter((s) => s.status === 'completed' && s.result)
@@ -186,7 +163,6 @@ export async function runMission(
       .filter(Boolean)
       .join('\n');
 
-    // Retry loop
     let stepSucceeded = false;
     let lastError: string | undefined;
 
@@ -234,7 +210,6 @@ export async function runMission(
           error: lastError,
         });
 
-        // If aborted, don't retry
         if (signal.aborted) break;
       }
     }
@@ -275,11 +250,9 @@ export async function runMission(
       });
     }
 
-    // Post-step state write
     stateManager.saveState(missionState);
   }
 
-  // 6. Determine final status
   const anyFailed = steps.some((s) => s.status === 'failed');
   const allSkipped = steps.every(
     (s) => s.status === 'skipped' || s.status === 'pending',

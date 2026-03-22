@@ -1,0 +1,35 @@
+{
+    "keep": {
+        "days": false,
+        "amount": 5
+    },
+    "auditLog": "C:\\dev\\HakanMCP\\logs\\general\\.rotate-audit.json",
+    "files": [
+        {
+            "date": 1773873033171,
+            "name": "C:\\dev\\HakanMCP\\logs\\general\\app-2026-03-19.log",
+            "hash": "cdc0ed659431a49b9c231450ca2d1d9e05c10373002480b5edec9636cd1036eb"
+        },
+        {
+            "date": 1773955834908,
+            "name": "C:\\dev\\HakanMCP\\logs\\general\\app-2026-03-20.log",
+            "hash": "8d31897d6bd9b016cd34d2db8f6f17f91f4bdc9278aeb53a2baf78f8aaacdc40"
+        },
+        {
+            "date": 1774042236838,
+            "name": "C:\\dev\\HakanMCP\\logs\\general\\app-2026-03-21.log",
+            "hash": "d3ddcc823e62d90c3db9aa3f7573e5811a09681822f35a18232b9cbbfad08185"
+        },
+        {
+            "date": 1774042979422,
+            "name": "/mnt/c/dev/HakanMCP/logs/general/app-2026-03-21.log",
+            "hash": "caf8770218a817b66c4b3ca206750ead9db650a65b765e3b026af1ecebcc4860"
+        },
+        {
+            "date": 1774129382368,
+            "name": "/mnt/c/dev/HakanMCP/logs/general/app-2026-03-22.log",
+            "hash": "9d04339a6d52790b25e514f4ae49f0cedf39d30ccfa0aa4b3d0d548c635b4bcb"
+        }
+    ],
+    "hashType": "sha256"
+}

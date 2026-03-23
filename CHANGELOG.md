@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove the invalid Windows absolute-path ignore entry that caused `rg` and tooling noise in the repository
 - Ignore rotate-audit runtime artifacts so generated audit logs stay out of the working tree
 - Keep browser proof capture and page-summary flows compact enough for low-token agent use
+- Sync optional `pg` / `socks` entries in `package-lock.json` so `npm ci` passes consistently in CI
 
 ## [2.1.1] - 2026-03-20
 

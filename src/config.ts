@@ -333,7 +333,8 @@ function applyRuntimeEnvOverrides(
     try {
       new URL(gitbookUrlEnv);
       cfg.gitbookUrl = gitbookUrlEnv;
-    } catch { /* empty */
+    } catch (err) {
+      console.error('Invalid GITBOOK_URL:', err instanceof Error ? err.message : String(err));
     }
   }
 

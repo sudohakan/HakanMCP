@@ -5,6 +5,23 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-03-23
+
+### Added
+- Playwright catalog entry for on-demand browser sessions through the MCP client
+- New low-token browser wrapper tools: `mcp_browserConnect`, `mcp_browserNavigateExtract`, `mcp_browserProbeLogin`, `mcp_browserCaptureProof`, `mcp_browserDisconnect`
+- Repo-level `.gitattributes` policy to keep TypeScript, JSON, Markdown, YAML, and shell files normalized to LF
+
+### Changed
+- Browser wrappers now support reusable auto-connect settings such as `cdpEndpoint`, `extension`, `allowedHosts`, `outputDir`, and timeout controls
+- README and product messaging now present HakanMCP as the preferred browser automation layer for Claude-oriented workflows
+- Tool manifest and catalog metadata now reflect 112 tools with 10 on-demand MCP servers
+
+### Fixed
+- Remove the invalid Windows absolute-path ignore entry that caused `rg` and tooling noise in the repository
+- Ignore rotate-audit runtime artifacts so generated audit logs stay out of the working tree
+- Keep browser proof capture and page-summary flows compact enough for low-token agent use
+
 ## [2.1.1] - 2026-03-20
 
 ### Changed

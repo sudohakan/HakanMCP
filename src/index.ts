@@ -394,7 +394,8 @@ async function main() {
       try {
         const { stopMongoCleanup } = await import('./tools/mongodb.js');
         stopMongoCleanup();
-      } catch { /* empty */
+      } catch (err) {
+        console.error('Cleanup failed:', err instanceof Error ? err.message : String(err));
       }
 
       await processRegistry.killAll(3000);
@@ -402,7 +403,8 @@ async function main() {
       try {
         const { dbPoolManager } = await import('./utils/dbPoolManager.js');
         await dbPoolManager.closeAll();
-      } catch { /* empty */
+      } catch (err) {
+        console.error('Cleanup failed:', err instanceof Error ? err.message : String(err));
       }
     } catch (err) {
       logger.error('Cleanup error during shutdown', err);

@@ -132,4 +132,4 @@ __pycache__/
 *.temp
 *.bak
 output/
-C:\dev\HakanMCP\logs\
+*.rotate-audit.json

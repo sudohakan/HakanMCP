@@ -177,7 +177,7 @@ describe('MCPConnectionManager', () => {
       processFactory: () => new MockChildProcess({ withStdout: false }),
     });
 
-    await expect(harness.manager.connect('node', ['broken'])).rejects.toThrow('stdout');
+    await expect(harness.manager.connect('node', ['broken'])).rejects.toThrow(/stdio|stdout/);
   });
 
   it('times out hanging connections', async () => {
@@ -221,5 +221,249 @@ describe('MCPConnectionManager', () => {
     await expect(harness.manager.sendRequest(connectionId, 'tools/ping')).rejects.toThrow(
       'Process streams not available',
     );
+  });
+});
+
+const loadMcpClientModule = async () => {
+  jest.resetModules();
+  await jest.unstable_mockModule('../src/utils/logger.js', () => ({
+    logger: {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    },
+  }));
+  return import('../src/tools/mcpClient');
+};
+
+describe('mcp browser wrapper tools', () => {
+  it('reuses cached playwright connections for identical browser options', async () => {
+    const mod = await loadMcpClientModule();
+    const connectSpy = jest
+      .spyOn(mod.connectionManager, 'connect')
+      .mockResolvedValue('browser-1');
+    jest
+      .spyOn(mod.connectionManager, 'getConnection')
+      .mockReturnValue({ connected: true } as never);
+    const sendRequestSpy = jest.spyOn(mod.connectionManager, 'sendRequest').mockResolvedValue({
+      tools: [{ name: 'browser_navigate' }, { name: 'browser_snapshot' }],
+    });
+
+    const tool = mod.mcpClientTools.find((entry) => entry.name === 'mcp_browserConnect');
+    expect(tool).toBeDefined();
+
+    await tool!.handler({ browser: 'chrome', headless: true, isolated: true });
+    await tool!.handler({ browser: 'chrome', headless: true, isolated: true });
+
+    expect(connectSpy).toHaveBeenCalledTimes(1);
+    expect(sendRequestSpy).toHaveBeenCalledWith('browser-1', 'tools/list');
+  });
+
+  it('returns a compact browser summary for navigate-extract', async () => {
+    const mod = await loadMcpClientModule();
+    jest.spyOn(mod.connectionManager, 'connect').mockResolvedValue('browser-2');
+    const sendRequestSpy = jest.spyOn(mod.connectionManager, 'sendRequest');
+    sendRequestSpy
+      .mockResolvedValueOnce({
+        tools: [
+          { name: 'browser_navigate', inputSchema: { properties: { url: { type: 'string' } } } },
+          { name: 'browser_snapshot', inputSchema: { properties: {} } },
+          {
+            name: 'browser_take_screenshot',
+            inputSchema: { properties: { filename: { type: 'string' }, type: { type: 'string' } } },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'Page URL: https://example.com\nPage Title: Example App' }],
+      })
+      .mockResolvedValueOnce({
+        content: [
+          {
+            type: 'text',
+            text: 'heading \"Example App\"\ntextbox \"Email\"\ntextbox \"Password\"\nbutton \"Sign in\"',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'saved screenshot' }] });
+
+    const tool = mod.mcpClientTools.find((entry) => entry.name === 'mcp_browserNavigateExtract');
+    const result = await tool!.handler({
+      url: 'https://example.com',
+      screenshotPath: 'proof.png',
+    });
+    const text = result.content[0].text ?? '';
+    const parsed = JSON.parse(text) as {
+      title?: string;
+      screenshotSavedTo?: string;
+      loginSignals?: { loginDetected?: boolean };
+      snapshotSummary?: string;
+    };
+
+    expect(parsed.title).toBe('Example App');
+    expect(parsed.screenshotSavedTo).toBe('proof.png');
+    expect(parsed.loginSignals?.loginDetected).toBe(true);
+    expect(parsed.snapshotSummary).toContain('Password');
+  });
+
+  it('supports auto-connect via CDP endpoint options on navigate-extract', async () => {
+    const mod = await loadMcpClientModule();
+    const connectSpy = jest.spyOn(mod.connectionManager, 'connect').mockResolvedValue('browser-2b');
+    const sendRequestSpy = jest.spyOn(mod.connectionManager, 'sendRequest');
+    sendRequestSpy
+      .mockResolvedValueOnce({
+        tools: [
+          { name: 'browser_navigate', inputSchema: { properties: { url: { type: 'string' } } } },
+          { name: 'browser_snapshot', inputSchema: { properties: {} } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'Page URL: https://example.com\nPage Title: Example App' }],
+      })
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'heading "Example App"\nbutton "Open"' }],
+      });
+
+    const tool = mod.mcpClientTools.find((entry) => entry.name === 'mcp_browserNavigateExtract');
+    const result = await tool!.handler({
+      url: 'https://example.com',
+      cdpEndpoint: 'http://127.0.0.1:9222',
+      extension: true,
+      snapshotMode: 'full',
+      timeoutAction: 7000,
+      timeoutNavigation: 45000,
+    });
+    const parsed = JSON.parse(result.content[0].text ?? '') as { connectionId?: string; pageUrl?: string };
+
+    expect(connectSpy).toHaveBeenCalledWith(
+      'npx',
+      expect.arrayContaining([
+        '-y',
+        '@playwright/mcp@latest',
+        '--cdp-endpoint',
+        'http://127.0.0.1:9222',
+        '--extension',
+        '--snapshot-mode',
+        'full',
+        '--timeout-action',
+        '7000',
+        '--timeout-navigation',
+        '45000',
+      ]),
+    );
+    expect(parsed.connectionId).toBe('browser-2b');
+    expect(parsed.pageUrl).toBe('https://example.com');
+  });
+
+  it('detects login pages with focused indicators', async () => {
+    const mod = await loadMcpClientModule();
+    jest.spyOn(mod.connectionManager, 'connect').mockResolvedValue('browser-3');
+    const sendRequestSpy = jest.spyOn(mod.connectionManager, 'sendRequest');
+    sendRequestSpy
+      .mockResolvedValueOnce({
+        tools: [
+          { name: 'browser_navigate', inputSchema: { properties: { url: { type: 'string' } } } },
+          { name: 'browser_snapshot', inputSchema: { properties: {} } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'Page URL: https://auth.example.com\nPage Title: Sign in' }],
+      })
+      .mockResolvedValueOnce({
+        content: [
+          {
+            type: 'text',
+            text: 'heading \"Sign in\"\ntextbox \"Email\"\ntextbox \"Password\"\nbutton \"Continue\"',
+          },
+        ],
+      });
+
+    const tool = mod.mcpClientTools.find((entry) => entry.name === 'mcp_browserProbeLogin');
+    const result = await tool!.handler({ url: 'https://auth.example.com' });
+    const parsed = JSON.parse(result.content[0].text ?? '') as {
+      loginDetected?: boolean;
+      confidence?: string;
+      indicators?: string[];
+    };
+
+    expect(parsed.loginDetected).toBe(true);
+    expect(parsed.confidence).toBe('high');
+    expect(parsed.indicators).toEqual(
+      expect.arrayContaining(['password-field', 'email-field', 'sign-in-copy']),
+    );
+  });
+
+  it('captures proof screenshots with wait conditions and compact summaries', async () => {
+    const mod = await loadMcpClientModule();
+    jest.spyOn(mod.connectionManager, 'connect').mockResolvedValue('browser-3b');
+    const sendRequestSpy = jest.spyOn(mod.connectionManager, 'sendRequest');
+    sendRequestSpy
+      .mockResolvedValueOnce({
+        tools: [
+          { name: 'browser_navigate', inputSchema: { properties: { url: { type: 'string' } } } },
+          { name: 'browser_wait_for', inputSchema: { properties: { text: { type: 'string' } } } },
+          {
+            name: 'browser_take_screenshot',
+            inputSchema: { properties: { filename: { type: 'string' }, type: { type: 'string' } } },
+          },
+          { name: 'browser_snapshot', inputSchema: { properties: {} } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'Page URL: https://example.com/app\nPage Title: Evidence' }],
+      })
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'target text appeared' }] })
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'saved screenshot' }] })
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'heading "Evidence"\nbutton "Export"\ntext "target text appeared"' }],
+      });
+
+    const tool = mod.mcpClientTools.find((entry) => entry.name === 'mcp_browserCaptureProof');
+    const result = await tool!.handler({
+      url: 'https://example.com/app',
+      waitForText: 'target text appeared',
+      screenshotPath: 'evidence.png',
+    });
+    const parsed = JSON.parse(result.content[0].text ?? '') as {
+      pageUrl?: string;
+      screenshotSavedTo?: string;
+      summary?: string;
+    };
+
+    expect(sendRequestSpy).toHaveBeenCalledWith(
+      'browser-3b',
+      'tools/call',
+      expect.objectContaining({
+        name: 'browser_wait_for',
+        arguments: { text: 'target text appeared' },
+      }),
+    );
+    expect(parsed.pageUrl).toBe('https://example.com/app');
+    expect(parsed.screenshotSavedTo).toBe('evidence.png');
+    expect(parsed.summary).toContain('Evidence');
+  });
+
+  it('disconnects cached browser connections', async () => {
+    const mod = await loadMcpClientModule();
+    jest.spyOn(mod.connectionManager, 'connect').mockResolvedValue('browser-4');
+    jest.spyOn(mod.connectionManager, 'sendRequest').mockResolvedValue({
+      tools: [{ name: 'browser_navigate' }],
+    });
+    const disconnectSpy = jest
+      .spyOn(mod.connectionManager, 'disconnect')
+      .mockResolvedValue(undefined);
+
+    const connectTool = mod.mcpClientTools.find((entry) => entry.name === 'mcp_browserConnect');
+    await connectTool!.handler({ browser: 'firefox' });
+
+    const disconnectTool = mod.mcpClientTools.find(
+      (entry) => entry.name === 'mcp_browserDisconnect',
+    );
+    const result = await disconnectTool!.handler({});
+    const parsed = JSON.parse(result.content[0].text ?? '') as { disconnected?: string[] };
+
+    expect(disconnectSpy).toHaveBeenCalledWith('browser-4');
+    expect(parsed.disconnected).toEqual(['browser-4']);
   });
 });

@@ -103,6 +103,17 @@
         "Analytical queries (aggregation, joins, window functions) on file-based data",
         "In-memory analytical database for data exploration"
       ]
+    },
+    "playwright": {
+      "name": "Playwright",
+      "description": "Browser automation and lightweight browser evidence capture",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "conditions": [
+        "A browser-only flow must be automated through MCP",
+        "JavaScript-heavy pages require focused browser evidence",
+        "You want low-token browser wrappers on top of a Playwright MCP server"
+      ]
     }
   }
 }

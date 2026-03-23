@@ -6,9 +6,9 @@
 
 **Unified AI Agent Orchestration & MCP Tool Platform**
 
-107 MCP tools · 9 on-demand servers · 5 AI providers · 4 operating modes
+112 MCP tools · 10 on-demand servers · 5 AI providers · 4 operating modes
 
-[![Version](https://img.shields.io/badge/version-2.1.1-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.2.0-blue?style=flat-square)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square)](https://www.typescriptlang.org)
@@ -23,18 +23,19 @@
 
 ## Why HakanMCP?
 
-> Most MCP servers give you a handful of tools. HakanMCP gives you **107** — databases, AI providers, security, monitoring, workflows — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
+> Most MCP servers give you a handful of tools. HakanMCP gives you **112** — databases, AI providers, security, monitoring, workflows, and browser wrappers — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
 
 | What you get | Details |
 |:---|:---|
-| **107 MCP tools** | Databases, git, web, file ops, AI, security, monitoring, encryption, workflows |
+| **112 MCP tools** | Databases, git, web, file ops, AI, security, monitoring, encryption, workflows, browser wrappers |
 | **Multi-provider AI** | Automatic fallback: Codex → Claude → Gemini → Cursor → Ollama |
 | **Mission Agent CLI** | Autonomous task execution from markdown mission files |
 | **4 operating modes** | Watch, Scheduled, Assistant, Reactive |
 | **Agentic mode** | Multi-turn tool-use loops with automatic provider selection |
 | **Lazy dependencies** | Only installs what you actually use — no bloat |
 | **Rate limit handling** | Automatic cooldown management across all providers |
-| **9 on-demand MCP servers** | Connect additional servers from the built-in catalog at runtime |
+| **10 on-demand MCP servers** | Connect additional servers from the built-in catalog at runtime |
+| **Low-token browser bridge** | Use Playwright through HakanMCP wrappers instead of returning large raw snapshots |
 
 ---
 
@@ -201,6 +202,32 @@ import { startServer } from 'hakanmcp';
 </td>
 </tr>
 </table>
+
+### Browser Automation Through HakanMCP
+
+When you need browser automation but want smaller, task-focused outputs, use the HakanMCP browser bridge instead of calling Playwright tools directly.
+
+Core browser tools:
+- `mcp_browserConnect` — start or reuse a Playwright MCP connection
+- `mcp_browserNavigateExtract` — navigate and return a compact page summary
+- `mcp_browserProbeLogin` — detect login flows with focused indicators
+- `mcp_browserCaptureProof` — capture a screenshot artifact plus a short summary
+- `mcp_browserDisconnect` — close one or all cached browser sessions
+
+Example:
+
+```json
+{
+  "tool": "mcp_browserNavigateExtract",
+  "arguments": {
+    "url": "https://example.com/login",
+    "cdpEndpoint": "http://127.0.0.1:9222",
+    "screenshotPath": "login-proof.png"
+  }
+}
+```
+
+This pattern is especially useful for Claude Code and other agent clients where raw browser snapshots can consume excessive context.
 
 ---
 

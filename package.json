@@ -1,6 +1,6 @@
 {
   "name": "hakanmcp",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "HakanMCP — Unified AI Agent Orchestration & MCP Tool Platform",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -69,7 +69,8 @@
     "mongodb": "^6.0.0",
     "mssql": "^12.1.1",
     "mysql2": "^3.6.5",
-    "pg": "^8.11.3",
+    "pg": "8.20.0",
+    "socks": "2.8.7",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   },

@@ -320,6 +320,274 @@ export class MCPConnectionManager {
 
 export const connectionManager = new MCPConnectionManager();
 const BEFORE_EXIT_FLAG = Symbol.for('mcpClient.beforeExitRegistered');
+const browserConnectionCache = new Map<string, string>();
+
+type RemoteToolDescriptor = {
+  name?: string;
+  description?: string;
+  inputSchema?: {
+    type?: string;
+    properties?: Record<string, unknown>;
+    required?: string[];
+  };
+};
+
+type BrowserConnectOptions = {
+  connectionId?: string;
+  browser?: 'chrome' | 'firefox' | 'webkit' | 'msedge';
+  headless?: boolean;
+  isolated?: boolean;
+  extension?: boolean;
+  cdpEndpoint?: string;
+  allowedHosts?: string[];
+  outputDir?: string;
+  snapshotMode?: 'incremental' | 'full' | 'none';
+  timeoutAction?: number;
+  timeoutNavigation?: number;
+};
+
+type BrowserToolSet = {
+  navigate?: RemoteToolDescriptor;
+  snapshot?: RemoteToolDescriptor;
+  screenshot?: RemoteToolDescriptor;
+  waitFor?: RemoteToolDescriptor;
+  close?: RemoteToolDescriptor;
+};
+
+const browserToolCandidates = {
+  navigate: ['browser_navigate'],
+  snapshot: ['browser_snapshot'],
+  screenshot: ['browser_take_screenshot'],
+  waitFor: ['browser_wait_for'],
+  close: ['browser_close'],
+} as const;
+
+function buildBrowserCacheKey(options: Omit<BrowserConnectOptions, 'connectionId'>): string {
+  return JSON.stringify({
+    browser: options.browser ?? 'chrome',
+    headless: options.headless ?? true,
+    isolated: options.isolated ?? true,
+    extension: options.extension ?? false,
+    cdpEndpoint: options.cdpEndpoint ?? '',
+    allowedHosts: [...(options.allowedHosts ?? [])].sort(),
+    outputDir: options.outputDir ?? '',
+    snapshotMode: options.snapshotMode ?? 'incremental',
+    timeoutAction: options.timeoutAction ?? 5000,
+    timeoutNavigation: options.timeoutNavigation ?? 60000,
+  });
+}
+
+function buildPlaywrightArgs(options: Omit<BrowserConnectOptions, 'connectionId'>): string[] {
+  const args: string[] = [];
+
+  if (options.browser) {
+    args.push('--browser', options.browser);
+  }
+  if (options.headless ?? true) {
+    args.push('--headless');
+  }
+  if (options.isolated ?? true) {
+    args.push('--isolated');
+  }
+  if (options.extension) {
+    args.push('--extension');
+  }
+  if (options.cdpEndpoint) {
+    args.push('--cdp-endpoint', options.cdpEndpoint);
+  }
+  if (options.allowedHosts && options.allowedHosts.length > 0) {
+    args.push('--allowed-hosts', options.allowedHosts.join(','));
+  }
+  if (options.outputDir) {
+    args.push('--output-dir', options.outputDir);
+  }
+  if (options.snapshotMode) {
+    args.push('--snapshot-mode', options.snapshotMode);
+  }
+  if (typeof options.timeoutAction === 'number') {
+    args.push('--timeout-action', String(options.timeoutAction));
+  }
+  if (typeof options.timeoutNavigation === 'number') {
+    args.push('--timeout-navigation', String(options.timeoutNavigation));
+  }
+
+  return args;
+}
+
+async function listRemoteTools(connectionId: string): Promise<RemoteToolDescriptor[]> {
+  const result = (await connectionManager.sendRequest(connectionId, 'tools/list')) as {
+    tools?: RemoteToolDescriptor[];
+  };
+  return result.tools ?? [];
+}
+
+function resolveRemoteTool(
+  tools: RemoteToolDescriptor[],
+  candidates: readonly string[],
+): RemoteToolDescriptor | undefined {
+  return candidates
+    .map((candidate) => tools.find((tool) => tool.name === candidate))
+    .find((tool): tool is RemoteToolDescriptor => Boolean(tool));
+}
+
+function getBrowserToolSet(tools: RemoteToolDescriptor[]): BrowserToolSet {
+  return {
+    navigate: resolveRemoteTool(tools, browserToolCandidates.navigate),
+    snapshot: resolveRemoteTool(tools, browserToolCandidates.snapshot),
+    screenshot: resolveRemoteTool(tools, browserToolCandidates.screenshot),
+    waitFor: resolveRemoteTool(tools, browserToolCandidates.waitFor),
+    close: resolveRemoteTool(tools, browserToolCandidates.close),
+  };
+}
+
+function schemaPropertyNames(tool?: RemoteToolDescriptor): Set<string> {
+  const properties = tool?.inputSchema?.properties;
+  if (!properties || typeof properties !== 'object') {
+    return new Set<string>();
+  }
+  return new Set(Object.keys(properties));
+}
+
+function adaptArgsForTool(
+  tool: RemoteToolDescriptor | undefined,
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const allowedKeys = schemaPropertyNames(tool);
+  if (allowedKeys.size === 0) {
+    return args;
+  }
+  return Object.fromEntries(Object.entries(args).filter(([key]) => allowedKeys.has(key)));
+}
+
+function extractTextChunks(result: unknown): string[] {
+  if (typeof result === 'string') {
+    return [result];
+  }
+  if (result && typeof result === 'object' && 'content' in result) {
+    const content = (result as { content?: Array<{ type?: string; text?: string }> }).content;
+    if (Array.isArray(content)) {
+      return content
+        .filter((item) => item?.type === 'text' && typeof item.text === 'string')
+        .map((item) => item.text as string);
+    }
+  }
+  return [JSON.stringify(result, null, 2)];
+}
+
+function compactText(text: string, maxChars = 1200): string {
+  const normalized = text.replace(/\r/g, '').trim();
+  if (normalized.length <= maxChars) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxChars)}...`;
+}
+
+function summarizeSnapshot(text: string, maxChars = 1600): string {
+  const lines = text
+    .replace(/\r/g, '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const relevant = lines.filter((line) =>
+    /(heading|textbox|button|link|password|email|username|sign in|login)/i.test(line),
+  );
+  const summaryLines = (relevant.length > 0 ? relevant : lines).slice(0, 18);
+  return compactText(summaryLines.join('\n'), maxChars);
+}
+
+function extractPageField(text: string, label: string): string | undefined {
+  const match = text.match(new RegExp(`${label}:\\s*(.+)`, 'i'));
+  return match?.[1]?.trim();
+}
+
+function detectLoginSignals(text: string): {
+  loginDetected: boolean;
+  indicators: string[];
+  confidence: 'low' | 'medium' | 'high';
+} {
+  const lower = text.toLowerCase();
+  const indicatorChecks: Array<[string, RegExp]> = [
+    ['password-field', /password/],
+    ['email-field', /\bemail\b/],
+    ['username-field', /username|user name/],
+    ['sign-in-copy', /sign in|log in|login/],
+    ['submit-control', /submit|continue|giriş yap/],
+  ];
+
+  const indicators = indicatorChecks
+    .filter(([, pattern]) => pattern.test(lower))
+    .map(([name]) => name);
+
+  const score = indicators.length;
+  const confidence: 'low' | 'medium' | 'high' = score >= 4 ? 'high' : score >= 2 ? 'medium' : 'low';
+
+  return {
+    loginDetected: score >= 2,
+    indicators,
+    confidence,
+  };
+}
+
+async function ensurePlaywrightConnection(
+  options: BrowserConnectOptions = {},
+): Promise<{ connectionId: string; reused: boolean }> {
+  if (options.connectionId) {
+    return { connectionId: options.connectionId, reused: true };
+  }
+
+  const browserOptions: Omit<BrowserConnectOptions, 'connectionId'> = {
+    browser: options.browser,
+    headless: options.headless,
+    isolated: options.isolated,
+    extension: options.extension,
+    cdpEndpoint: options.cdpEndpoint,
+    allowedHosts: options.allowedHosts,
+    outputDir: options.outputDir,
+    snapshotMode: options.snapshotMode,
+    timeoutAction: options.timeoutAction,
+    timeoutNavigation: options.timeoutNavigation,
+  };
+  const cacheKey = buildBrowserCacheKey(browserOptions);
+  const cachedConnectionId = browserConnectionCache.get(cacheKey);
+  if (cachedConnectionId && connectionManager.getConnection(cachedConnectionId)?.connected) {
+    return { connectionId: cachedConnectionId, reused: true };
+  }
+
+  const server = getCatalogServer('playwright');
+  if (!server) {
+    throw new Error('Playwright catalog server is not defined');
+  }
+
+  const connectionId = await connectionManager.connect(server.command, [
+    ...server.args,
+    ...buildPlaywrightArgs(browserOptions),
+  ]);
+  browserConnectionCache.set(cacheKey, connectionId);
+  return { connectionId, reused: false };
+}
+
+async function callRemoteTool(
+  connectionId: string,
+  tool: RemoteToolDescriptor | undefined,
+  args: Record<string, unknown> = {},
+): Promise<unknown> {
+  if (!tool?.name) {
+    throw new Error('Required browser tool is not available on the connected MCP server');
+  }
+  const toolArguments = adaptArgsForTool(tool, args);
+  return connectionManager.sendRequest(connectionId, 'tools/call', {
+    name: tool.name,
+    arguments: toolArguments,
+  });
+}
+
+function removeCachedBrowserConnection(connectionId: string): void {
+  for (const [cacheKey, cachedConnectionId] of browserConnectionCache.entries()) {
+    if (cachedConnectionId === connectionId) {
+      browserConnectionCache.delete(cacheKey);
+    }
+  }
+}
 
 if (!(globalThis as Record<symbol, boolean>)[BEFORE_EXIT_FLAG]) {
   process.on('beforeExit', () => {
@@ -627,6 +895,565 @@ export const mcpClientTools = [
           `Failed to connect to ${server.name}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
+    },
+  },
+  {
+    name: 'mcp_browserConnect',
+    description:
+      'Starts or reuses a Playwright MCP connection through HakanMCP. Use this when you want browser automation behind the MCP client with reusable low-token wrappers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        browser: {
+          type: 'string',
+          enum: ['chrome', 'firefox', 'webkit', 'msedge'],
+          description: 'Browser channel to use. Defaults to chrome.',
+        },
+        headless: {
+          type: 'boolean',
+          description: 'Run the browser headless. Defaults to true.',
+        },
+        isolated: {
+          type: 'boolean',
+          description: 'Keep the browser profile in memory. Defaults to true.',
+        },
+        extension: {
+          type: 'boolean',
+          description: 'Connect via the Playwright MCP Bridge browser extension.',
+        },
+        cdpEndpoint: {
+          type: 'string',
+          description: 'Optional CDP endpoint to connect to instead of launching a new browser.',
+        },
+        allowedHosts: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional allow-list of hosts the browser can serve from.',
+        },
+        outputDir: {
+          type: 'string',
+          description: 'Optional directory for browser session artifacts.',
+        },
+        snapshotMode: {
+          type: 'string',
+          enum: ['incremental', 'full', 'none'],
+          description: 'Snapshot mode for browser responses. Defaults to incremental.',
+        },
+        timeoutAction: {
+          type: 'number',
+          description: 'Per-action timeout in milliseconds.',
+        },
+        timeoutNavigation: {
+          type: 'number',
+          description: 'Navigation timeout in milliseconds.',
+        },
+      },
+    },
+    handler: async (args: unknown) => {
+      const options = z
+        .object({
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId, reused } = await ensurePlaywrightConnection(options);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = tools
+        .map((tool) => tool.name)
+        .filter((toolName): toolName is string => Boolean(toolName && toolName.startsWith('browser_')));
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                reused,
+                browserTools,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'mcp_browserNavigateExtract',
+    description:
+      'Navigate with Playwright through HakanMCP and return a compact browser summary instead of large raw snapshots.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'URL to navigate to.',
+        },
+        connectionId: {
+          type: 'string',
+          description: 'Existing browser connection ID. If omitted, a Playwright connection is started or reused.',
+        },
+        browser: {
+          type: 'string',
+          enum: ['chrome', 'firefox', 'webkit', 'msedge'],
+          description: 'Browser channel to use when auto-connecting.',
+        },
+        headless: {
+          type: 'boolean',
+          description: 'Run the browser headless when auto-connecting.',
+        },
+        isolated: {
+          type: 'boolean',
+          description: 'Keep the browser profile in memory when auto-connecting.',
+        },
+        extension: {
+          type: 'boolean',
+          description: 'Connect via the Playwright MCP browser extension when auto-connecting.',
+        },
+        cdpEndpoint: {
+          type: 'string',
+          description: 'Optional CDP endpoint to attach to instead of launching a new browser.',
+        },
+        allowedHosts: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional allow-list of hosts the browser can serve from.',
+        },
+        outputDir: {
+          type: 'string',
+          description: 'Optional directory for browser session artifacts.',
+        },
+        snapshotMode: {
+          type: 'string',
+          enum: ['incremental', 'full', 'none'],
+          description: 'Snapshot mode for browser responses when auto-connecting.',
+        },
+        timeoutAction: {
+          type: 'number',
+          description: 'Per-action timeout in milliseconds when auto-connecting.',
+        },
+        timeoutNavigation: {
+          type: 'number',
+          description: 'Navigation timeout in milliseconds when auto-connecting.',
+        },
+        screenshotPath: {
+          type: 'string',
+          description: 'Optional path or filename for a proof screenshot.',
+        },
+        maxSummaryChars: {
+          type: 'number',
+          description: 'Maximum characters for returned summaries. Defaults to 1600.',
+        },
+      },
+      required: ['url'],
+    },
+    handler: async (args: unknown) => {
+      const parsed = z
+        .object({
+          url: z.string().url(),
+          connectionId: z.string().optional(),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+          screenshotPath: z.string().optional(),
+          maxSummaryChars: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      const navigateResult = await callRemoteTool(connectionId, browserTools.navigate, {
+        url: parsed.url,
+      });
+      const navigateText = extractTextChunks(navigateResult).join('\n');
+
+      let snapshotText = '';
+      if (browserTools.snapshot) {
+        const snapshotResult = await callRemoteTool(connectionId, browserTools.snapshot);
+        snapshotText = extractTextChunks(snapshotResult).join('\n');
+      }
+
+      let screenshotSavedTo: string | undefined;
+      if (parsed.screenshotPath && browserTools.screenshot) {
+        const screenshotArgs = adaptArgsForTool(browserTools.screenshot, {
+          path: parsed.screenshotPath,
+          filename: parsed.screenshotPath,
+          type: 'png',
+        });
+        await callRemoteTool(connectionId, browserTools.screenshot, screenshotArgs);
+        screenshotSavedTo = parsed.screenshotPath;
+      }
+
+      const combinedText = [navigateText, snapshotText].filter(Boolean).join('\n');
+      const loginSignals = detectLoginSignals(combinedText);
+      const maxChars = parsed.maxSummaryChars ?? 1600;
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                url: parsed.url,
+                pageUrl: extractPageField(navigateText, 'Page URL') ?? parsed.url,
+                title: extractPageField(navigateText, 'Page Title'),
+                loginSignals,
+                navigateSummary: compactText(navigateText, maxChars),
+                snapshotSummary: snapshotText ? summarizeSnapshot(snapshotText, maxChars) : undefined,
+                screenshotSavedTo,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'mcp_browserProbeLogin',
+    description:
+      'Open a page through Playwright and return a compact login-form assessment with confidence and indicators.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'URL to inspect for login controls.',
+        },
+        connectionId: {
+          type: 'string',
+          description: 'Existing browser connection ID.',
+        },
+        browser: {
+          type: 'string',
+          enum: ['chrome', 'firefox', 'webkit', 'msedge'],
+          description: 'Browser channel to use when auto-connecting.',
+        },
+        headless: {
+          type: 'boolean',
+          description: 'Run the browser headless when auto-connecting.',
+        },
+        isolated: {
+          type: 'boolean',
+          description: 'Keep the browser profile in memory when auto-connecting.',
+        },
+        extension: {
+          type: 'boolean',
+          description: 'Connect via the Playwright MCP browser extension when auto-connecting.',
+        },
+        cdpEndpoint: {
+          type: 'string',
+          description: 'Optional CDP endpoint to attach to instead of launching a new browser.',
+        },
+        allowedHosts: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional allow-list of hosts the browser can serve from.',
+        },
+        outputDir: {
+          type: 'string',
+          description: 'Optional directory for browser session artifacts.',
+        },
+        snapshotMode: {
+          type: 'string',
+          enum: ['incremental', 'full', 'none'],
+          description: 'Snapshot mode for browser responses when auto-connecting.',
+        },
+        timeoutAction: {
+          type: 'number',
+          description: 'Per-action timeout in milliseconds when auto-connecting.',
+        },
+        timeoutNavigation: {
+          type: 'number',
+          description: 'Navigation timeout in milliseconds when auto-connecting.',
+        },
+        screenshotPath: {
+          type: 'string',
+          description: 'Optional path or filename for a screenshot of the login state.',
+        },
+      },
+      required: ['url'],
+    },
+    handler: async (args: unknown) => {
+      const parsed = z
+        .object({
+          url: z.string().url(),
+          connectionId: z.string().optional(),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+          screenshotPath: z.string().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      const navigateResult = await callRemoteTool(connectionId, browserTools.navigate, {
+        url: parsed.url,
+      });
+      const navigateText = extractTextChunks(navigateResult).join('\n');
+      let snapshotText = '';
+      if (browserTools.snapshot) {
+        const snapshotResult = await callRemoteTool(connectionId, browserTools.snapshot);
+        snapshotText = extractTextChunks(snapshotResult).join('\n');
+      }
+
+      let screenshotSavedTo: string | undefined;
+      if (parsed.screenshotPath && browserTools.screenshot) {
+        const screenshotArgs = adaptArgsForTool(browserTools.screenshot, {
+          path: parsed.screenshotPath,
+          filename: parsed.screenshotPath,
+          type: 'png',
+        });
+        await callRemoteTool(connectionId, browserTools.screenshot, screenshotArgs);
+        screenshotSavedTo = parsed.screenshotPath;
+      }
+
+      const probeText = [navigateText, snapshotText].filter(Boolean).join('\n');
+      const loginSignals = detectLoginSignals(probeText);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                url: parsed.url,
+                title: extractPageField(navigateText, 'Page Title'),
+                pageUrl: extractPageField(navigateText, 'Page URL') ?? parsed.url,
+                ...loginSignals,
+                summary: snapshotText
+                  ? summarizeSnapshot(snapshotText, 1200)
+                  : compactText(navigateText, 1200),
+                screenshotSavedTo,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'mcp_browserCaptureProof',
+    description:
+      'Capture a compact proof artifact through Playwright: optionally navigate, optionally wait for text, then save a screenshot with a short page summary.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        screenshotPath: {
+          type: 'string',
+          description: 'Path or filename for the screenshot artifact.',
+        },
+        url: {
+          type: 'string',
+          description: 'Optional URL to navigate to before capturing proof.',
+        },
+        waitForText: {
+          type: 'string',
+          description: 'Optional text to wait for before capturing.',
+        },
+        connectionId: {
+          type: 'string',
+          description: 'Existing browser connection ID.',
+        },
+        browser: {
+          type: 'string',
+          enum: ['chrome', 'firefox', 'webkit', 'msedge'],
+          description: 'Browser channel to use when auto-connecting.',
+        },
+        headless: {
+          type: 'boolean',
+          description: 'Run the browser headless when auto-connecting.',
+        },
+        isolated: {
+          type: 'boolean',
+          description: 'Keep the browser profile in memory when auto-connecting.',
+        },
+        extension: {
+          type: 'boolean',
+          description: 'Connect via the Playwright MCP browser extension when auto-connecting.',
+        },
+        cdpEndpoint: {
+          type: 'string',
+          description: 'Optional CDP endpoint to attach to instead of launching a new browser.',
+        },
+        allowedHosts: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional allow-list of hosts the browser can serve from.',
+        },
+        outputDir: {
+          type: 'string',
+          description: 'Optional directory for browser session artifacts.',
+        },
+        snapshotMode: {
+          type: 'string',
+          enum: ['incremental', 'full', 'none'],
+          description: 'Snapshot mode for browser responses when auto-connecting.',
+        },
+        timeoutAction: {
+          type: 'number',
+          description: 'Per-action timeout in milliseconds when auto-connecting.',
+        },
+        timeoutNavigation: {
+          type: 'number',
+          description: 'Navigation timeout in milliseconds when auto-connecting.',
+        },
+      },
+      required: ['screenshotPath'],
+    },
+    handler: async (args: unknown) => {
+      const parsed = z
+        .object({
+          screenshotPath: z.string(),
+          url: z.string().url().optional(),
+          waitForText: z.string().optional(),
+          connectionId: z.string().optional(),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      let navigateText = '';
+      if (parsed.url) {
+        const navigateResult = await callRemoteTool(connectionId, browserTools.navigate, {
+          url: parsed.url,
+        });
+        navigateText = extractTextChunks(navigateResult).join('\n');
+      }
+
+      if (parsed.waitForText && browserTools.waitFor) {
+        await callRemoteTool(connectionId, browserTools.waitFor, {
+          text: parsed.waitForText,
+        });
+      }
+
+      const screenshotArgs = adaptArgsForTool(browserTools.screenshot, {
+        path: parsed.screenshotPath,
+        filename: parsed.screenshotPath,
+        type: 'png',
+      });
+      await callRemoteTool(connectionId, browserTools.screenshot, screenshotArgs);
+
+      let snapshotText = '';
+      if (browserTools.snapshot) {
+        const snapshotResult = await callRemoteTool(connectionId, browserTools.snapshot);
+        snapshotText = extractTextChunks(snapshotResult).join('\n');
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                pageUrl: extractPageField(navigateText, 'Page URL') ?? parsed.url,
+                title: extractPageField(navigateText, 'Page Title'),
+                screenshotSavedTo: parsed.screenshotPath,
+                summary: snapshotText
+                  ? summarizeSnapshot(snapshotText, 1200)
+                  : compactText(navigateText, 1200),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'mcp_browserDisconnect',
+    description:
+      'Closes one browser MCP connection or all cached Playwright browser connections managed by HakanMCP.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionId: {
+          type: 'string',
+          description: 'Optional browser connection ID. If omitted, all cached browser connections are closed.',
+        },
+      },
+    },
+    handler: async (args: unknown) => {
+      const { connectionId } = z
+        .object({
+          connectionId: z.string().optional(),
+        })
+        .parse(args);
+
+      if (connectionId) {
+        await connectionManager.disconnect(connectionId);
+        removeCachedBrowserConnection(connectionId);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ disconnected: [connectionId] }, null, 2),
+            },
+          ],
+        };
+      }
+
+      const connectionIds = [...new Set(browserConnectionCache.values())];
+      await Promise.all(connectionIds.map((id) => connectionManager.disconnect(id)));
+      browserConnectionCache.clear();
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ disconnected: connectionIds }, null, 2),
+          },
+        ],
+      };
     },
   },
 ];

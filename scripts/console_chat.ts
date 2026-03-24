@@ -1163,8 +1163,9 @@ async function callMcpAiChat(
                 id: 2,
                 method: 'tools/call',
                 params: {
-                  name: 'ai_chat',
+                  name: 'ai',
                   arguments: {
+                    action: 'chat',
                     messages: messages.map((m) => ({
                       role: m.role as 'user' | 'assistant' | 'system',
                       content: m.content,

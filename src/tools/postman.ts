@@ -49,25 +49,37 @@ function findItemByName(
 
 export const postmanTools = [
   {
-    name: 'pm_collection',
+    name: 'postman',
     description:
-      "Manage Postman collections. action='list' lists collection files, 'listRequests' lists all requests in a collection, 'search' searches requests by name/URL/method, 'add' adds a new request.",
+      'Postman collection operations. Actions: listCollections, listRequests, searchRequests, addRequest, getRequest, updateRequest, deleteRequest, executeRequest, toMarkdown, cloneRequest.',
     inputSchema: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['list', 'listRequests', 'search', 'add'],
+          enum: [
+            'listCollections',
+            'listRequests',
+            'searchRequests',
+            'addRequest',
+            'getRequest',
+            'updateRequest',
+            'deleteRequest',
+            'executeRequest',
+            'toMarkdown',
+            'cloneRequest',
+          ],
           description: 'Operation to perform',
         },
         file: {
           type: 'string',
-          description: 'Collection filename (not required for list)',
+          description: 'Collection filename (not required for listCollections)',
         },
-        q: { type: 'string', description: 'Search query string (for search, regex supported)' },
+        q: { type: 'string', description: 'Search query string (for searchRequests, regex supported)' },
+        name: { type: 'string', description: 'Name of the target request' },
         request: {
           type: 'object',
-          description: 'Request details to add (for add)',
+          description: 'Request details to add (for addRequest)',
           properties: {
             name: { type: 'string' },
             method: { type: 'string' },
@@ -76,15 +88,42 @@ export const postmanTools = [
             body: { type: 'object' },
           },
         },
+        updates: {
+          type: 'object',
+          description: 'Fields to update (for updateRequest)',
+          properties: {
+            newName: { type: 'string' },
+            method: { type: 'string' },
+            url: { type: 'string' },
+            headers: { type: 'array', items: { type: 'object' } },
+            body: { type: 'object' },
+          },
+        },
+        cloneName: {
+          type: 'string',
+          description: 'Name for the cloned request (for cloneRequest)',
+        },
       },
       required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { action, file, q, request } = z
+      const { action, file, q, name, request, updates, cloneName } = z
         .object({
-          action: z.enum(['list', 'listRequests', 'search', 'add']),
+          action: z.enum([
+            'listCollections',
+            'listRequests',
+            'searchRequests',
+            'addRequest',
+            'getRequest',
+            'updateRequest',
+            'deleteRequest',
+            'executeRequest',
+            'toMarkdown',
+            'cloneRequest',
+          ]),
           file: z.string().optional(),
           q: z.string().optional(),
+          name: z.string().optional(),
           request: z
             .object({
               name: z.string(),
@@ -94,13 +133,23 @@ export const postmanTools = [
               body: z.any().optional(),
             })
             .optional(),
+          updates: z
+            .object({
+              newName: z.string().optional(),
+              method: z.string().optional(),
+              url: z.string().optional(),
+              headers: z.array(z.any()).optional(),
+              body: z.any().optional(),
+            })
+            .optional(),
+          cloneName: z.string().optional(),
         })
         .parse(args);
 
       const postmanDir = getPostmanDir();
 
       switch (action) {
-        case 'list': {
+        case 'listCollections': {
           if (!fs.existsSync(postmanDir)) {
             throw new Error(`Postman directory not found:${postmanDir}`);
           }
@@ -141,9 +190,9 @@ export const postmanTools = [
           };
         }
 
-        case 'search': {
-          if (!file) throw new Error('file is required for search');
-          if (!q) throw new Error('q is required for search');
+        case 'searchRequests': {
+          if (!file) throw new Error('file is required for searchRequests');
+          if (!q) throw new Error('q is required for searchRequests');
           const re = new RegExp(q, 'i');
           const full = path.join(postmanDir, file);
           const col = readJson(full);
@@ -174,9 +223,9 @@ export const postmanTools = [
           };
         }
 
-        case 'add': {
-          if (!file) throw new Error('file is required for add');
-          if (!request) throw new Error('request is required for add');
+        case 'addRequest': {
+          if (!file) throw new Error('file is required for addRequest');
+          if (!request) throw new Error('request is required for addRequest');
           const full = path.join(postmanDir, file);
           const col = readJson(full);
 
@@ -199,66 +248,12 @@ export const postmanTools = [
             content: [{ type: 'text', text: `✓ New request added: ${request.name}` }],
           };
         }
-      }
-    },
-  },
-  {
-    name: 'pm_request',
-    description:
-      "Operate on a single Postman request. action='get' returns request details, 'update' modifies fields, 'delete' removes it, 'execute' runs it via HTTP, 'toMarkdown' renders it as Markdown, 'clone' duplicates it.",
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: {
-          type: 'string',
-          enum: ['get', 'update', 'delete', 'execute', 'toMarkdown', 'clone'],
-          description: 'Operation to perform',
-        },
-        file: { type: 'string', description: 'Collection filename' },
-        name: { type: 'string', description: 'Name of the target request' },
-        updates: {
-          type: 'object',
-          description: 'Fields to update (for update)',
-          properties: {
-            newName: { type: 'string' },
-            method: { type: 'string' },
-            url: { type: 'string' },
-            headers: { type: 'array', items: { type: 'object' } },
-            body: { type: 'object' },
-          },
-        },
-        cloneName: {
-          type: 'string',
-          description: 'Name for the cloned request (for clone)',
-        },
-      },
-      required: ['action', 'file', 'name'],
-    },
-    handler: async (args: unknown) => {
-      const { action, file, name, updates, cloneName } = z
-        .object({
-          action: z.enum(['get', 'update', 'delete', 'execute', 'toMarkdown', 'clone']),
-          file: z.string(),
-          name: z.string(),
-          updates: z
-            .object({
-              newName: z.string().optional(),
-              method: z.string().optional(),
-              url: z.string().optional(),
-              headers: z.array(z.any()).optional(),
-              body: z.any().optional(),
-            })
-            .optional(),
-          cloneName: z.string().optional(),
-        })
-        .parse(args);
 
-      const postmanDir = getPostmanDir();
-      const full = path.join(postmanDir, file);
-      const col = readJson(full);
-
-      switch (action) {
-        case 'get': {
+        case 'getRequest': {
+          if (!file) throw new Error('file is required for getRequest');
+          if (!name) throw new Error('name is required for getRequest');
+          const full = path.join(postmanDir, file);
+          const col = readJson(full);
           const items = findAllItems(col.item || []);
           const hit = items.find(
             (it: Record<string, unknown>) =>
@@ -301,8 +296,12 @@ export const postmanTools = [
           };
         }
 
-        case 'update': {
-          if (!updates) throw new Error('updates is required for update');
+        case 'updateRequest': {
+          if (!file) throw new Error('file is required for updateRequest');
+          if (!name) throw new Error('name is required for updateRequest');
+          if (!updates) throw new Error('updates is required for updateRequest');
+          const full = path.join(postmanDir, file);
+          const col = readJson(full);
           const found = findItemByName(col.item || [], name);
           if (!found || !found.item.request) throw new Error(`Request not found:${name}`);
 
@@ -333,7 +332,11 @@ export const postmanTools = [
           };
         }
 
-        case 'delete': {
+        case 'deleteRequest': {
+          if (!file) throw new Error('file is required for deleteRequest');
+          if (!name) throw new Error('name is required for deleteRequest');
+          const full = path.join(postmanDir, file);
+          const col = readJson(full);
           const found = findItemByName(col.item || [], name);
           if (!found) throw new Error(`Request not found:${name}`);
 
@@ -347,7 +350,11 @@ export const postmanTools = [
           };
         }
 
-        case 'execute': {
+        case 'executeRequest': {
+          if (!file) throw new Error('file is required for executeRequest');
+          if (!name) throw new Error('name is required for executeRequest');
+          const full = path.join(postmanDir, file);
+          const col = readJson(full);
           const items = findAllItems(col.item || []);
           const hit = items.find(
             (it: Record<string, unknown>) =>
@@ -414,6 +421,10 @@ export const postmanTools = [
         }
 
         case 'toMarkdown': {
+          if (!file) throw new Error('file is required for toMarkdown');
+          if (!name) throw new Error('name is required for toMarkdown');
+          const full = path.join(postmanDir, file);
+          const col = readJson(full);
           const items = findAllItems(col.item || []);
           const hit = items.find(
             (it: Record<string, unknown>) =>
@@ -496,8 +507,12 @@ export const postmanTools = [
           return { content: [{ type: 'text', text: md }] };
         }
 
-        case 'clone': {
-          if (!cloneName) throw new Error('cloneName is required for clone');
+        case 'cloneRequest': {
+          if (!file) throw new Error('file is required for cloneRequest');
+          if (!name) throw new Error('name is required for cloneRequest');
+          if (!cloneName) throw new Error('cloneName is required for cloneRequest');
+          const full = path.join(postmanDir, file);
+          const col = readJson(full);
           const items = findAllItems(col.item || []);
           const source = items.find(
             (it: Record<string, unknown>) =>

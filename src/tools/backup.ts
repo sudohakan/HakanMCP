@@ -6,34 +6,44 @@ export const backupTools = [
   {
     name: 'backup',
     description:
-      'Backup operations: create a ZIP backup, list backups, show stats, start/stop automatic service, or delete old backups.',
+      'Backup operations. Actions: create, list, stats, start, stop, deleteOld, restore.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         action: {
           type: 'string',
-          enum: ['create', 'list', 'stats', 'start', 'stop', 'deleteOld'],
+          enum: ['create', 'list', 'stats', 'start', 'stop', 'deleteOld', 'restore'],
           description: 'Action to perform',
         },
         olderThanHours: {
           type: 'number',
           description: 'Required for deleteOld: delete backups older than this many hours (ex: 48)',
         },
+        backupPath: {
+          type: 'string',
+          description: 'Full path to the ZIP file to restore (required for restore)',
+        },
+        targetDir: {
+          type: 'string',
+          description: 'Directory to restore (optional for restore, default: source directory)',
+        },
       },
       required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { action, olderThanHours } = z
+      const { action, olderThanHours, backupPath, targetDir } = z
         .object({
-          action: z.enum(['create', 'list', 'stats', 'start', 'stop', 'deleteOld']),
+          action: z.enum(['create', 'list', 'stats', 'start', 'stop', 'deleteOld', 'restore']),
           olderThanHours: z.number().positive().optional(),
+          backupPath: z.string().optional(),
+          targetDir: z.string().optional(),
         })
         .parse(args);
 
       switch (action) {
         case 'create': {
-          const backupPath = await backupService.createBackup({ skipIntervalCheck: true });
-          return createTextResponse(`✓ Backup created: ${backupPath}`);
+          const path = await backupService.createBackup({ skipIntervalCheck: true });
+          return createTextResponse(`✓ Backup created: ${path}`);
         }
 
         case 'list': {
@@ -84,37 +94,13 @@ export const backupTools = [
             `✓ Deleted ${deleted} backup(s) older than ${olderThanHours} hours`,
           );
         }
+
+        case 'restore': {
+          if (!backupPath) throw new Error('backupPath is required for action=restore');
+          await backupService.restoreBackup(backupPath, targetDir);
+          return createTextResponse(`✓ Backup restored from: ${backupPath}`);
+        }
       }
-    },
-  },
-
-  {
-    name: 'backup_restore',
-    description: 'Restores from the specified backup.',
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        backupPath: {
-          type: 'string',
-          description: 'Full path to the ZIP file to restore',
-        },
-        targetDir: {
-          type: 'string',
-          description: 'Directory to restore (optional, default: source directory)',
-        },
-      },
-      required: ['backupPath'],
-    },
-    handler: async (args: unknown) => {
-      const { backupPath, targetDir } = z
-        .object({
-          backupPath: z.string(),
-          targetDir: z.string().optional(),
-        })
-        .parse(args);
-
-      await backupService.restoreBackup(backupPath, targetDir);
-      return createTextResponse(`✓ Backup restored from: ${backupPath}`);
     },
   },
 ];

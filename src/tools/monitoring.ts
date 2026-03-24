@@ -563,368 +563,289 @@ async function rollback(instancePath: string): Promise<string> {
 
 export const monitoringTools = [
   {
-    name: 'monitor_healthCheck',
+    name: 'monitor',
     description:
-      'Performs a health check for the specified instance (file existence, build status)',
+      'Monitoring operations. Actions: healthCheck, autoHeal, compare, sync, updateDependencies, selfRecover, rollback.',
     inputSchema: {
       type: 'object',
       properties: {
+        action: {
+          type: 'string',
+          enum: ['healthCheck', 'autoHeal', 'compare', 'sync', 'updateDependencies', 'selfRecover', 'rollback'],
+          description: 'Operation to perform',
+        },
         instancePath: {
           type: 'string',
-          description: 'Instance directory to be checked (eg: /path/to/hakan-mcp)',
+          description: 'Instance directory (healthCheck, updateDependencies, selfRecover, rollback)',
         },
         issueType: {
           type: 'string',
           enum: ['file', 'build', 'all'],
-          description: 'Control type (default: all)',
+          description: 'Control type (healthCheck, autoHeal default: all)',
         },
-      },
-      required: ['instancePath'],
-    },
-    handler: async (args: unknown) => {
-      const { instancePath, issueType = 'all' } = z
-        .object({
-          instancePath: z.string(),
-          issueType: z.enum(['file', 'build', 'all']).optional().default('all'),
-        })
-        .parse(args);
-
-      const result = await performHealthCheck(instancePath, issueType);
-
-      const summary =
-        `# Health Check Report\n\n` +
-        `**Instance:** ${instancePath}\n` +
-        `**Status:** ${result.healthy ? '✅ Healthy' : '❌ Unhealthy'}\n` +
-        `**Timestamp:** ${result.timestamp}\n\n` +
-        `## Checks\n\n` +
-        result.checks
-          .map(
-            (check) =>
-              `- [${check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '⚠'}] **${check.name}**\n  ${check.message}`,
-          )
-          .join('\n\n');
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: summary,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'monitor_autoHeal',
-    description:
-      'Automatically fixes corrupted instance from healthy instance (file copying, rebuild)',
-    inputSchema: {
-      type: 'object',
-      properties: {
         brokenInstance: {
           type: 'string',
-          description: 'Corrupted instance directory',
+          description: 'Corrupted instance directory (autoHeal)',
         },
         healthyInstance: {
           type: 'string',
-          description: 'Healthy instance directory (source)',
+          description: 'Healthy instance directory source (autoHeal)',
         },
-        issueType: {
-          type: 'string',
-          enum: ['file', 'build', 'all'],
-          description: 'Type of problem to fix',
-        },
-      },
-      required: ['brokenInstance', 'healthyInstance', 'issueType'],
-    },
-    handler: async (_args: unknown) => {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: "❌ Auto-heal is disabled. In config.yaml make 'monitoring.autoHeal: true'.",
-          },
-        ],
-        isError: true,
-      };
-    },
-  },
-  {
-    name: 'monitor_compare',
-    description: 'Compares two instances. Use deep=true for SHA-256 full-tree comparison.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        instance1: { type: 'string', description: 'First instance directory' },
-        instance2: { type: 'string', description: 'Second instance directory' },
+        instance1: { type: 'string', description: 'First instance directory (compare)' },
+        instance2: { type: 'string', description: 'Second instance directory (compare)' },
         deep: {
           type: 'boolean',
-          description: 'SHA-256 full-tree (excludes node_modules, dist, .git, logs)',
+          description: 'SHA-256 full-tree comparison/sync (compare, sync)',
         },
-      },
-      required: ['instance1', 'instance2'],
-    },
-    handler: async (args: unknown) => {
-      const {
-        instance1,
-        instance2,
-        deep = false,
-      } = z
-        .object({
-          instance1: z.string(),
-          instance2: z.string(),
-          deep: z.boolean().optional(),
-        })
-        .parse(args);
-
-      if (deep) {
-        const diff = await compareInstancesDeep(instance1, instance2);
-        const rows: string[] = [];
-        if (diff.added.length)
-          rows.push(
-            `**In instance2 only (to remove):**\n${diff.added.map((r) => `- ${r}`).join('\n')}`,
-          );
-        if (diff.removed.length)
-          rows.push(
-            `**In instance1 only (to copy):**\n${diff.removed.map((r) => `- ${r}`).join('\n')}`,
-          );
-        if (diff.changed.length)
-          rows.push(`**Changed:**\n${diff.changed.map((r) => `- ${r}`).join('\n')}`);
-        const report =
-          `# Deep Instance Comparison (SHA-256)\n\n` +
-          `**Instance 1:** ${instance1}\n**Instance 2:** ${instance2}\n` +
-          `**Status:** ${diff.identical ? '✅ Identical' : '⚠️ Differences Found'}\n\n` +
-          (rows.length ? rows.join('\n\n') : 'No differences.');
-        return { content: [{ type: 'text' as const, text: report }] };
-      }
-
-      const comparison = await compareInstances(instance1, instance2);
-      const report =
-        `# Instance Comparison\n\n**Instance 1:** ${instance1}\n**Instance 2:** ${instance2}\n` +
-        `**Status:** ${comparison.different ? '⚠️ Differences Found' : '✅ Identical'}\n\n` +
-        (comparison.differences.length > 0
-          ? `## Differences\n\n${comparison.differences.map((d) => `- ${d}`).join('\n')}`
-          : 'No differences detected in critical files.');
-      return { content: [{ type: 'text' as const, text: report }] };
-    },
-  },
-  {
-    name: 'monitor_sync',
-    description:
-      'Synchronizes changes from main to second. Use deep=true for SHA-256 diff-only sync.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        sourceInstance: { type: 'string', description: 'Source instance (usually main)' },
-        targetInstance: { type: 'string', description: 'Target instance (usually second)' },
-        deep: {
-          type: 'boolean',
-          description: 'SHA-256 diff-only sync (copy only differing files)',
-        },
+        sourceInstance: { type: 'string', description: 'Source instance (sync)' },
+        targetInstance: { type: 'string', description: 'Target instance (sync)' },
         includeNodeModules: {
           type: 'boolean',
-          description: 'Include node_modules? (default: false)',
-        },
-      },
-      required: ['sourceInstance', 'targetInstance'],
-    },
-    handler: async (args: unknown) => {
-      const {
-        sourceInstance,
-        targetInstance,
-        deep = false,
-        includeNodeModules = false,
-      } = z
-        .object({
-          sourceInstance: z.string(),
-          targetInstance: z.string(),
-          deep: z.boolean().optional(),
-          includeNodeModules: z.boolean().optional(),
-        })
-        .parse(args);
-
-      if (deep) {
-        const results = await syncInstancesDeep(sourceInstance, targetInstance);
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `# Deep Sync Report\n\n**Source:** ${sourceInstance}\n**Target:** ${targetInstance}\n\n## Results\n\n${results.join('\n')}`,
-            },
-          ],
-        };
-      }
-
-      const syncResults: string[] = [];
-
-      const syncDirs = ['src', 'tests', 'config', 'scripts'];
-      const syncFiles = ['package.json', 'tsconfig.json', 'config.yaml', 'README.md', '.gitignore'];
-
-      if (includeNodeModules) {
-        syncDirs.push('node_modules');
-      }
-
-      for (const dir of syncDirs) {
-        try {
-          const sourcePath = path.join(sourceInstance, dir);
-          const targetPath = path.join(targetInstance, dir);
-
-          if (fs.existsSync(sourcePath)) {
-            await execAsync(
-              `robocopy "${sourcePath}" "${targetPath}" /MIR /NFL /NDL /NJH /NJS /nc /ns /np`,
-              { timeout: 60000 },
-            ).catch(() => ({ stdout: 'Robocopy completed' }));
-
-            syncResults.push(`✓ Synced directory: ${dir}`);
-          } else {
-            syncResults.push(`⚠ Skipped (not found): ${dir}`);
-          }
-        } catch (error: unknown) {
-          syncResults.push(
-            `✗ Failed to sync ${dir}: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }
-      }
-
-      const fileSyncResults = await Promise.all(
-        syncFiles.map(async (file) => {
-          try {
-            const sourcePath = path.join(sourceInstance, file);
-            const targetPath = path.join(targetInstance, file);
-
-            try {
-              await fs.promises.access(sourcePath);
-            } catch {
-              return `⚠ Skipped (not found): ${file}`;
-            }
-
-            await fs.promises.copyFile(sourcePath, targetPath);
-            return `✓ Synced file: ${file}`;
-          } catch (error: unknown) {
-            return `✗ Failed to sync ${file}: ${error instanceof Error ? error.message : String(error)}`;
-          }
-        }),
-      );
-      syncResults.push(...fileSyncResults);
-
-      syncResults.push('\n**Ready to start (no build needed)...**');
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `# Sync Report\n\n**Source:** ${sourceInstance}\n**Target:** ${targetInstance}\n\n## Results\n\n${syncResults.join('\n')}`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'monitor_updateDependencies',
-    description: 'Makes automatic dependency updates, tests and optional commits',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        instancePath: {
-          type: 'string',
-          description: 'Instance directory to update',
+          description: 'Include node_modules (sync, default: false)',
         },
         autoCommit: {
           type: 'boolean',
-          description: 'Should it automatically commit after a successful update? (default: false)',
-        },
-      },
-      required: ['instancePath'],
-    },
-    handler: async (args: unknown) => {
-      const { instancePath, autoCommit = false } = z
-        .object({
-          instancePath: z.string(),
-          autoCommit: z.boolean().optional(),
-        })
-        .parse(args);
-
-      const result = await updateDependencies(instancePath, autoCommit);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `# Dependency Update Report\n\n**Instance:** ${instancePath}\n**Auto-commit:** ${autoCommit ? 'Yes' : 'No'}\n\n## Results\n\n${result}`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'monitor_selfRecover',
-    description:
-      'Provides automatic recovery from common errors (port conflict, out of memory, db connection lost)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        instancePath: {
-          type: 'string',
-          description: 'Instance directory to recover',
+          description: 'Auto-commit after update (updateDependencies, default: false)',
         },
         errorType: {
           type: 'string',
           enum: ['port_conflict', 'out_of_memory', 'db_connection_lost'],
-          description: 'Error type to recover',
+          description: 'Error type to recover (selfRecover)',
         },
       },
-      required: ['instancePath', 'errorType'],
+      required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { instancePath, errorType } = z
+      const {
+        action,
+        instancePath,
+        issueType = 'all',
+        brokenInstance,
+        healthyInstance,
+        instance1,
+        instance2,
+        deep = false,
+        sourceInstance,
+        targetInstance,
+        includeNodeModules = false,
+        autoCommit = false,
+        errorType,
+      } = z
         .object({
-          instancePath: z.string(),
-          errorType: z.enum(['port_conflict', 'out_of_memory', 'db_connection_lost']),
+          action: z.enum(['healthCheck', 'autoHeal', 'compare', 'sync', 'updateDependencies', 'selfRecover', 'rollback']),
+          instancePath: z.string().optional(),
+          issueType: z.enum(['file', 'build', 'all']).optional().default('all'),
+          brokenInstance: z.string().optional(),
+          healthyInstance: z.string().optional(),
+          instance1: z.string().optional(),
+          instance2: z.string().optional(),
+          deep: z.boolean().optional().default(false),
+          sourceInstance: z.string().optional(),
+          targetInstance: z.string().optional(),
+          includeNodeModules: z.boolean().optional().default(false),
+          autoCommit: z.boolean().optional().default(false),
+          errorType: z.enum(['port_conflict', 'out_of_memory', 'db_connection_lost']).optional(),
         })
         .parse(args);
 
-      const result = await selfRecover(instancePath, errorType);
+      switch (action) {
+        case 'healthCheck': {
+          if (!instancePath) throw new Error('instancePath is required for action=healthCheck');
+          const result = await performHealthCheck(instancePath, issueType);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `# Self-Recovery Report\n\n**Instance:** ${instancePath}\n**Error Type:** ${errorType}\n\n## Results\n\n${result}`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'monitor_rollback',
-    description: 'Reverts instance to last known good state (git reset + npm ci + build)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        instancePath: {
-          type: 'string',
-          description: 'Instance directory to rollback',
-        },
-      },
-      required: ['instancePath'],
-    },
-    handler: async (args: unknown) => {
-      const { instancePath } = z
-        .object({
-          instancePath: z.string(),
-        })
-        .parse(args);
+          const summary =
+            `# Health Check Report\n\n` +
+            `**Instance:** ${instancePath}\n` +
+            `**Status:** ${result.healthy ? '✅ Healthy' : '❌ Unhealthy'}\n` +
+            `**Timestamp:** ${result.timestamp}\n\n` +
+            `## Checks\n\n` +
+            result.checks
+              .map(
+                (check) =>
+                  `- [${check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '⚠'}] **${check.name}**\n  ${check.message}`,
+              )
+              .join('\n\n');
 
-      const result = await rollback(instancePath);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: summary,
+              },
+            ],
+          };
+        }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `# Rollback Report\n\n**Instance:** ${instancePath}\n\n## Results\n\n${result}`,
-          },
-        ],
-      };
+        case 'autoHeal': {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: "❌ Auto-heal is disabled. In config.yaml make 'monitoring.autoHeal: true'.",
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        case 'compare': {
+          if (!instance1) throw new Error('instance1 is required for action=compare');
+          if (!instance2) throw new Error('instance2 is required for action=compare');
+
+          if (deep) {
+            const diff = await compareInstancesDeep(instance1, instance2);
+            const rows: string[] = [];
+            if (diff.added.length)
+              rows.push(
+                `**In instance2 only (to remove):**\n${diff.added.map((r) => `- ${r}`).join('\n')}`,
+              );
+            if (diff.removed.length)
+              rows.push(
+                `**In instance1 only (to copy):**\n${diff.removed.map((r) => `- ${r}`).join('\n')}`,
+              );
+            if (diff.changed.length)
+              rows.push(`**Changed:**\n${diff.changed.map((r) => `- ${r}`).join('\n')}`);
+            const report =
+              `# Deep Instance Comparison (SHA-256)\n\n` +
+              `**Instance 1:** ${instance1}\n**Instance 2:** ${instance2}\n` +
+              `**Status:** ${diff.identical ? '✅ Identical' : '⚠️ Differences Found'}\n\n` +
+              (rows.length ? rows.join('\n\n') : 'No differences.');
+            return { content: [{ type: 'text' as const, text: report }] };
+          }
+
+          const comparison = await compareInstances(instance1, instance2);
+          const report =
+            `# Instance Comparison\n\n**Instance 1:** ${instance1}\n**Instance 2:** ${instance2}\n` +
+            `**Status:** ${comparison.different ? '⚠️ Differences Found' : '✅ Identical'}\n\n` +
+            (comparison.differences.length > 0
+              ? `## Differences\n\n${comparison.differences.map((d) => `- ${d}`).join('\n')}`
+              : 'No differences detected in critical files.');
+          return { content: [{ type: 'text' as const, text: report }] };
+        }
+
+        case 'sync': {
+          if (!sourceInstance) throw new Error('sourceInstance is required for action=sync');
+          if (!targetInstance) throw new Error('targetInstance is required for action=sync');
+
+          if (deep) {
+            const results = await syncInstancesDeep(sourceInstance, targetInstance);
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `# Deep Sync Report\n\n**Source:** ${sourceInstance}\n**Target:** ${targetInstance}\n\n## Results\n\n${results.join('\n')}`,
+                },
+              ],
+            };
+          }
+
+          const syncResults: string[] = [];
+
+          const syncDirs = ['src', 'tests', 'config', 'scripts'];
+          const syncFiles = ['package.json', 'tsconfig.json', 'config.yaml', 'README.md', '.gitignore'];
+
+          if (includeNodeModules) {
+            syncDirs.push('node_modules');
+          }
+
+          for (const dir of syncDirs) {
+            try {
+              const sourcePath = path.join(sourceInstance, dir);
+              const targetPath = path.join(targetInstance, dir);
+
+              if (fs.existsSync(sourcePath)) {
+                await execAsync(
+                  `robocopy "${sourcePath}" "${targetPath}" /MIR /NFL /NDL /NJH /NJS /nc /ns /np`,
+                  { timeout: 60000 },
+                ).catch(() => ({ stdout: 'Robocopy completed' }));
+
+                syncResults.push(`✓ Synced directory: ${dir}`);
+              } else {
+                syncResults.push(`⚠ Skipped (not found): ${dir}`);
+              }
+            } catch (error: unknown) {
+              syncResults.push(
+                `✗ Failed to sync ${dir}: ${error instanceof Error ? error.message : String(error)}`,
+              );
+            }
+          }
+
+          const fileSyncResults = await Promise.all(
+            syncFiles.map(async (file) => {
+              try {
+                const sourcePath = path.join(sourceInstance, file);
+                const targetPath = path.join(targetInstance, file);
+
+                try {
+                  await fs.promises.access(sourcePath);
+                } catch {
+                  return `⚠ Skipped (not found): ${file}`;
+                }
+
+                await fs.promises.copyFile(sourcePath, targetPath);
+                return `✓ Synced file: ${file}`;
+              } catch (error: unknown) {
+                return `✗ Failed to sync ${file}: ${error instanceof Error ? error.message : String(error)}`;
+              }
+            }),
+          );
+          syncResults.push(...fileSyncResults);
+
+          syncResults.push('\n**Ready to start (no build needed)...**');
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `# Sync Report\n\n**Source:** ${sourceInstance}\n**Target:** ${targetInstance}\n\n## Results\n\n${syncResults.join('\n')}`,
+              },
+            ],
+          };
+        }
+
+        case 'updateDependencies': {
+          if (!instancePath) throw new Error('instancePath is required for action=updateDependencies');
+          const result = await updateDependencies(instancePath, autoCommit);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `# Dependency Update Report\n\n**Instance:** ${instancePath}\n**Auto-commit:** ${autoCommit ? 'Yes' : 'No'}\n\n## Results\n\n${result}`,
+              },
+            ],
+          };
+        }
+
+        case 'selfRecover': {
+          if (!instancePath) throw new Error('instancePath is required for action=selfRecover');
+          if (!errorType) throw new Error('errorType is required for action=selfRecover');
+          const result = await selfRecover(instancePath, errorType);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `# Self-Recovery Report\n\n**Instance:** ${instancePath}\n**Error Type:** ${errorType}\n\n## Results\n\n${result}`,
+              },
+            ],
+          };
+        }
+
+        case 'rollback': {
+          if (!instancePath) throw new Error('instancePath is required for action=rollback');
+          const result = await rollback(instancePath);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `# Rollback Report\n\n**Instance:** ${instancePath}\n\n## Results\n\n${result}`,
+              },
+            ],
+          };
+        }
+      }
     },
   },
 ];

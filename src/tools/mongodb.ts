@@ -103,472 +103,358 @@ export const stopMongoCleanup = () => {
 
 export const mongoTools = [
   {
-    name: 'mongo_connect',
-    description: 'Connect to MongoDB database. Connection ID is returned.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionString: {
-          type: 'string',
-          description: `MongoDB connection string (ex: \${config.mongoDbUrl || 'mongodb://localhost:27017'})`,
-        },
-      },
-      required: ['connectionString'],
-    },
-    handler: async (args: unknown) => {
-      const { connectionString } = z
-        .object({
-          connectionString: z.string(),
-        })
-        .parse(args);
-
-      const connectionId = await connectionManager.connect(connectionString);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✓ MongoDB connection established\n\nConnection ID: ${connectionId}\n\nYou can use this ID in other MongoDB tools.`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'mongo_find',
-    description: 'Find documents from MongoDB collection.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionId: { type: 'string' },
-        database: { type: 'string' },
-        collection: { type: 'string' },
-        query: { type: 'object', description: 'MongoDB query (JSON)' },
-        limit: { type: 'number', description: 'Maximum number of documents' },
-      },
-      required: ['connectionId', 'database', 'collection'],
-    },
-    handler: async (args: unknown) => {
-      const {
-        connectionId,
-        database,
-        collection,
-        query = {},
-        limit = 100,
-      } = z
-        .object({
-          connectionId: z.string(),
-          database: z.string(),
-          collection: z.string(),
-          query: z.record(z.string(), z.unknown()).optional().default({}),
-          limit: z.number().optional().default(100),
-        })
-        .parse(args);
-
-      const client = connectionManager.getClient(connectionId);
-      const db = client.db(database);
-      const coll = db.collection(collection);
-
-      const documents = await coll.find(query).limit(limit).toArray();
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✓ ${documents.length} document found\n\n${JSON.stringify(documents, null, 2)}`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'mongo_insert',
+    name: 'mongo',
     description:
-      'Insert one or more documents into a MongoDB collection. If documents array has 1 item, uses insertOne; otherwise uses insertMany.',
+      'MongoDB operations. Actions: connect, find, insert, update, delete, countDocuments, aggregate, createIndex, listCollections, listDatabases, disconnect.',
     inputSchema: {
       type: 'object',
       properties: {
-        connectionId: { type: 'string' },
-        database: { type: 'string' },
-        collection: { type: 'string' },
+        action: {
+          type: 'string',
+          enum: ['connect', 'find', 'insert', 'update', 'delete', 'countDocuments', 'aggregate', 'createIndex', 'listCollections', 'listDatabases', 'disconnect'],
+          description: 'Operation to perform',
+        },
+        connectionString: { type: 'string', description: 'MongoDB connection string (connect action)' },
+        connectionId: { type: 'string', description: 'Connection ID (all actions except connect)' },
+        database: { type: 'string', description: 'Database name' },
+        collection: { type: 'string', description: 'Collection name' },
+        query: { type: 'object', description: 'MongoDB query filter (find/countDocuments)' },
+        limit: { type: 'number', description: 'Maximum number of documents (find, default: 100)' },
         documents: {
           type: 'array',
           items: { type: 'object' },
-          description: 'Documents to insert. Single-element array calls insertOne.',
+          description: 'Documents to insert. Single-element array calls insertOne (insert action).',
         },
-      },
-      required: ['connectionId', 'database', 'collection', 'documents'],
-    },
-    handler: async (args: unknown) => {
-      const { connectionId, database, collection, documents } = z
-        .object({
-          connectionId: z.string(),
-          database: z.string(),
-          collection: z.string(),
-          documents: z.array(z.record(z.string(), z.unknown())),
-        })
-        .parse(args);
-
-      const client = connectionManager.getClient(connectionId);
-      const db = client.db(database);
-      const coll = db.collection(collection);
-
-      if (documents.length === 1) {
-        const result = await coll.insertOne(documents[0]);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✓ Document added\n\nInserted ID: ${result.insertedId}\nAcknowledged: ${result.acknowledged}`,
-            },
-          ],
-        };
-      } else {
-        const result = await coll.insertMany(documents);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✓ ${result.insertedCount} document added\n\nInserted IDs: ${Object.values(result.insertedIds).join(', ')}`,
-            },
-          ],
-        };
-      }
-    },
-  },
-  {
-    name: 'mongo_update',
-    description:
-      'Update document(s) in a MongoDB collection. Set many=true to update all matching documents.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionId: { type: 'string' },
-        database: { type: 'string' },
-        collection: { type: 'string' },
-        filter: { type: 'object', description: 'Update filter' },
-        update: { type: 'object', description: 'Update operation ($set, $inc, etc.)' },
-        many: { type: 'boolean', description: 'If true, updates all matching documents (default: false)' },
-      },
-      required: ['connectionId', 'database', 'collection', 'filter', 'update'],
-    },
-    handler: async (args: unknown) => {
-      const { connectionId, database, collection, filter, update, many } = z
-        .object({
-          connectionId: z.string(),
-          database: z.string(),
-          collection: z.string(),
-          filter: z.record(z.string(), z.unknown()),
-          update: z.record(z.string(), z.unknown()),
-          many: z.boolean().optional().default(false),
-        })
-        .parse(args);
-
-      const client = connectionManager.getClient(connectionId);
-      const db = client.db(database);
-      const coll = db.collection(collection);
-
-      if (many) {
-        const result = await coll.updateMany(filter, update);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✓ ${result.modifiedCount} document updated\n\nMatched: ${result.matchedCount}\nModified: ${result.modifiedCount}`,
-            },
-          ],
-        };
-      } else {
-        const result = await coll.updateOne(filter, update);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✓ Document updated\n\nMatched: ${result.matchedCount}\nModified: ${result.modifiedCount}\nAcknowledged: ${result.acknowledged}`,
-            },
-          ],
-        };
-      }
-    },
-  },
-  {
-    name: 'mongo_delete',
-    description:
-      'Delete document(s) from a MongoDB collection. Set many=true to delete all matching documents.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionId: { type: 'string' },
-        database: { type: 'string' },
-        collection: { type: 'string' },
-        filter: { type: 'object', description: 'Delete filter' },
-        many: { type: 'boolean', description: 'If true, deletes all matching documents (default: false)' },
-      },
-      required: ['connectionId', 'database', 'collection', 'filter'],
-    },
-    handler: async (args: unknown) => {
-      const { connectionId, database, collection, filter, many } = z
-        .object({
-          connectionId: z.string(),
-          database: z.string(),
-          collection: z.string(),
-          filter: z.record(z.string(), z.unknown()),
-          many: z.boolean().optional().default(false),
-        })
-        .parse(args);
-
-      const client = connectionManager.getClient(connectionId);
-      const db = client.db(database);
-      const coll = db.collection(collection);
-
-      if (many) {
-        const result = await coll.deleteMany(filter);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✓ ${result.deletedCount} document was deleted\n\nDeleted: ${result.deletedCount}`,
-            },
-          ],
-        };
-      } else {
-        const result = await coll.deleteOne(filter);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✓ Document deleted\n\nDeleted: ${result.deletedCount}\nAcknowledged: ${result.acknowledged}`,
-            },
-          ],
-        };
-      }
-    },
-  },
-  {
-    name: 'mongo_countDocuments',
-    description: 'Count documents in MongoDB collection matching a filter.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionId: { type: 'string' },
-        database: { type: 'string' },
-        collection: { type: 'string' },
-        filter: {
-          type: 'object',
-          description: 'MongoDB query filter (empty {} for all documents)',
-        },
-      },
-      required: ['connectionId', 'database', 'collection'],
-    },
-    handler: async (args: unknown) => {
-      const {
-        connectionId,
-        database,
-        collection,
-        filter = {},
-      } = z
-        .object({
-          connectionId: z.string(),
-          database: z.string(),
-          collection: z.string(),
-          filter: z.record(z.string(), z.unknown()).optional().default({}),
-        })
-        .parse(args);
-
-      const client = connectionManager.getClient(connectionId);
-      const db = client.db(database);
-      const coll = db.collection(collection);
-
-      const count = await coll.countDocuments(filter);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✓ ${count} document(s) match the filter`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'mongo_aggregate',
-    description: 'Run MongoDB aggregation pipeline.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionId: { type: 'string' },
-        database: { type: 'string' },
-        collection: { type: 'string' },
+        filter: { type: 'object', description: 'Filter for update/delete operations' },
+        update: { type: 'object', description: 'Update operation ($set, $inc, etc.) (update action)' },
+        many: { type: 'boolean', description: 'If true, updates/deletes all matching documents (default: false)' },
         pipeline: {
           type: 'array',
           items: { type: 'object' },
-          description: 'Aggregation pipeline stages',
+          description: 'Aggregation pipeline stages (aggregate action)',
         },
+        keys: { type: 'object', description: 'Index fields and directions (1 or -1) (createIndex action)' },
+        options: { type: 'object', description: 'Index options (unique, sparse, etc.) (createIndex action)' },
       },
-      required: ['connectionId', 'database', 'collection', 'pipeline'],
+      required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { connectionId, database, collection, pipeline } = z
+      const { action } = z
         .object({
-          connectionId: z.string(),
-          database: z.string(),
-          collection: z.string(),
-          pipeline: z.array(z.record(z.string(), z.unknown())),
+          action: z.enum(['connect', 'find', 'insert', 'update', 'delete', 'countDocuments', 'aggregate', 'createIndex', 'listCollections', 'listDatabases', 'disconnect']),
         })
         .parse(args);
 
-      const client = connectionManager.getClient(connectionId);
-      const db = client.db(database);
-      const coll = db.collection(collection);
+      switch (action) {
+        case 'connect': {
+          const { connectionString } = z
+            .object({ connectionString: z.string() })
+            .parse(args);
 
-      const results = await coll.aggregate(pipeline).toArray();
+          const connectionId = await connectionManager.connect(connectionString);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✓ Aggregation completed\n\n${JSON.stringify(results, null, 2)}`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'mongo_createIndex',
-    description: 'Create index in MongoDB collection.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionId: { type: 'string' },
-        database: { type: 'string' },
-        collection: { type: 'string' },
-        keys: { type: 'object', description: 'Index fields and directions (1 or -1)' },
-        options: { type: 'object', description: 'Index options (unique, sparse, etc.)' },
-      },
-      required: ['connectionId', 'database', 'collection', 'keys'],
-    },
-    handler: async (args: unknown) => {
-      const { connectionId, database, collection, keys, options } = z
-        .object({
-          connectionId: z.string(),
-          database: z.string(),
-          collection: z.string(),
-          keys: z.record(z.string(), z.union([z.number(), z.string()])),
-          options: z.record(z.string(), z.unknown()).optional().default({}),
-        })
-        .parse(args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✓ MongoDB connection established\n\nConnection ID: ${connectionId}\n\nYou can use this ID in other MongoDB tools.`,
+              },
+            ],
+          };
+        }
 
-      const client = connectionManager.getClient(connectionId);
-      const db = client.db(database);
-      const coll = db.collection(collection);
+        case 'find': {
+          const {
+            connectionId,
+            database,
+            collection,
+            query = {},
+            limit = 100,
+          } = z
+            .object({
+              connectionId: z.string(),
+              database: z.string(),
+              collection: z.string(),
+              query: z.record(z.string(), z.unknown()).optional().default({}),
+              limit: z.number().optional().default(100),
+            })
+            .parse(args);
 
-      const indexName = await coll.createIndex(
-        keys as Parameters<typeof coll.createIndex>[0],
-        options,
-      );
+          const client = connectionManager.getClient(connectionId);
+          const db = client.db(database);
+          const coll = db.collection(collection);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✓ Index created: ${indexName}`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'mongo_listCollections',
-    description: 'List collections in MongoDB database.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionId: { type: 'string' },
-        database: { type: 'string' },
-      },
-      required: ['connectionId', 'database'],
-    },
-    handler: async (args: unknown) => {
-      const { connectionId, database } = z
-        .object({
-          connectionId: z.string(),
-          database: z.string(),
-        })
-        .parse(args);
+          const documents = await coll.find(query).limit(limit).toArray();
 
-      const client = connectionManager.getClient(connectionId);
-      const db = client.db(database);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✓ ${documents.length} document found\n\n${JSON.stringify(documents, null, 2)}`,
+              },
+            ],
+          };
+        }
 
-      const collections = await db.listCollections().toArray();
+        case 'insert': {
+          const { connectionId, database, collection, documents } = z
+            .object({
+              connectionId: z.string(),
+              database: z.string(),
+              collection: z.string(),
+              documents: z.array(z.record(z.string(), z.unknown())),
+            })
+            .parse(args);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✓ ${collections.length} collection(s) found\n\n${collections.map((c) => `• ${c.name}`).join('\n')}`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'mongo_listDatabases',
-    description: 'List databases on the MongoDB server.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionId: { type: 'string' },
-      },
-      required: ['connectionId'],
-    },
-    handler: async (args: unknown) => {
-      const { connectionId } = z
-        .object({
-          connectionId: z.string(),
-        })
-        .parse(args);
+          const client = connectionManager.getClient(connectionId);
+          const db = client.db(database);
+          const coll = db.collection(collection);
 
-      const client = connectionManager.getClient(connectionId);
-      const result = await client.db().admin().listDatabases();
+          if (documents.length === 1) {
+            const result = await coll.insertOne(documents[0]);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `✓ Document added\n\nInserted ID: ${result.insertedId}\nAcknowledged: ${result.acknowledged}`,
+                },
+              ],
+            };
+          } else {
+            const result = await coll.insertMany(documents);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `✓ ${result.insertedCount} document added\n\nInserted IDs: ${Object.values(result.insertedIds).join(', ')}`,
+                },
+              ],
+            };
+          }
+        }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✓ ${result.databases.length} database(s) found\n\n${result.databases.map((db) => `• ${db.name} (${db.sizeOnDisk ? (db.sizeOnDisk / 1024 / 1024).toFixed(2) : '0.00'} MB)`).join('\n')}`,
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'mongo_disconnect',
-    description: 'Close the MongoDB connection.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        connectionId: { type: 'string' },
-      },
-      required: ['connectionId'],
-    },
-    handler: async (args: unknown) => {
-      const { connectionId } = z
-        .object({
-          connectionId: z.string(),
-        })
-        .parse(args);
+        case 'update': {
+          const { connectionId, database, collection, filter, update, many } = z
+            .object({
+              connectionId: z.string(),
+              database: z.string(),
+              collection: z.string(),
+              filter: z.record(z.string(), z.unknown()),
+              update: z.record(z.string(), z.unknown()),
+              many: z.boolean().optional().default(false),
+            })
+            .parse(args);
 
-      await connectionManager.disconnect(connectionId);
+          const client = connectionManager.getClient(connectionId);
+          const db = client.db(database);
+          const coll = db.collection(collection);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✓ MongoDB connection closed: ${connectionId}`,
-          },
-        ],
-      };
+          if (many) {
+            const result = await coll.updateMany(filter, update);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `✓ ${result.modifiedCount} document updated\n\nMatched: ${result.matchedCount}\nModified: ${result.modifiedCount}`,
+                },
+              ],
+            };
+          } else {
+            const result = await coll.updateOne(filter, update);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `✓ Document updated\n\nMatched: ${result.matchedCount}\nModified: ${result.modifiedCount}\nAcknowledged: ${result.acknowledged}`,
+                },
+              ],
+            };
+          }
+        }
+
+        case 'delete': {
+          const { connectionId, database, collection, filter, many } = z
+            .object({
+              connectionId: z.string(),
+              database: z.string(),
+              collection: z.string(),
+              filter: z.record(z.string(), z.unknown()),
+              many: z.boolean().optional().default(false),
+            })
+            .parse(args);
+
+          const client = connectionManager.getClient(connectionId);
+          const db = client.db(database);
+          const coll = db.collection(collection);
+
+          if (many) {
+            const result = await coll.deleteMany(filter);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `✓ ${result.deletedCount} document was deleted\n\nDeleted: ${result.deletedCount}`,
+                },
+              ],
+            };
+          } else {
+            const result = await coll.deleteOne(filter);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `✓ Document deleted\n\nDeleted: ${result.deletedCount}\nAcknowledged: ${result.acknowledged}`,
+                },
+              ],
+            };
+          }
+        }
+
+        case 'countDocuments': {
+          const {
+            connectionId,
+            database,
+            collection,
+            filter = {},
+          } = z
+            .object({
+              connectionId: z.string(),
+              database: z.string(),
+              collection: z.string(),
+              filter: z.record(z.string(), z.unknown()).optional().default({}),
+            })
+            .parse(args);
+
+          const client = connectionManager.getClient(connectionId);
+          const db = client.db(database);
+          const coll = db.collection(collection);
+
+          const count = await coll.countDocuments(filter);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✓ ${count} document(s) match the filter`,
+              },
+            ],
+          };
+        }
+
+        case 'aggregate': {
+          const { connectionId, database, collection, pipeline } = z
+            .object({
+              connectionId: z.string(),
+              database: z.string(),
+              collection: z.string(),
+              pipeline: z.array(z.record(z.string(), z.unknown())),
+            })
+            .parse(args);
+
+          const client = connectionManager.getClient(connectionId);
+          const db = client.db(database);
+          const coll = db.collection(collection);
+
+          const results = await coll.aggregate(pipeline).toArray();
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✓ Aggregation completed\n\n${JSON.stringify(results, null, 2)}`,
+              },
+            ],
+          };
+        }
+
+        case 'createIndex': {
+          const { connectionId, database, collection, keys, options } = z
+            .object({
+              connectionId: z.string(),
+              database: z.string(),
+              collection: z.string(),
+              keys: z.record(z.string(), z.union([z.number(), z.string()])),
+              options: z.record(z.string(), z.unknown()).optional().default({}),
+            })
+            .parse(args);
+
+          const client = connectionManager.getClient(connectionId);
+          const db = client.db(database);
+          const coll = db.collection(collection);
+
+          const indexName = await coll.createIndex(
+            keys as Parameters<typeof coll.createIndex>[0],
+            options,
+          );
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✓ Index created: ${indexName}`,
+              },
+            ],
+          };
+        }
+
+        case 'listCollections': {
+          const { connectionId, database } = z
+            .object({
+              connectionId: z.string(),
+              database: z.string(),
+            })
+            .parse(args);
+
+          const client = connectionManager.getClient(connectionId);
+          const db = client.db(database);
+
+          const collections = await db.listCollections().toArray();
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✓ ${collections.length} collection(s) found\n\n${collections.map((c) => `• ${c.name}`).join('\n')}`,
+              },
+            ],
+          };
+        }
+
+        case 'listDatabases': {
+          const { connectionId } = z
+            .object({ connectionId: z.string() })
+            .parse(args);
+
+          const client = connectionManager.getClient(connectionId);
+          const result = await client.db().admin().listDatabases();
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✓ ${result.databases.length} database(s) found\n\n${result.databases.map((db) => `• ${db.name} (${db.sizeOnDisk ? (db.sizeOnDisk / 1024 / 1024).toFixed(2) : '0.00'} MB)`).join('\n')}`,
+              },
+            ],
+          };
+        }
+
+        case 'disconnect': {
+          const { connectionId } = z
+            .object({ connectionId: z.string() })
+            .parse(args);
+
+          await connectionManager.disconnect(connectionId);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✓ MongoDB connection closed: ${connectionId}`,
+              },
+            ],
+          };
+        }
+      }
     },
   },
 ];

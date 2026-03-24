@@ -6,85 +6,32 @@ const sona = new SonaEngine({ dimensions: 384 });
 
 export const ruvectorTools = [
   {
-    name: 'ruvector_add',
-    description: 'Add a vector with an ID and optional metadata to the HNSW index.',
+    name: 'ruvector',
+    description: 'Vector operations. Actions: add, search, remove, learn, patterns.',
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string' },
+        action: {
+          type: 'string',
+          enum: ['add', 'search', 'remove', 'learn', 'patterns'],
+          description: 'Operation to perform',
+        },
+        id: { type: 'string', description: 'Vector ID (required for add, remove)' },
         vector: {
           type: 'array',
           items: { type: 'number' },
-          description: 'Embedding vector (must match index dimensions)',
+          description: 'Embedding vector (required for add)',
         },
         metadata: {
           type: 'object',
-          description: 'Optional metadata object',
+          description: 'Optional metadata object (add action)',
         },
-      },
-      required: ['id', 'vector'],
-    },
-    handler: async (args: unknown) => {
-      const { id, vector, metadata } = z
-        .object({
-          id: z.string(),
-          vector: z.array(z.number()),
-          metadata: z.record(z.string(), z.unknown()).optional(),
-        })
-        .parse(args);
-
-      hnsw.add(id, vector, metadata as Record<string, unknown> | undefined);
-      return { content: [{ type: 'text', text: `Vector ${id} added (size=${hnsw.size()}).` }] };
-    },
-  },
-  {
-    name: 'ruvector_search',
-    description: 'Search the HNSW index for the k nearest vectors to a query.',
-    inputSchema: {
-      type: 'object',
-      properties: {
         query: {
           type: 'array',
           items: { type: 'number' },
-          description: 'Query vector',
+          description: 'Query vector (required for search, patterns)',
         },
-        k: { type: 'number', description: 'Number of results (default 5)' },
-      },
-      required: ['query'],
-    },
-    handler: async (args: unknown) => {
-      const { query, k } = z
-        .object({ query: z.array(z.number()), k: z.number().int().positive().optional() })
-        .parse(args);
-
-      const results = hnsw.search(query, k ?? 5);
-      return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
-    },
-  },
-  {
-    name: 'ruvector_remove',
-    description: 'Remove a vector by ID from the HNSW index.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-      },
-      required: ['id'],
-    },
-    handler: async (args: unknown) => {
-      const { id } = z.object({ id: z.string() }).parse(args);
-      const success = hnsw.remove(id);
-      return {
-        content: [{ type: 'text', text: JSON.stringify({ id, success }, null, 2) }],
-      };
-    },
-  },
-  {
-    name: 'ruvector_learn',
-    description: 'Feed trajectories into the SONA continual-learning engine.',
-    inputSchema: {
-      type: 'object',
-      properties: {
+        k: { type: 'number', description: 'Number of results (default 5, for search/patterns)' },
         trajectories: {
           type: 'array',
           items: {
@@ -97,50 +44,67 @@ export const ruvectorTools = [
             },
             required: ['states', 'actions', 'rewards', 'quality'],
           },
+          description: 'Trajectories for SONA learning (learn action)',
         },
       },
-      required: ['trajectories'],
+      required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { trajectories } = z
+      const { action, id, vector, metadata, query, k, trajectories } = z
         .object({
-          trajectories: z.array(
-            z.object({
-              states: z.array(z.array(z.number())),
-              actions: z.array(z.string()),
-              rewards: z.array(z.number()),
-              quality: z.number(),
-            }),
-          ),
+          action: z.enum(['add', 'search', 'remove', 'learn', 'patterns']),
+          id: z.string().optional(),
+          vector: z.array(z.number()).optional(),
+          metadata: z.record(z.string(), z.unknown()).optional(),
+          query: z.array(z.number()).optional(),
+          k: z.number().int().positive().optional(),
+          trajectories: z
+            .array(
+              z.object({
+                states: z.array(z.array(z.number())),
+                actions: z.array(z.string()),
+                rewards: z.array(z.number()),
+                quality: z.number(),
+              }),
+            )
+            .optional(),
         })
         .parse(args);
 
-      const result = sona.learn(trajectories);
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
-    },
-  },
-  {
-    name: 'ruvector_patterns',
-    description: 'Find learned patterns similar to a query vector using SONA.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'array',
-          items: { type: 'number' },
-          description: 'Query vector',
-        },
-        k: { type: 'number', description: 'Number of patterns (default 5)' },
-      },
-      required: ['query'],
-    },
-    handler: async (args: unknown) => {
-      const { query, k } = z
-        .object({ query: z.array(z.number()), k: z.number().int().positive().optional() })
-        .parse(args);
+      switch (action) {
+        case 'add': {
+          if (!id) throw new Error('id is required for action=add');
+          if (!vector) throw new Error('vector is required for action=add');
+          hnsw.add(id, vector, metadata as Record<string, unknown> | undefined);
+          return { content: [{ type: 'text', text: `Vector ${id} added (size=${hnsw.size()}).` }] };
+        }
 
-      const patterns = sona.findPatterns(query, k ?? 5);
-      return { content: [{ type: 'text', text: JSON.stringify(patterns, null, 2) }] };
+        case 'search': {
+          if (!query) throw new Error('query is required for action=search');
+          const results = hnsw.search(query, k ?? 5);
+          return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
+        }
+
+        case 'remove': {
+          if (!id) throw new Error('id is required for action=remove');
+          const success = hnsw.remove(id);
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ id, success }, null, 2) }],
+          };
+        }
+
+        case 'learn': {
+          if (!trajectories) throw new Error('trajectories is required for action=learn');
+          const result = sona.learn(trajectories);
+          return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+
+        case 'patterns': {
+          if (!query) throw new Error('query is required for action=patterns');
+          const patterns = sona.findPatterns(query, k ?? 5);
+          return { content: [{ type: 'text', text: JSON.stringify(patterns, null, 2) }] };
+        }
+      }
     },
   },
 ];

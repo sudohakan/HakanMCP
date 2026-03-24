@@ -5,15 +5,20 @@ const swarm = new SwarmCoordinator();
 
 export const swarmTools = [
   {
-    name: 'swarm_create',
-    description: 'Create a new swarm with a given topology and initial agents.',
+    name: 'swarm',
+    description: 'Swarm coordination operations. Actions: create, addAgent, routeTask, reconfigure, status.',
     inputSchema: {
       type: 'object',
       properties: {
+        action: {
+          type: 'string',
+          enum: ['create', 'addAgent', 'routeTask', 'reconfigure', 'status'],
+          description: 'Operation to perform',
+        },
         topology: {
           type: 'string',
           enum: ['hierarchical', 'mesh', 'ring', 'star'],
-          description: 'Swarm topology',
+          description: 'Swarm topology (required for create, reconfigure)',
         },
         agents: {
           type: 'array',
@@ -26,131 +31,97 @@ export const swarmTools = [
             },
             required: ['id', 'role'],
           },
-          description: 'Initial agents to add to the swarm',
+          description: 'Initial agents to add to the swarm (required for create)',
         },
+        id: { type: 'string', description: 'Agent ID (required for addAgent)' },
+        role: { type: 'string', description: 'Agent role (required for addAgent)' },
+        capabilities: { type: 'array', items: { type: 'string' }, description: 'Agent capabilities (addAgent)' },
+        type: { type: 'string', description: 'Task type (required for routeTask)' },
+        complexity: { type: 'number', description: 'Task complexity (routeTask, optional)' },
       },
-      required: ['topology', 'agents'],
+      required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { topology, agents } = z
+      const { action, topology, agents, id, role, capabilities, type, complexity } = z
         .object({
-          topology: z.enum(['hierarchical', 'mesh', 'ring', 'star']),
-          agents: z.array(
-            z.object({
-              id: z.string(),
-              role: z.string(),
-              capabilities: z.array(z.string()).optional(),
-            }),
-          ),
-        })
-        .parse(args);
-
-      const swarmAgents = agents.map((a) => ({
-        id: a.id,
-        role: a.role as 'queen' | 'lead' | 'worker' | 'peer',
-        capabilities: a.capabilities ?? [],
-        status: 'idle' as const,
-        load: 0,
-      }));
-
-      const state = swarm.createSwarm(topology, swarmAgents);
-      return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
-    },
-  },
-  {
-    name: 'swarm_addAgent',
-    description: 'Add an agent to the existing swarm.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        role: { type: 'string' },
-        capabilities: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['id', 'role'],
-    },
-    handler: async (args: unknown) => {
-      const { id, role, capabilities } = z
-        .object({
-          id: z.string(),
-          role: z.string(),
+          action: z.enum(['create', 'addAgent', 'routeTask', 'reconfigure', 'status']),
+          topology: z.enum(['hierarchical', 'mesh', 'ring', 'star']).optional(),
+          agents: z
+            .array(
+              z.object({
+                id: z.string(),
+                role: z.string(),
+                capabilities: z.array(z.string()).optional(),
+              }),
+            )
+            .optional(),
+          id: z.string().optional(),
+          role: z.string().optional(),
           capabilities: z.array(z.string()).optional(),
+          type: z.string().optional(),
+          complexity: z.number().optional(),
         })
         .parse(args);
 
-      swarm.addAgent({
-        id,
-        role: role as 'queen' | 'lead' | 'worker' | 'peer',
-        capabilities: capabilities ?? [],
-        status: 'idle',
-        load: 0,
-      });
-      return { content: [{ type: 'text', text: `Agent ${id} added to swarm.` }] };
-    },
-  },
-  {
-    name: 'swarm_routeTask',
-    description: 'Route a task to the most appropriate agent in the swarm.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        type: { type: 'string', description: 'Task type' },
-        complexity: { type: 'number', description: 'Task complexity (optional)' },
-      },
-      required: ['type'],
-    },
-    handler: async (args: unknown) => {
-      const { type, complexity } = z
-        .object({ type: z.string(), complexity: z.number().optional() })
-        .parse(args);
+      switch (action) {
+        case 'create': {
+          if (!topology) throw new Error('topology is required for action=create');
+          if (!agents) throw new Error('agents is required for action=create');
+          const swarmAgents = agents.map((a) => ({
+            id: a.id,
+            role: a.role as 'queen' | 'lead' | 'worker' | 'peer',
+            capabilities: a.capabilities ?? [],
+            status: 'idle' as const,
+            load: 0,
+          }));
+          const state = swarm.createSwarm(topology, swarmAgents);
+          return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
+        }
 
-      const agentId = swarm.routeTask({ type, complexity: complexity ?? 5 });
-      return {
-        content: [
-          { type: 'text', text: JSON.stringify({ routedAgent: agentId, taskType: type }, null, 2) },
-        ],
-      };
-    },
-  },
-  {
-    name: 'swarm_reconfigure',
-    description: 'Reconfigure the swarm to a new topology.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        topology: {
-          type: 'string',
-          enum: ['hierarchical', 'mesh', 'ring', 'star'],
-        },
-      },
-      required: ['topology'],
-    },
-    handler: async (args: unknown) => {
-      const { topology } = z
-        .object({ topology: z.enum(['hierarchical', 'mesh', 'ring', 'star']) })
-        .parse(args);
+        case 'addAgent': {
+          if (!id) throw new Error('id is required for action=addAgent');
+          if (!role) throw new Error('role is required for action=addAgent');
+          swarm.addAgent({
+            id,
+            role: role as 'queen' | 'lead' | 'worker' | 'peer',
+            capabilities: capabilities ?? [],
+            status: 'idle',
+            load: 0,
+          });
+          return { content: [{ type: 'text', text: `Agent ${id} added to swarm.` }] };
+        }
 
-      const state = swarm.reconfigure(topology);
-      return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
-    },
-  },
-  {
-    name: 'swarm_status',
-    description: 'Get the current status of the swarm.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: async () => {
-      try {
-        const state = swarm.getStatus();
-        return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
-      } catch (err) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
-            },
-          ],
-        };
+        case 'routeTask': {
+          if (!type) throw new Error('type is required for action=routeTask');
+          const agentId = swarm.routeTask({ type, complexity: complexity ?? 5 });
+          return {
+            content: [
+              { type: 'text', text: JSON.stringify({ routedAgent: agentId, taskType: type }, null, 2) },
+            ],
+          };
+        }
+
+        case 'reconfigure': {
+          if (!topology) throw new Error('topology is required for action=reconfigure');
+          const state = swarm.reconfigure(topology);
+          return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
+        }
+
+        case 'status': {
+          try {
+            const state = swarm.getStatus();
+            return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
+          } catch (err) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
+                },
+              ],
+            };
+          }
+        }
       }
     },
   },

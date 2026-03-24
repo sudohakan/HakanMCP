@@ -70,38 +70,38 @@ scripts/          Build scripts (tool manifest generator)
 
 ## MCP Tools (src/tools/)
 
-| Module | Tool Prefix | Purpose |
-|--------|-------------|---------|
-| gitbook.ts | `gb_` | GitBook API integration (search, pages, headings, links) |
-| postman.ts | `pm_` | Postman collection/request management |
-| system.ts | `sys_` | OS info, process management, run commands |
-| systemOptimization.ts | `sysopt_` | System cleanup, optimization, admin ops |
-| http.ts | `http_` | HTTP requests, file downloads |
-| env.ts | `env_` | Environment variable management |
-| parser.ts | `parse` | CSV/JSON/XML/YAML parsing |
+| Module | Tool Name | Purpose |
+|--------|-----------|---------|
+| gitbook.ts | `gitbook` | GitBook API (7 actions: getPage, listLinks, find, headings, outline, getMetadata, searchContent) |
+| postman.ts | `postman` | Postman collection/request management (10 actions) |
+| system.ts | `sys` | OS info, process management, run commands (7 actions) |
+| systemOptimization.ts | `sysopt` | System cleanup, optimization, admin ops (7 actions) |
+| http.ts | `http` | HTTP requests, file downloads (request, downloadFile) |
+| env.ts | `env` | Environment variable management (6 actions) |
+| parser.ts | `parse` | CSV/JSON/XML/YAML parsing (parse, convertFile) |
 | template.ts | `compile_template` | Handlebars template compilation |
-| aiTools.ts | `ai_` | AI chat with agentic tool-use loop |
-| aiProviders.ts | `ai_provider_` | Multi-provider AI routing (Claude/OpenAI/Gemini/Ollama) |
+| aiTools.ts | `ai` | AI chat, generate, listModels, history (5 actions) |
+| aiProviders.ts | `ai_provider_chat` | Multi-provider AI routing |
 | aiDefence.ts | `aidefence` | Input scanning, PII detection |
-| backup.ts | `backup` | Project backup/restore |
-| cache.ts | `cache_` | In-memory cache management |
-| db.ts | `db_` | SQL database operations (PostgreSQL, MySQL, MSSQL, SQLite) |
-| dbMonitoring.ts | `db_` | Database pool stats, monitoring |
-| mongodb.ts | `mongo_` | MongoDB CRUD, aggregation, indexes |
-| encryption.ts | `crypto_` | File/value encryption |
-| monitoring.ts | `monitor_` | Health checks, auto-heal, peer sync |
-| selfImprovement.ts | `self_` | Self-modification proposals |
-| scheduler.ts | `scheduler_` | Cron task scheduling |
-| api.ts | `api_` | Rate limiting, webhook handling |
-| performance.ts | `perf_` | Benchmarking |
-| dx.ts | `dx_` | Developer experience (tool scaffolding) |
-| flow.ts | `flow_` | Multi-step flow execution & versioning |
-| swarm.ts | `swarm_` | Multi-agent coordination |
-| consensus.ts | `consensus_` | Distributed consensus protocols |
-| ruvector.ts | `ruvector_` | Vector similarity search |
-| moeRouter.ts | `moe_` | Mixture-of-experts routing |
-| guidance.ts | `guidance_` | Code guidance rules, auditing |
-| mcpClient.ts | `mcp_` | MCP-to-MCP bridge + on-demand catalog (9 auth-free servers) |
+| backup.ts | `backup` | Project backup/restore (7 actions incl. restore) |
+| cache.ts | `cache` | In-memory cache (get, set, delete, clear, stats) |
+| db.ts | `db` | SQL database operations (7 actions) |
+| dbMonitoring.ts | `db_monitor` | Database pool stats, monitoring |
+| mongodb.ts | `mongo` | MongoDB CRUD, aggregation, indexes (11 actions) |
+| encryption.ts | `crypto` | File/value encryption (4 actions) |
+| monitoring.ts | `monitor` | Health checks, auto-heal, peer sync (7 actions) |
+| selfImprovement.ts | `self` | Self-modification proposals (propose, changelog, applyChange) |
+| scheduler.ts | `scheduler` | Cron task scheduling (10 actions) |
+| api.ts | `api` | Rate limiting, webhook handling (4 actions) |
+| performance.ts | `perf_benchmark` | Benchmarking |
+| dx.ts | `dx_toolScaffold` | Developer experience (tool scaffolding) |
+| flow.ts | `flow`, `connection` | Flow execution & versioning; connection management |
+| swarm.ts | `swarm` | Multi-agent coordination (5 actions) |
+| consensus.ts | `consensus` | Distributed consensus protocols (3 actions) |
+| ruvector.ts | `ruvector` | Vector similarity search (5 actions) |
+| moeRouter.ts | `moe_route` | Mixture-of-experts routing |
+| guidance.ts | `guidance` | Code guidance rules, auditing (compile, enforce, audit) |
+| mcpClient.ts | `mcp`, `browser` | MCP bridge (7 actions) + browser automation (5 actions) |
 
 Feature tools (`db`, `mongo`) require optional native dependencies — they register as placeholders when deps are missing.
 

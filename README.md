@@ -207,19 +207,20 @@ import { startServer } from 'hakanmcp';
 
 When you need browser automation but want smaller, task-focused outputs, use the HakanMCP browser bridge instead of calling Playwright tools directly.
 
-Core browser tools:
-- `mcp_browserConnect` — start or reuse a Playwright MCP connection
-- `mcp_browserNavigateExtract` — navigate and return a compact page summary
-- `mcp_browserProbeLogin` — detect login flows with focused indicators
-- `mcp_browserCaptureProof` — capture a screenshot artifact plus a short summary
-- `mcp_browserDisconnect` — close one or all cached browser sessions
+The `browser` tool provides all browser automation via the `action` parameter:
+- `connect` — start or reuse a Playwright MCP connection
+- `navigateExtract` — navigate and return a compact page summary
+- `probeLogin` — detect login flows with focused indicators
+- `captureProof` — capture a screenshot artifact plus a short summary
+- `disconnect` — close one or all cached browser sessions
 
 Example:
 
 ```json
 {
-  "tool": "mcp_browserNavigateExtract",
+  "tool": "browser",
   "arguments": {
+    "action": "navigateExtract",
     "url": "https://example.com/login",
     "cdpEndpoint": "http://127.0.0.1:9222",
     "screenshotPath": "login-proof.png"

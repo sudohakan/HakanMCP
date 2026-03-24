@@ -7,11 +7,8 @@ import { logger } from '../utils/logger.js';
 
 /** Tools excluded from the agentic tool list to prevent recursive/dangerous calls */
 const EXCLUDED_TOOL_NAMES = new Set([
-  'ai_chat',
-  'ai_generate',
-  'ai_history',
+  'ai',
   'ai_provider_chat',
-  'ai_listModels',
   'moe_route',
 ]);
 

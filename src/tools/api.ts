@@ -37,77 +37,80 @@ const openapi = {
 
 export const apiTools = [
   {
-    name: 'api_restWrapperInfo',
-    description:
-      "REST API wrapper information. action='info' returns setup guide, action='spec' returns OpenAPI specification skeleton.",
+    name: 'api',
+    description: 'REST API wrapper operations. Actions: info, spec, rateLimitStatus, webhookHandle.',
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['info', 'spec'] },
+        action: {
+          type: 'string',
+          enum: ['info', 'spec', 'rateLimitStatus', 'webhookHandle'],
+          description: 'Operation to perform',
+        },
+        event: { type: 'string', description: 'Webhook event name (webhookHandle)' },
+        payload: { type: 'object', description: 'Webhook payload (webhookHandle)' },
       },
       required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { action } = z.object({ action: z.enum(['info', 'spec']) }).parse(args);
-      if (action === 'spec') {
-        return {
-          content: [{ type: 'text', text: JSON.stringify(openapi, null, 2) }],
-        };
-      }
-      return {
-        content: [
-          {
-            type: 'text',
-            text:
-              'REST wrapper iskeleti: \n' +
-              '- /tools/call: tool invoke\n' +
-              '- /health: vitality\\n' +
-              '- /webhook: event kabul\n' +
-              'Rate limit: token bucket (20 capacity, +5 per second).\\n' +
-              'This tool does not start the HTTP server yet; Provides documentation for API clients.',
-          },
-        ],
-      };
-    },
-  },
-  {
-    name: 'api_rateLimitStatus',
-    description: 'Returns the simple rate limit status (token bucket).',
-    inputSchema: { type: 'object', properties: {} },
-    handler: async () => ({
-      content: [{ type: 'text', text: JSON.stringify({ bucket }, null, 2) }],
-    }),
-  },
-  {
-    name: 'api_webhookHandle',
-    description: 'The webhook verifies the payload and returns an acceptance message.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        event: { type: 'string' },
-        payload: { type: 'object' },
-      },
-      required: ['event', 'payload'],
-    },
-    handler: async (args: unknown) => {
-      if (!takeToken()) {
-        return { content: [{ type: 'text', text: '429 Too Many Requests' }], isError: true };
-      }
-      const { event, payload } = z
-        .object({ event: z.string(), payload: z.record(z.string(), z.unknown()) })
+      const { action, event, payload } = z
+        .object({
+          action: z.enum(['info', 'spec', 'rateLimitStatus', 'webhookHandle']),
+          event: z.string().optional(),
+          payload: z.record(z.string(), z.unknown()).optional(),
+        })
         .parse(args);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(
-              { accepted: true, event, receivedAt: new Date().toISOString(), payload },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+
+      switch (action) {
+        case 'info': {
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  'REST wrapper iskeleti: \n' +
+                  '- /tools/call: tool invoke\n' +
+                  '- /health: vitality\\n' +
+                  '- /webhook: event kabul\n' +
+                  'Rate limit: token bucket (20 capacity, +5 per second).\\n' +
+                  'This tool does not start the HTTP server yet; Provides documentation for API clients.',
+              },
+            ],
+          };
+        }
+
+        case 'spec': {
+          return {
+            content: [{ type: 'text', text: JSON.stringify(openapi, null, 2) }],
+          };
+        }
+
+        case 'rateLimitStatus': {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ bucket }, null, 2) }],
+          };
+        }
+
+        case 'webhookHandle': {
+          if (!takeToken()) {
+            return { content: [{ type: 'text', text: '429 Too Many Requests' }], isError: true };
+          }
+          if (!event) throw new Error('event is required for action=webhookHandle');
+          if (!payload) throw new Error('payload is required for action=webhookHandle');
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  { accepted: true, event, receivedAt: new Date().toISOString(), payload },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          };
+        }
+      }
     },
   },
 ];

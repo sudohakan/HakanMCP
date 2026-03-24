@@ -91,339 +91,281 @@ async function runPowerShellCommand(command: string): Promise<string> {
 
 export const systemOptimizationTools = [
   {
-    name: 'sysopt_cleanup',
+    name: 'sysopt',
     description:
-      'Performs system cleanup. target=auto: Temp/Cache/Browser/Windows Update/Event Logs/Thumbnail Cache. target=ram: Standby memory/DNS cache/Event logs/Temp files. target=docker: Container/Image/Volume/Build Cache.',
+      'System optimization operations. Actions: cleanup, optimize, runAdmin, analyzeSystem, quickStatus, fullOptimize, viewLogs.',
     inputSchema: {
       type: 'object',
       properties: {
+        action: {
+          type: 'string',
+          enum: ['cleanup', 'optimize', 'runAdmin', 'analyzeSystem', 'quickStatus', 'fullOptimize', 'viewLogs'],
+          description: 'Action to perform',
+        },
         target: {
           type: 'string',
-          enum: ['auto', 'ram', 'docker'],
-          description: 'Cleanup target: auto | ram | docker',
+          description: 'cleanup: auto|ram|docker. optimize: registry|network|gaming|ssd|performance|startup.',
         },
-      },
-      required: ['target'],
-    },
-    handler: async (args: unknown): Promise<ToolResult> => {
-      const a = args as Record<string, unknown>;
-      const target = a?.target as string;
-
-      const scriptMap: Record<string, { file: string; label: string }> = {
-        auto: { file: 'auto_cleanup.ps1', label: '🧹 Automatic Cleanup Completed' },
-        ram: { file: 'ram_cleanup.ps1', label: '💾 RAM Cleanup Completed' },
-        docker: { file: 'docker_cleanup.ps1', label: '🐳 Docker Cleanup Completed' },
-      };
-
-      const entry = scriptMap[target];
-      if (!entry) {
-        return {
-          content: [{ type: 'text', text: `❌ Unknown target: ${target}. Use: auto | ram | docker` }],
-          isError: true,
-        };
-      }
-
-      const scriptPath = path.join(BASE_PATH, 'scripts', 'cleanup', entry.file);
-      const result = await runPowerShell(scriptPath);
-
-      return {
-        content: [{ type: 'text', text: `${entry.label}:\n\n${result}` }],
-      };
-    },
-  },
-
-  {
-    name: 'sysopt_optimize',
-    description:
-      'Runs a targeted system optimization. target=registry: Visual Effects/Menu Delay/Explorer/Telemetry/Network Throttling/Game Mode. target=network: DNS/TCP-IP/Nagle/ARP. target=gaming: Game Mode/Mouse/Fullscreen/Power/GPU. target=ssd: TRIM/Superfetch/Prefetch/Indexing/Last Access. target=performance: Visual effects/Explorer/Search/Disk/Power. target=startup: Removes unnecessary startup programs.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        target: {
-          type: 'string',
-          enum: ['registry', 'network', 'gaming', 'ssd', 'performance', 'startup'],
-          description: 'Optimization target: registry | network | gaming | ssd | performance | startup',
-        },
-      },
-      required: ['target'],
-    },
-    handler: async (args: unknown): Promise<ToolResult> => {
-      const a = args as Record<string, unknown>;
-      const target = a?.target as string;
-
-      const labelMap: Record<string, string> = {
-        registry: '⚙️ Registry Optimization Completed',
-        network: '🌐 Network Optimization Completed',
-        gaming: '🎮 Gaming Optimization Completed',
-        ssd: '💿 SSD Optimization Completed',
-        performance: '⚡ Performance Optimization Completed',
-        startup: '🚀 Startup Optimization Completed',
-      };
-
-      const label = labelMap[target];
-      if (!label) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `❌ Unknown target: ${target}. Use: registry | network | gaming | ssd | performance | startup`,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      const scriptPath = path.join(BASE_PATH, 'scripts', 'optimization', `${target}.ps1`);
-      const result = await runPowerShell(scriptPath);
-
-      return {
-        content: [{ type: 'text', text: `${label}:\n\n${result}` }],
-      };
-    },
-  },
-
-  {
-    name: 'sysopt_run_admin',
-    description:
-      'Runs an admin-elevated task. task=main_panel: Launches the main optimization panel. task=service: Stops/disables unnecessary services (permanent). task=scheduled_tasks: Creates weekly cleanup and daily RAM optimization scheduled tasks.',
-    inputSchema: {
-      type: 'object',
-      properties: {
         task: {
           type: 'string',
           enum: ['main_panel', 'service', 'scheduled_tasks'],
-          description: 'Admin task to run: main_panel | service | scheduled_tasks',
+          description: 'Admin task to run (runAdmin action)',
         },
-      },
-      required: ['task'],
-    },
-    handler: async (args: unknown): Promise<ToolResult> => {
-      const a = args as Record<string, unknown>;
-      const task = a?.task as string;
-
-      const taskMap: Record<string, { file: string; label: string }> = {
-        main_panel: { file: 'MAIN_PANEL.bat', label: '✅ Main panel started' },
-        service: { file: 'SERVICE_OPTIMIZE.bat', label: '🔧 Service Optimization Completed' },
-        scheduled_tasks: { file: 'SCHEDULED_TASKS.bat', label: '⏰ Scheduled Tasks Created' },
-      };
-
-      const entry = taskMap[task];
-      if (!entry) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `❌ Unknown task: ${task}. Use: main_panel | service | scheduled_tasks`,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      const batchPath = path.join(BASE_PATH, 'bin', entry.file);
-      const result = await runBatchAsAdmin(batchPath);
-
-      return {
-        content: [{ type: 'text', text: `${entry.label}\n\n${result}` }],
-      };
-    },
-  },
-
-  {
-    name: 'sysopt_analyze_system',
-    description:
-      'Performs comprehensive system status analysis (CPU, RAM, Disk, GPU, Services, Startup, Browser Cache, Network). A detailed report is returned in JSON format.',
-    inputSchema: {
-      type: 'object',
-      properties: {
         jsonOutput: {
           type: 'boolean',
-          description: 'true to output in JSON format',
+          description: 'Output in JSON format (analyzeSystem action)',
         },
-      },
-      required: [],
-    },
-    handler: async (args: unknown): Promise<ToolResult> => {
-      const scriptPath = path.join(BASE_PATH, 'scripts', 'analysis', 'system_status.ps1');
-      const a = args as Record<string, unknown>;
-      const jsonArg = a?.jsonOutput ? '-JsonOutput' : '';
-      const result = await runPowerShell(scriptPath, jsonArg);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: a?.jsonOutput ? result : `📊 System Status Analysis:\n\n${result}`,
-          },
-        ],
-      };
-    },
-  },
-
-  {
-    name: 'sysopt_quick_status',
-    description: 'Gives quick system status summary (CPU, RAM, Disk usage)',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-    handler: async (): Promise<ToolResult> => {
-      const command = `
-        $cpu = (Get-CimInstance Win32_Processor).LoadPercentage
-        $os = Get-CimInstance Win32_OperatingSystem
-        $totalRam = [math]::Round($os.TotalVisibleMemorySize/1MB, 1)
-        $freeRam = [math]::Round($os.FreePhysicalMemory/1MB, 1)
-        $usedRam = $totalRam - $freeRam
-        $ramPercent = [math]::Round(($usedRam/$totalRam)*100, 1)
-
-        $disks = Get-PSDrive -PSProvider FileSystem | Where-Object {$_.Used -gt 0}
-        $diskInfo = $disks | ForEach-Object {
-          $usedGB = [math]::Round($_.Used/1GB, 1)
-          $totalGB = [math]::Round(($_.Used + $_.Free)/1GB, 1)
-          $percent = [math]::Round(($usedGB/$totalGB)*100, 1)
-          "$($_.Name): $usedGB/$totalGB GB (%$percent)"
-        }
-
-        Write-Output "CPU: $cpu%"
-        Write-Output "RAM: $usedRam/$totalRam GB (%$ramPercent)"
-        Write-Output "DISK:"
-        $diskInfo | ForEach-Object { Write-Output "  $_" }
-      `;
-      const result = await runPowerShellCommand(command);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `📈 Quick System Status:\n\n${result}`,
-          },
-        ],
-      };
-    },
-  },
-
-  {
-    name: 'sysopt_full_optimize',
-    description:
-      'Runs all optimizations at once (Analysis + Cleaning + RAM + Registry + Network + SSD + Gaming + Performance)',
-    inputSchema: {
-      type: 'object',
-      properties: {
         skipDocker: {
           type: 'boolean',
-          description: 'Skip Docker cleanup',
+          description: 'Skip Docker cleanup (fullOptimize action)',
         },
-      },
-      required: [],
-    },
-    handler: async (args: unknown): Promise<ToolResult> => {
-      let results: string[] = [];
-
-      try {
-        results.push('📊 [1/8] System Analysis...');
-        const analysisPath = path.join(BASE_PATH, 'scripts', 'analysis', 'system_status.ps1');
-        results.push(await runPowerShell(analysisPath));
-
-        results.push('\n🧹 [2/8] Auto Cleanup...');
-        const cleanupPath = path.join(BASE_PATH, 'scripts', 'cleanup', 'auto_cleanup.ps1');
-        results.push(await runPowerShell(cleanupPath));
-
-        results.push('\\n💾 [3/8] RAM Cleaning...');
-        const ramPath = path.join(BASE_PATH, 'scripts', 'cleanup', 'ram_cleanup.ps1');
-        results.push(await runPowerShell(ramPath));
-
-        if (!(args as Record<string, unknown>)?.skipDocker) {
-          results.push('\\n🐳 [4/8] Docker Cleanup...');
-          const dockerPath = path.join(BASE_PATH, 'scripts', 'cleanup', 'docker_cleanup.ps1');
-          try {
-            results.push(await runPowerShell(dockerPath));
-          } catch {
-            results.push('Docker cleanup skipped (Docker may not be running)');
-          }
-        } else {
-          results.push('\\n🐳 [4/8] Docker Cleanup skipped (user request)');
-        }
-
-        results.push('\n⚙️ [5/8] Registry Optimization...');
-        const registryPath = path.join(BASE_PATH, 'scripts', 'optimization', 'registry.ps1');
-        results.push(await runPowerShell(registryPath));
-
-        results.push('\n🌐 [6/8] Network Optimization...');
-        const networkPath = path.join(BASE_PATH, 'scripts', 'optimization', 'network.ps1');
-        results.push(await runPowerShell(networkPath));
-
-        results.push('\n💿 [7/8] SSD Optimization...');
-        const ssdPath = path.join(BASE_PATH, 'scripts', 'optimization', 'ssd.ps1');
-        results.push(await runPowerShell(ssdPath));
-
-        results.push('\n⚡ [8/8] Performance Optimization...');
-        const perfPath = path.join(BASE_PATH, 'scripts', 'optimization', 'performance.ps1');
-        results.push(await runPowerShell(perfPath));
-      } catch (error: unknown) {
-        results.push(`\n❌ Error: ${error instanceof Error ? error.message : String(error)}`);
-      }
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✅ ALL OPTIMIZATIONS ARE COMPLETE!\n\n${results.join('\n')}\n\n🔄 Restart the computer for the full effect of the changes.`,
-          },
-        ],
-      };
-    },
-  },
-
-  {
-    name: 'sysopt_view_logs',
-    description: 'Displays optimization log files',
-    inputSchema: {
-      type: 'object',
-      properties: {
         lines: {
           type: 'number',
-          description: 'Last number of rows to show (default: 50)',
+          description: 'Last number of rows to show (viewLogs action, default: 50)',
         },
       },
-      required: [],
+      required: ['action'],
     },
     handler: async (args: unknown): Promise<ToolResult> => {
-      const logPath = path.join(BASE_PATH, 'logs', 'cleanup.log');
-      const lines = Number((args as Record<string, unknown>)?.lines) || 50;
+      const a = args as Record<string, unknown>;
+      const action = a?.action as string;
 
-      try {
-        if (fs.existsSync(logPath)) {
-          const content = fs.readFileSync(logPath, 'utf8');
-          const logLines = content.split('\n').slice(-lines).join('\n');
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `📋 Last ${lines} Log Record:\n\n${logLines}`,
-              },
-            ],
+      switch (action) {
+        case 'cleanup': {
+          const target = a?.target as string;
+          const scriptMap: Record<string, { file: string; label: string }> = {
+            auto: { file: 'auto_cleanup.ps1', label: '🧹 Automatic Cleanup Completed' },
+            ram: { file: 'ram_cleanup.ps1', label: '💾 RAM Cleanup Completed' },
+            docker: { file: 'docker_cleanup.ps1', label: '🐳 Docker Cleanup Completed' },
           };
-        } else {
+
+          const entry = scriptMap[target];
+          if (!entry) {
+            return {
+              content: [{ type: 'text', text: `❌ Unknown target: ${target}. Use: auto | ram | docker` }],
+              isError: true,
+            };
+          }
+
+          const scriptPath = path.join(BASE_PATH, 'scripts', 'cleanup', entry.file);
+          const result = await runPowerShell(scriptPath);
+
+          return {
+            content: [{ type: 'text', text: `${entry.label}:\n\n${result}` }],
+          };
+        }
+
+        case 'optimize': {
+          const target = a?.target as string;
+          const labelMap: Record<string, string> = {
+            registry: '⚙️ Registry Optimization Completed',
+            network: '🌐 Network Optimization Completed',
+            gaming: '🎮 Gaming Optimization Completed',
+            ssd: '💿 SSD Optimization Completed',
+            performance: '⚡ Performance Optimization Completed',
+            startup: '🚀 Startup Optimization Completed',
+          };
+
+          const label = labelMap[target];
+          if (!label) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `❌ Unknown target: ${target}. Use: registry | network | gaming | ssd | performance | startup`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          const scriptPath = path.join(BASE_PATH, 'scripts', 'optimization', `${target}.ps1`);
+          const result = await runPowerShell(scriptPath);
+
+          return {
+            content: [{ type: 'text', text: `${label}:\n\n${result}` }],
+          };
+        }
+
+        case 'runAdmin': {
+          const task = a?.task as string;
+          const taskMap: Record<string, { file: string; label: string }> = {
+            main_panel: { file: 'MAIN_PANEL.bat', label: '✅ Main panel started' },
+            service: { file: 'SERVICE_OPTIMIZE.bat', label: '🔧 Service Optimization Completed' },
+            scheduled_tasks: { file: 'SCHEDULED_TASKS.bat', label: '⏰ Scheduled Tasks Created' },
+          };
+
+          const entry = taskMap[task];
+          if (!entry) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `❌ Unknown task: ${task}. Use: main_panel | service | scheduled_tasks`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          const batchPath = path.join(BASE_PATH, 'bin', entry.file);
+          const result = await runBatchAsAdmin(batchPath);
+
+          return {
+            content: [{ type: 'text', text: `${entry.label}\n\n${result}` }],
+          };
+        }
+
+        case 'analyzeSystem': {
+          const scriptPath = path.join(BASE_PATH, 'scripts', 'analysis', 'system_status.ps1');
+          const jsonArg = a?.jsonOutput ? '-JsonOutput' : '';
+          const result = await runPowerShell(scriptPath, jsonArg);
+
           return {
             content: [
               {
                 type: 'text',
-                text: '📋 The log file has not been created yet.',
+                text: a?.jsonOutput ? result : `📊 System Status Analysis:\n\n${result}`,
               },
             ],
           };
         }
-      } catch (error: unknown) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `❌ Log reading error: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
+
+        case 'quickStatus': {
+          const command = `
+            $cpu = (Get-CimInstance Win32_Processor).LoadPercentage
+            $os = Get-CimInstance Win32_OperatingSystem
+            $totalRam = [math]::Round($os.TotalVisibleMemorySize/1MB, 1)
+            $freeRam = [math]::Round($os.FreePhysicalMemory/1MB, 1)
+            $usedRam = $totalRam - $freeRam
+            $ramPercent = [math]::Round(($usedRam/$totalRam)*100, 1)
+
+            $disks = Get-PSDrive -PSProvider FileSystem | Where-Object {$_.Used -gt 0}
+            $diskInfo = $disks | ForEach-Object {
+              $usedGB = [math]::Round($_.Used/1GB, 1)
+              $totalGB = [math]::Round(($_.Used + $_.Free)/1GB, 1)
+              $percent = [math]::Round(($usedGB/$totalGB)*100, 1)
+              "$($_.Name): $usedGB/$totalGB GB (%$percent)"
+            }
+
+            Write-Output "CPU: $cpu%"
+            Write-Output "RAM: $usedRam/$totalRam GB (%$ramPercent)"
+            Write-Output "DISK:"
+            $diskInfo | ForEach-Object { Write-Output "  $_" }
+          `;
+          const result = await runPowerShellCommand(command);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `📈 Quick System Status:\n\n${result}`,
+              },
+            ],
+          };
+        }
+
+        case 'fullOptimize': {
+          let results: string[] = [];
+
+          try {
+            results.push('📊 [1/8] System Analysis...');
+            const analysisPath = path.join(BASE_PATH, 'scripts', 'analysis', 'system_status.ps1');
+            results.push(await runPowerShell(analysisPath));
+
+            results.push('\n🧹 [2/8] Auto Cleanup...');
+            const cleanupPath = path.join(BASE_PATH, 'scripts', 'cleanup', 'auto_cleanup.ps1');
+            results.push(await runPowerShell(cleanupPath));
+
+            results.push('\\n💾 [3/8] RAM Cleaning...');
+            const ramPath = path.join(BASE_PATH, 'scripts', 'cleanup', 'ram_cleanup.ps1');
+            results.push(await runPowerShell(ramPath));
+
+            if (!a?.skipDocker) {
+              results.push('\\n🐳 [4/8] Docker Cleanup...');
+              const dockerPath = path.join(BASE_PATH, 'scripts', 'cleanup', 'docker_cleanup.ps1');
+              try {
+                results.push(await runPowerShell(dockerPath));
+              } catch {
+                results.push('Docker cleanup skipped (Docker may not be running)');
+              }
+            } else {
+              results.push('\\n🐳 [4/8] Docker Cleanup skipped (user request)');
+            }
+
+            results.push('\n⚙️ [5/8] Registry Optimization...');
+            const registryPath = path.join(BASE_PATH, 'scripts', 'optimization', 'registry.ps1');
+            results.push(await runPowerShell(registryPath));
+
+            results.push('\n🌐 [6/8] Network Optimization...');
+            const networkPath = path.join(BASE_PATH, 'scripts', 'optimization', 'network.ps1');
+            results.push(await runPowerShell(networkPath));
+
+            results.push('\n💿 [7/8] SSD Optimization...');
+            const ssdPath = path.join(BASE_PATH, 'scripts', 'optimization', 'ssd.ps1');
+            results.push(await runPowerShell(ssdPath));
+
+            results.push('\n⚡ [8/8] Performance Optimization...');
+            const perfPath = path.join(BASE_PATH, 'scripts', 'optimization', 'performance.ps1');
+            results.push(await runPowerShell(perfPath));
+          } catch (error: unknown) {
+            results.push(`\n❌ Error: ${error instanceof Error ? error.message : String(error)}`);
+          }
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✅ ALL OPTIMIZATIONS ARE COMPLETE!\n\n${results.join('\n')}\n\n🔄 Restart the computer for the full effect of the changes.`,
+              },
+            ],
+          };
+        }
+
+        case 'viewLogs': {
+          const logPath = path.join(BASE_PATH, 'logs', 'cleanup.log');
+          const lines = Number(a?.lines) || 50;
+
+          try {
+            if (fs.existsSync(logPath)) {
+              const content = fs.readFileSync(logPath, 'utf8');
+              const logLines = content.split('\n').slice(-lines).join('\n');
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: `📋 Last ${lines} Log Record:\n\n${logLines}`,
+                  },
+                ],
+              };
+            } else {
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: '📋 The log file has not been created yet.',
+                  },
+                ],
+              };
+            }
+          } catch (error: unknown) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `❌ Log reading error: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+        }
+
+        default:
+          return {
+            content: [{ type: 'text', text: `❌ Unknown action: ${action}` }],
+            isError: true,
+          };
       }
     },
   },

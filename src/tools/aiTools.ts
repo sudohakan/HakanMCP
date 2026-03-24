@@ -1003,7 +1003,7 @@ async function handleAgenticChat(
   };
 }
 
-export const aiTools = [
+const _aiLegacyTools = [
   {
     name: 'ai_chat',
     description:
@@ -1310,6 +1310,63 @@ export const aiTools = [
           },
         ],
       };
+    },
+  },
+];
+
+// ── Consolidated action-dispatched export ───────────────────────────────────
+
+function _findAiLegacyHandler(name: string) {
+  const tool = _aiLegacyTools.find((t) => t.name === name);
+  if (!tool) throw new Error(`Internal error: legacy ai tool not found: ${name}`);
+  return tool.handler;
+}
+
+export const aiTools = [
+  {
+    name: 'ai',
+    description:
+      'AI operations. Actions: chat, generate, listModels, getHistory, clearHistory.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['chat', 'generate', 'listModels', 'getHistory', 'clearHistory'],
+          description: 'Operation to perform',
+        },
+        model: { type: 'string', description: 'Model name (optional)' },
+        message: { type: 'string', description: 'Single message to send (chat action)' },
+        messages: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              role: { type: 'string', enum: ['user', 'assistant', 'system'] },
+              content: { type: 'string' },
+            },
+            required: ['role', 'content'],
+          },
+          description: 'Direct messages array (chat action)',
+        },
+        allowLocalFallback: { type: 'boolean', description: 'Enable Local/Ollama fallback (chat action)' },
+        agentic: { type: 'boolean', description: 'Enable agentic tool-use loop (chat action)' },
+        maxIterations: { type: 'number', description: 'Max agentic loop iterations (chat action)' },
+        enableMcpBridge: { type: 'boolean', description: 'Enable MCP bridge for agentic mode (chat action)' },
+        prompt: { type: 'string', description: 'Text prompt (generate action)' },
+        limit: { type: 'number', description: 'Max messages to return (getHistory action)' },
+      },
+      required: ['action'],
+    },
+    handler: async (args: unknown) => {
+      const { action } = z.object({ action: z.enum(['chat', 'generate', 'listModels', 'getHistory', 'clearHistory']) }).parse(args);
+      switch (action) {
+        case 'chat': return _findAiLegacyHandler('ai_chat')(args);
+        case 'generate': return _findAiLegacyHandler('ai_generate')(args);
+        case 'listModels': return _findAiLegacyHandler('ai_listModels')(args);
+        case 'getHistory': return _findAiLegacyHandler('ai_history')({ ...(args as object), action: 'get' });
+        case 'clearHistory': return _findAiLegacyHandler('ai_history')({ ...(args as object), action: 'clear' });
+      }
     },
   },
 ];

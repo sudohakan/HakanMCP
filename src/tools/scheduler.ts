@@ -199,10 +199,11 @@ class SchedulerManager {
       }
 
       const { aiTools } = await import('./aiTools.js');
-      const chatTool = aiTools?.find((t: { name: string }) => t.name === 'ai_chat');
+      const aiTool = aiTools?.find((t: { name: string }) => t.name === 'ai');
 
-      if (chatTool) {
-        const result = await chatTool.handler({
+      if (aiTool) {
+        const result = await aiTool.handler({
+          action: 'chat',
           messages: [{ role: 'user', content: task.agentTask }],
           allowLocalFallback: false,
         });
@@ -216,7 +217,7 @@ class SchedulerManager {
         task.consecutiveFailCount = 0;
         taskLogger.info('Task completed', { execution });
       } else {
-        throw new Error('ai_chat tool not found');
+        throw new Error('ai tool not found');
       }
     } catch (error: unknown) {
       execution.status = 'failed';
@@ -401,7 +402,7 @@ export const schedulerTools = [
       properties: {
         action: {
           type: 'string',
-          enum: ['create', 'list', 'get', 'update', 'delete', 'pause', 'resume', 'execute'],
+          enum: ['create', 'list', 'get', 'update', 'delete', 'pause', 'resume', 'execute', 'history', 'stats'],
           description: 'Operation to perform',
         },
         taskId: {
@@ -435,13 +436,17 @@ export const schedulerTools = [
           type: 'boolean',
           description: 'Show only active tasks — optional, applies to list action (default: false)',
         },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of records — optional for history action (default: 50)',
+        },
       },
       required: ['action'],
     },
     handler: async (args: unknown) => {
       const parsed = z
         .object({
-          action: z.enum(['create', 'list', 'get', 'update', 'delete', 'pause', 'resume', 'execute']),
+          action: z.enum(['create', 'list', 'get', 'update', 'delete', 'pause', 'resume', 'execute', 'history', 'stats']),
           taskId: z.string().optional(),
           name: z.string().optional(),
           schedule: z.string().optional(),
@@ -449,6 +454,7 @@ export const schedulerTools = [
           enabled: z.boolean().optional(),
           context: z.record(z.string(), z.unknown()).optional(),
           onlyEnabled: z.boolean().optional(),
+          limit: z.number().optional(),
         })
         .safeParse(args);
 
@@ -459,7 +465,7 @@ export const schedulerTools = [
         };
       }
 
-      const { action, taskId, name, schedule, agentTask, enabled, context, onlyEnabled } =
+      const { action, taskId, name, schedule, agentTask, enabled, context, onlyEnabled, limit } =
         parsed.data;
 
       switch (action) {
@@ -817,54 +823,10 @@ export const schedulerTools = [
             };
           }
         }
-      }
-    },
-  },
-  {
-    name: 'scheduler_info',
-    description:
-      "View scheduler history or statistics. Use action: 'history' for execution history (optional taskId and limit), 'stats' for aggregate statistics.",
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: {
-          type: 'string',
-          enum: ['history', 'stats'],
-          description: "Operation to perform: 'history' or 'stats'",
-        },
-        taskId: {
-          type: 'string',
-          description:
-            'Mission ID — optional for history (all missions if not given), not used for stats',
-        },
-        limit: {
-          type: 'number',
-          description: 'Maximum number of records — optional for history (default: 50)',
-        },
-      },
-      required: ['action'],
-    },
-    handler: async (args: unknown) => {
-      const parsed = z
-        .object({
-          action: z.enum(['history', 'stats']),
-          taskId: z.string().optional(),
-          limit: z.number().optional().default(50),
-        })
-        .safeParse(args);
 
-      if (!parsed.success) {
-        return {
-          content: [{ type: 'text', text: `❌ Invalid parameters: ${parsed.error.message}` }],
-          isError: true,
-        };
-      }
-
-      const { action, taskId, limit = 50 } = parsed.data;
-
-      switch (action) {
         case 'history': {
-          const history = schedulerManager.getExecutionHistory(taskId, limit);
+          const historyLimit = limit ?? 50;
+          const history = schedulerManager.getExecutionHistory(taskId, historyLimit);
 
           if (history.length === 0) {
             return {
@@ -875,8 +837,8 @@ export const schedulerTools = [
           const historyText = history
             .map((e) => {
               const status = e.status === 'success' ? '✅' : '❌';
-              const task = schedulerManager.getTask(e.taskId);
-              const taskName = task?.name || e.taskId;
+              const t = schedulerManager.getTask(e.taskId);
+              const taskName = t?.name || e.taskId;
 
               return (
                 `### ${new Date(e.timestamp).toLocaleString()} ${status}\n` +

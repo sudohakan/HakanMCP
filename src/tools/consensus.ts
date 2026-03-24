@@ -5,78 +5,70 @@ const engine = new ConsensusEngine();
 
 export const consensusTools = [
   {
-    name: 'consensus_reach',
-    description: 'Run a consensus protocol among a set of agents on a proposal.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        protocol: {
-          type: 'string',
-          enum: ['majority', 'byzantine', 'raft', 'gossip', 'crdt'],
-          description: 'Consensus protocol to use',
-        },
-        agents: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'List of agent IDs participating in consensus',
-        },
-        proposal: {
-          type: 'string',
-          description: 'The proposal to reach consensus on',
-        },
-      },
-      required: ['protocol', 'agents', 'proposal'],
-    },
-    handler: async (args: unknown) => {
-      const { protocol, agents, proposal } = z
-        .object({
-          protocol: z.enum(['majority', 'byzantine', 'raft', 'gossip', 'crdt']),
-          agents: z.array(z.string()),
-          proposal: z.string(),
-        })
-        .parse(args);
-
-      const result = await engine.reachConsensus(protocol, agents, proposal);
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
-    },
-  },
-  {
-    name: 'consensus_history',
-    description:
-      "Query consensus information. action='protocols' lists available consensus protocols, action='history' retrieves past consensus rounds with optional limit.",
+    name: 'consensus',
+    description: 'Consensus operations. Actions: reach, protocols, history.',
     inputSchema: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['protocols', 'history'],
-          description: 'protocols: list available consensus protocols. history: retrieve past consensus rounds.',
+          enum: ['reach', 'protocols', 'history'],
+          description: 'reach: run consensus protocol. protocols: list available protocols. history: retrieve past consensus rounds.',
+        },
+        protocol: {
+          type: 'string',
+          enum: ['majority', 'byzantine', 'raft', 'gossip', 'crdt'],
+          description: 'Consensus protocol to use (required for reach)',
+        },
+        agents: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'List of agent IDs participating in consensus (required for reach)',
+        },
+        proposal: {
+          type: 'string',
+          description: 'The proposal to reach consensus on (required for reach)',
         },
         limit: {
           type: 'number',
-          description: 'Maximum number of history entries to return (only applicable when action=history)',
+          description: 'Maximum number of history entries to return (history action)',
         },
       },
       required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { action, limit } = z
+      const { action, protocol, agents, proposal, limit } = z
         .object({
-          action: z.enum(['protocols', 'history']),
+          action: z.enum(['reach', 'protocols', 'history']),
+          protocol: z.enum(['majority', 'byzantine', 'raft', 'gossip', 'crdt']).optional(),
+          agents: z.array(z.string()).optional(),
+          proposal: z.string().optional(),
           limit: z.number().optional(),
         })
         .parse(args);
 
-      if (action === 'protocols') {
-        const protocols = ['majority', 'byzantine', 'raft', 'gossip', 'crdt'] as const;
-        const info = Object.fromEntries(
-          protocols.map((p) => [p, engine.getProtocolInfo(p)]),
-        );
-        return { content: [{ type: 'text', text: JSON.stringify(info, null, 2) }] };
-      } else {
-        const history = engine.getHistory();
-        const result = limit !== undefined ? history.slice(0, limit) : history;
-        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      switch (action) {
+        case 'reach': {
+          if (!protocol) throw new Error('protocol is required for action=reach');
+          if (!agents) throw new Error('agents is required for action=reach');
+          if (!proposal) throw new Error('proposal is required for action=reach');
+          const result = await engine.reachConsensus(protocol, agents, proposal);
+          return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
+
+        case 'protocols': {
+          const protocols = ['majority', 'byzantine', 'raft', 'gossip', 'crdt'] as const;
+          const info = Object.fromEntries(
+            protocols.map((p) => [p, engine.getProtocolInfo(p)]),
+          );
+          return { content: [{ type: 'text', text: JSON.stringify(info, null, 2) }] };
+        }
+
+        case 'history': {
+          const history = engine.getHistory();
+          const result = limit !== undefined ? history.slice(0, limit) : history;
+          return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        }
       }
     },
   },

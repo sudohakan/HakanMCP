@@ -64,26 +64,10 @@ interface PlaceholderToolMeta {
 
 export const FEATURE_TOOL_METADATA: Record<string, PlaceholderToolMeta[]> = {
   db: [
-    { name: 'db_query', description: 'Run SQL query against PostgreSQL, MySQL, SQLite, or MSSQL database.', inputSchema: { type: 'object', properties: { dbType: { type: 'string' }, query: { type: 'string' } }, required: ['dbType', 'query'] } },
-    { name: 'db_listTables', description: 'List all tables in a database.', inputSchema: { type: 'object', properties: { dbType: { type: 'string' } }, required: ['dbType'] } },
-    { name: 'db_getTableSchema', description: 'Get schema/columns of a database table.', inputSchema: { type: 'object', properties: { dbType: { type: 'string' }, tableName: { type: 'string' } }, required: ['dbType', 'tableName'] } },
-    { name: 'db_backup', description: 'Backup a database to file.', inputSchema: { type: 'object', properties: { dbType: { type: 'string' } }, required: ['dbType'] } },
-    { name: 'db_restore', description: 'Restore a database from backup file.', inputSchema: { type: 'object', properties: { dbType: { type: 'string' } }, required: ['dbType'] } },
-    { name: 'db_closeConnections', description: 'Close all database connection pools.', inputSchema: { type: 'object', properties: {} } },
-    { name: 'db_getPoolStats', description: 'Show statistics of active database connection pools.', inputSchema: { type: 'object', properties: {} } },
+    { name: 'db', description: 'Database operations (query, listTables, getTableSchema, backup, restore, closeConnections, getPoolStats). Requires action parameter.', inputSchema: { type: 'object', properties: { action: { type: 'string' }, dbType: { type: 'string' } }, required: ['action'] } },
   ],
   mongo: [
-    { name: 'mongo_connect', description: 'Connect to MongoDB database.', inputSchema: { type: 'object', properties: { connectionString: { type: 'string' } }, required: ['connectionString'] } },
-    { name: 'mongo_find', description: 'Find documents from MongoDB collection.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' }, collection: { type: 'string' } }, required: ['connectionId', 'collection'] } },
-    { name: 'mongo_insert', description: 'Insert documents into MongoDB collection.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' }, collection: { type: 'string' }, documents: { type: 'array' } }, required: ['connectionId', 'collection', 'documents'] } },
-    { name: 'mongo_update', description: 'Update documents in MongoDB collection.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' }, collection: { type: 'string' }, filter: { type: 'object' }, update: { type: 'object' } }, required: ['connectionId', 'collection', 'filter', 'update'] } },
-    { name: 'mongo_delete', description: 'Delete documents from MongoDB collection.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' }, collection: { type: 'string' }, filter: { type: 'object' } }, required: ['connectionId', 'collection', 'filter'] } },
-    { name: 'mongo_countDocuments', description: 'Count documents in MongoDB collection.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' }, collection: { type: 'string' } }, required: ['connectionId', 'collection'] } },
-    { name: 'mongo_aggregate', description: 'Run MongoDB aggregation pipeline.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' }, collection: { type: 'string' }, pipeline: { type: 'array' } }, required: ['connectionId', 'collection', 'pipeline'] } },
-    { name: 'mongo_createIndex', description: 'Create index in MongoDB collection.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' }, collection: { type: 'string' }, keys: { type: 'object' } }, required: ['connectionId', 'collection', 'keys'] } },
-    { name: 'mongo_listCollections', description: 'List collections in MongoDB database.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' } }, required: ['connectionId'] } },
-    { name: 'mongo_listDatabases', description: 'List databases on MongoDB server.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' } }, required: ['connectionId'] } },
-    { name: 'mongo_disconnect', description: 'Close a MongoDB connection.', inputSchema: { type: 'object', properties: { connectionId: { type: 'string' } }, required: ['connectionId'] } },
+    { name: 'mongo', description: 'MongoDB operations (connect, find, insert, update, delete, countDocuments, aggregate, createIndex, listCollections, listDatabases, disconnect). Requires action parameter.', inputSchema: { type: 'object', properties: { action: { type: 'string' } }, required: ['action'] } },
   ],
 };
 

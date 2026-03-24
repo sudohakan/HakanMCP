@@ -12,7 +12,7 @@ const HISTORY_PATH = process.env.FLOW_HISTORY_PATH || path.join(PROJECT_ROOT, 'l
 const FLOW_HTTP_TIMEOUT = Number(process.env.FLOW_HTTP_TIMEOUT_MS || 15000);
 const httpClient = new HttpClient(FLOW_HTTP_TIMEOUT);
 
-const StepAction = z.enum(['monitor_healthCheck', 'syncPeerRepo', 'log', 'http_request']);
+const StepAction = z.enum(['monitor_healthCheck', 'monitor', 'syncPeerRepo', 'log', 'http_request']);
 
 const FlowStep = z.object({
   id: z.string(),
@@ -80,10 +80,13 @@ async function runStep(step: Flow['steps'][number]): Promise<string> {
     return `log: ${message}`;
   }
 
-  if (action === 'monitor_healthCheck') {
-    const tool = monitoringTools.find((t) => t.name === 'monitor_healthCheck');
-    if (!tool) throw new Error('monitor_healthCheck tool missing');
-    const result = await tool.handler(resolvedArgs);
+  if (action === 'monitor_healthCheck' || action === 'monitor') {
+    const tool = monitoringTools.find((t) => t.name === 'monitor');
+    if (!tool) throw new Error('monitor tool missing');
+    const argsWithAction = action === 'monitor_healthCheck'
+      ? { action: 'healthCheck', ...resolvedArgs }
+      : resolvedArgs;
+    const result = await tool.handler(argsWithAction);
     return result.content?.[0]?.text || 'health check done';
   }
 

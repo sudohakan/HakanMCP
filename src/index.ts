@@ -171,16 +171,15 @@ async function runGuardianPeerCheck(role: string): Promise<void> {
   const peerPath = config.monitoring?.peerInstance;
   if (!peerPath) return;
 
-  const healthTool = monitoringTools.find((t) => t.name === 'monitor_healthCheck');
-  const healTool = monitoringTools.find((t) => t.name === 'monitor_autoHeal');
+  const monitorTool = monitoringTools.find((t) => t.name === 'monitor');
 
-  if (!healthTool || !healTool) {
-    logger.warn('Guardian loop skipped: monitoring tools unavailable');
+  if (!monitorTool) {
+    logger.warn('Guardian loop skipped: monitor tool unavailable');
     return;
   }
 
   try {
-    const health = await healthTool.handler({ instancePath: peerPath, issueType: 'file' });
+    const health = await monitorTool.handler({ action: 'healthCheck', instancePath: peerPath, issueType: 'file' });
     const healthText = health.content?.[0]?.text || '';
     const unhealthy = healthText.includes('❌');
 
@@ -191,7 +190,8 @@ async function runGuardianPeerCheck(role: string): Promise<void> {
       peerPath,
       cwd: PROJECT_ROOT,
     });
-    const heal = await healTool.handler({
+    const heal = await monitorTool.handler({
+      action: 'autoHeal',
       brokenInstance: peerPath,
       healthyInstance: PROJECT_ROOT,
       issueType: 'file',

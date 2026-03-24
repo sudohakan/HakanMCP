@@ -596,7 +596,7 @@ if (!(globalThis as Record<symbol, boolean>)[BEFORE_EXIT_FLAG]) {
   (globalThis as Record<symbol, boolean>)[BEFORE_EXIT_FLAG] = true;
 }
 
-export const mcpClientTools = [
+const _mcpLegacyTools = [
   {
     name: 'mcp_connect',
     description:
@@ -1454,6 +1454,93 @@ export const mcpClientTools = [
           },
         ],
       };
+    },
+  },
+];
+
+// ── Consolidated action-dispatched exports ──────────────────────────────────
+
+function _findLegacyHandler(name: string) {
+  const tool = _mcpLegacyTools.find((t) => t.name === name);
+  if (!tool) throw new Error(`Internal error: legacy tool not found: ${name}`);
+  return tool.handler;
+}
+
+export const mcpClientTools = [
+  {
+    name: 'mcp',
+    description:
+      'MCP client operations. Actions: connect, listTools, callTool, disconnect, listConnections, catalog, connectFromCatalog.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['connect', 'listTools', 'callTool', 'disconnect', 'listConnections', 'catalog', 'connectFromCatalog'],
+          description: 'Operation to perform',
+        },
+        command: { type: 'string', description: "Command to start MCP server (connect action)" },
+        args: { type: 'array', items: { type: 'string' }, description: 'Command arguments (connect action)' },
+        connectionId: { type: 'string', description: 'Connection ID (listTools/callTool/disconnect actions)' },
+        toolName: { type: 'string', description: 'Name of the tool to run (callTool action)' },
+        toolArguments: { type: 'object', description: 'Arguments to send to tool (callTool action)' },
+        serverKey: { type: 'string', description: 'Server key from catalog (connectFromCatalog action)' },
+        extraArgs: { type: 'array', items: { type: 'string' }, description: 'Additional arguments (connectFromCatalog action)' },
+      },
+      required: ['action'],
+    },
+    handler: async (args: unknown) => {
+      const { action } = z.object({ action: z.enum(['connect', 'listTools', 'callTool', 'disconnect', 'listConnections', 'catalog', 'connectFromCatalog']) }).parse(args);
+      switch (action) {
+        case 'connect': return _findLegacyHandler('mcp_connect')(args);
+        case 'listTools': return _findLegacyHandler('mcp_listTools')(args);
+        case 'callTool': return _findLegacyHandler('mcp_callTool')(args);
+        case 'disconnect': return _findLegacyHandler('mcp_disconnect')(args);
+        case 'listConnections': return _findLegacyHandler('mcp_listConnections')(args);
+        case 'catalog': return _findLegacyHandler('mcp_catalog')(args);
+        case 'connectFromCatalog': return _findLegacyHandler('mcp_connectFromCatalog')(args);
+      }
+    },
+  },
+  {
+    name: 'browser',
+    description:
+      'Browser automation via Playwright MCP. Actions: connect, navigateExtract, probeLogin, captureProof, disconnect.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['connect', 'navigateExtract', 'probeLogin', 'captureProof', 'disconnect'],
+          description: 'Operation to perform',
+        },
+        browser: { type: 'string', enum: ['chrome', 'firefox', 'webkit', 'msedge'], description: 'Browser channel' },
+        headless: { type: 'boolean', description: 'Run headless' },
+        isolated: { type: 'boolean', description: 'Keep profile in memory' },
+        extension: { type: 'boolean', description: 'Connect via browser extension' },
+        cdpEndpoint: { type: 'string', description: 'CDP endpoint to connect to' },
+        allowedHosts: { type: 'array', items: { type: 'string' }, description: 'Allowed hosts' },
+        outputDir: { type: 'string', description: 'Directory for session artifacts' },
+        snapshotMode: { type: 'string', enum: ['incremental', 'full', 'none'], description: 'Snapshot mode' },
+        timeoutAction: { type: 'number', description: 'Per-action timeout ms' },
+        timeoutNavigation: { type: 'number', description: 'Navigation timeout ms' },
+        connectionId: { type: 'string', description: 'Existing browser connection ID' },
+        url: { type: 'string', description: 'URL to navigate to (navigateExtract/probeLogin/captureProof)' },
+        screenshotPath: { type: 'string', description: 'Path for screenshot (navigateExtract/captureProof)' },
+        maxSummaryChars: { type: 'number', description: 'Max chars for summaries (navigateExtract)' },
+        waitForText: { type: 'string', description: 'Text to wait for before capturing (captureProof)' },
+      },
+      required: ['action'],
+    },
+    handler: async (args: unknown) => {
+      const { action } = z.object({ action: z.enum(['connect', 'navigateExtract', 'probeLogin', 'captureProof', 'disconnect']) }).parse(args);
+      switch (action) {
+        case 'connect': return _findLegacyHandler('mcp_browserConnect')(args);
+        case 'navigateExtract': return _findLegacyHandler('mcp_browserNavigateExtract')(args);
+        case 'probeLogin': return _findLegacyHandler('mcp_browserProbeLogin')(args);
+        case 'captureProof': return _findLegacyHandler('mcp_browserCaptureProof')(args);
+        case 'disconnect': return _findLegacyHandler('mcp_browserDisconnect')(args);
+      }
     },
   },
 ];

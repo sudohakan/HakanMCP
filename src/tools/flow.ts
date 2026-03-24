@@ -8,244 +8,174 @@ import { maskConnection, upsertConnection } from '../utils/connections.js';
 
 export const flowTools = [
   {
-    name: 'flow_validate',
-    description: 'Validate a flow/recipe JSON file (trigger/steps/action schema).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: {
-          type: 'string',
-          description: 'Flow JSON path (ex: recipes/health-sync.json)',
-        },
-      },
-      required: ['path'],
-    },
-    handler: async (args: unknown) => {
-      const { path } = z
-        .object({
-          path: z.string(),
-        })
-        .parse(args);
-
-      try {
-        const flow = loadFlow(path);
-        return {
-          content: [
-            {
-              type: 'text',
-              text:
-                `✅ Flow verified\\n` +
-                `- name: ${flow.name}\n` +
-                `- steps: ${flow.steps.length}\n` +
-                (flow.trigger ? `- trigger: ${flow.trigger.type}\n` : ''),
-            },
-          ],
-        };
-      } catch (error: unknown) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `❌ Validation error: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    },
-  },
-
-  {
-    name: 'flow_run',
+    name: 'flow',
     description:
-      'Run a flow/recipe JSON file (actions: log, monitor_healthCheck, syncPeerRepo, http_request + connectionId).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: {
-          type: 'string',
-          description: 'Flow JSON path (ex: recipes/health-sync.json)',
-        },
-      },
-      required: ['path'],
-    },
-    handler: async (args: unknown) => {
-      const { path: filePath } = z
-        .object({
-          path: z.string(),
-        })
-        .parse(args);
-
-      try {
-        const result = await runFlowFile(filePath);
-        await recordFlowHistory({
-          name: path.basename(filePath),
-          path: filePath,
-          timestamp: new Date().toISOString(),
-          success: result.success,
-          logs: result.logs,
-        });
-        logger.info('flow_run result', { path: filePath, result });
-        const header = result.success ? '✅ Flow completed' : '⚠️ Flow stopped with an error';
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `${header}\n\n${result.logs.join('\n')}`,
-            },
-          ],
-          isError: !result.success,
-        };
-      } catch (error: unknown) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `❌ Execution error: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    },
-  },
-
-  {
-    name: 'flow_history',
-    description: 'List last flow run history.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        limit: {
-          type: 'number',
-          description: 'Maximum records to show',
-        },
-      },
-    },
-    handler: async (args: unknown) => {
-      const { limit = 10 } = z
-        .object({
-          limit: z.number().optional(),
-        })
-        .parse(args || {});
-
-      const history = await getFlowHistory(limit);
-      if (history.length === 0) {
-        return { content: [{ type: 'text', text: 'No registration yet.' }] };
-      }
-
-      const lines = history.map(
-        (h) =>
-          `- ${h.timestamp} | ${h.name} | ${h.success ? '✅' : '❌'} | ${
-            h.logs[h.logs.length - 1] || ''
-          }`,
-      );
-      return { content: [{ type: 'text', text: lines.join('\n') }] };
-    },
-  },
-
-  {
-    name: 'flow_replay',
-    description: 'Rerun the last (or last for the given path) flow record.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: {
-          type: 'string',
-          description:
-            'If you want to select the last record for a specific flow file, provide path.',
-        },
-      },
-    },
-    handler: async (args: unknown) => {
-      const { path: filePath } = z
-        .object({
-          path: z.string().optional(),
-        })
-        .parse(args || {});
-
-      const history = await getFlowHistory(20);
-      const target = filePath
-        ? history.find((h) => h.path === filePath)
-        : history.length > 0
-          ? history[0]
-          : undefined;
-
-      if (!target?.path) {
-        return {
-          content: [{ type: 'text', text: '❌ No suitable history record found.' }],
-          isError: true,
-        };
-      }
-
-      if (!fs.existsSync(target.path)) {
-        return {
-          content: [{ type: 'text', text: `❌ Flow file not found: \${target.path}` }],
-          isError: true,
-        };
-      }
-
-      const result = await runFlowFile(target.path);
-      await recordFlowHistory({
-        name: path.basename(target.path),
-        path: target.path,
-        timestamp: new Date().toISOString(),
-        success: result.success,
-        logs: result.logs,
-      });
-
-      const header = result.success ? '✅ Replay completed' : '⚠️ Replay stopped with an error';
-      return {
-        content: [{ type: 'text', text: `${header}\n\n${result.logs.join('\n')}` }],
-        isError: !result.success,
-      };
-    },
-  },
-
-  {
-    name: 'flow_version',
-    description: 'Flow version operations: save a version snapshot, list versions, or restore a version.',
+      'Flow/recipe operations. Actions: validate, run, history, replay, versionSave, versionList, versionRestore.',
     inputSchema: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['save', 'list', 'restore'],
+          enum: ['validate', 'run', 'history', 'replay', 'versionSave', 'versionList', 'versionRestore'],
           description: 'Action to perform',
         },
-        path: { type: 'string', description: 'Flow JSON path' },
-        label: { type: 'string', description: 'Optional label for the version (save only)' },
+        path: {
+          type: 'string',
+          description: 'Flow JSON path (ex: recipes/health-sync.json)',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum records to show (history, versionList)',
+        },
+        label: { type: 'string', description: 'Optional label for the version (versionSave only)' },
         versionFile: {
           type: 'string',
-          description: 'Version file name to restore (restore only, see list action)',
+          description: 'Version file name to restore (versionRestore only, see versionList action)',
         },
-        limit: { type: 'number', description: 'Max versions to show (list only)', minimum: 1 },
       },
-      required: ['action', 'path'],
+      required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { action, path: filePath, label, versionFile, limit = 20 } = z
+      const { action, path: filePath, limit, label, versionFile } = z
         .object({
-          action: z.enum(['save', 'list', 'restore']),
-          path: z.string(),
+          action: z.enum(['validate', 'run', 'history', 'replay', 'versionSave', 'versionList', 'versionRestore']),
+          path: z.string().optional(),
+          limit: z.number().optional(),
           label: z.string().optional(),
           versionFile: z.string().optional(),
-          limit: z.number().optional(),
         })
         .parse(args);
 
-      const base = path.basename(filePath, path.extname(filePath));
-      const versionDir =
-        process.env.FLOW_VERSION_DIR || path.join(PROJECT_ROOT, 'logs', 'flows', 'versions', base);
-
       switch (action) {
-        case 'save': {
+        case 'validate': {
+          if (!filePath) throw new Error('path is required for action=validate');
+          try {
+            const flow = loadFlow(filePath);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    `✅ Flow verified\\n` +
+                    `- name: ${flow.name}\n` +
+                    `- steps: ${flow.steps.length}\n` +
+                    (flow.trigger ? `- trigger: ${flow.trigger.type}\n` : ''),
+                },
+              ],
+            };
+          } catch (error: unknown) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `❌ Validation error: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+        }
+
+        case 'run': {
+          if (!filePath) throw new Error('path is required for action=run');
+          try {
+            const result = await runFlowFile(filePath);
+            await recordFlowHistory({
+              name: path.basename(filePath),
+              path: filePath,
+              timestamp: new Date().toISOString(),
+              success: result.success,
+              logs: result.logs,
+            });
+            logger.info('flow run result', { path: filePath, result });
+            const header = result.success ? '✅ Flow completed' : '⚠️ Flow stopped with an error';
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `${header}\n\n${result.logs.join('\n')}`,
+                },
+              ],
+              isError: !result.success,
+            };
+          } catch (error: unknown) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `❌ Execution error: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+        }
+
+        case 'history': {
+          const historyLimit = limit ?? 10;
+          const history = await getFlowHistory(historyLimit);
+          if (history.length === 0) {
+            return { content: [{ type: 'text', text: 'No registration yet.' }] };
+          }
+
+          const lines = history.map(
+            (h) =>
+              `- ${h.timestamp} | ${h.name} | ${h.success ? '✅' : '❌'} | ${
+                h.logs[h.logs.length - 1] || ''
+              }`,
+          );
+          return { content: [{ type: 'text', text: lines.join('\n') }] };
+        }
+
+        case 'replay': {
+          const history = await getFlowHistory(20);
+          const target = filePath
+            ? history.find((h) => h.path === filePath)
+            : history.length > 0
+              ? history[0]
+              : undefined;
+
+          if (!target?.path) {
+            return {
+              content: [{ type: 'text', text: '❌ No suitable history record found.' }],
+              isError: true,
+            };
+          }
+
+          if (!fs.existsSync(target.path)) {
+            return {
+              content: [{ type: 'text', text: `❌ Flow file not found: \${target.path}` }],
+              isError: true,
+            };
+          }
+
+          const result = await runFlowFile(target.path);
+          await recordFlowHistory({
+            name: path.basename(target.path),
+            path: target.path,
+            timestamp: new Date().toISOString(),
+            success: result.success,
+            logs: result.logs,
+          });
+
+          const header = result.success ? '✅ Replay completed' : '⚠️ Replay stopped with an error';
+          return {
+            content: [{ type: 'text', text: `${header}\n\n${result.logs.join('\n')}` }],
+            isError: !result.success,
+          };
+        }
+
+        case 'versionSave': {
+          if (!filePath) throw new Error('path is required for action=versionSave');
           if (!fs.existsSync(filePath)) {
             return {
               content: [{ type: 'text', text: `❌ File not found: ${filePath}` }],
               isError: true,
             };
           }
+          const base = path.basename(filePath, path.extname(filePath));
+          const versionDir =
+            process.env.FLOW_VERSION_DIR || path.join(PROJECT_ROOT, 'logs', 'flows', 'versions', base);
           fs.mkdirSync(versionDir, { recursive: true });
           const ts = new Date().toISOString().replace(/[:.]/g, '-');
           const suffix = label ? `-${label}` : '';
@@ -256,7 +186,11 @@ export const flowTools = [
           };
         }
 
-        case 'list': {
+        case 'versionList': {
+          if (!filePath) throw new Error('path is required for action=versionList');
+          const base = path.basename(filePath, path.extname(filePath));
+          const versionDir =
+            process.env.FLOW_VERSION_DIR || path.join(PROJECT_ROOT, 'logs', 'flows', 'versions', base);
           if (!fs.existsSync(versionDir)) {
             return { content: [{ type: 'text', text: 'There is no version record.' }] };
           }
@@ -265,20 +199,24 @@ export const flowTools = [
             .filter((f) => f.endsWith('.json'))
             .sort()
             .reverse()
-            .slice(0, limit);
+            .slice(0, limit ?? 20);
           const lines = files.map((f) => `- ${f}`);
           return {
             content: [{ type: 'text', text: lines.join('\n') || 'There is no version record.' }],
           };
         }
 
-        case 'restore': {
+        case 'versionRestore': {
+          if (!filePath) throw new Error('path is required for action=versionRestore');
           if (!versionFile) {
             return {
-              content: [{ type: 'text', text: '❌ versionFile is required for restore action' }],
+              content: [{ type: 'text', text: '❌ versionFile is required for versionRestore action' }],
               isError: true,
             };
           }
+          const base = path.basename(filePath, path.extname(filePath));
+          const versionDir =
+            process.env.FLOW_VERSION_DIR || path.join(PROJECT_ROOT, 'logs', 'flows', 'versions', base);
           const source = path.join(versionDir, versionFile);
           if (!fs.existsSync(source)) {
             return {

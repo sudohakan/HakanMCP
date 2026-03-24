@@ -73,20 +73,20 @@ export function decryptValue(encrypted: string, password: string): string {
 
 export const encryptionTools = [
   {
-    name: 'crypto_value',
+    name: 'crypto',
     description:
-      'Encrypts or decrypts a string value (token, password, API key). Uses AES-256-GCM.',
+      'Encryption/decryption operations. Actions: encryptValue, decryptValue, encryptFile, decryptFile. Uses AES-256-GCM.',
     inputSchema: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['encrypt', 'decrypt'],
-          description: "Operation to perform: 'encrypt' or 'decrypt'",
+          enum: ['encryptValue', 'decryptValue', 'encryptFile', 'decryptFile'],
+          description: 'Operation to perform',
         },
         data: {
           type: 'string',
-          description: 'Value to encrypt or encrypted string to decrypt',
+          description: 'Value to encrypt or encrypted string to decrypt (encryptValue/decryptValue)',
         },
         password: {
           type: 'string',
@@ -94,173 +94,150 @@ export const encryptionTools = [
         },
         label: {
           type: 'string',
-          description: "Optional tag for encrypt action (ex: 'github_token', 'api_key')",
-        },
-      },
-      required: ['action', 'data', 'password'],
-    },
-    handler: async (args: unknown) => {
-      const { action, data, password, label } = z
-        .object({
-          action: z.enum(['encrypt', 'decrypt']),
-          data: z.string(),
-          password: z.string(),
-          label: z.string().optional(),
-        })
-        .parse(args);
-
-      if (action === 'encrypt') {
-        const encrypted = encrypt(data, password);
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text:
-                `# Encrypted Value\n\n` +
-                (label ? `**Label:** ${label}\n\n` : '') +
-                `**Encrypted:**\n\`\`\`\n${encrypted}\n\`\`\`\n\n` +
-                `⚠️ **IMPORTANT:**\n` +
-                `- Store this encrypted value safely\n` +
-                `- Keep your password secure (not in code!)\n` +
-                `- Use \`crypto_value\` with action 'decrypt' to retrieve original value`,
-            },
-          ],
-        };
-      } else {
-        try {
-          const decrypted = decrypt(data, password);
-
-          return {
-            content: [
-              {
-                type: 'text',
-                text:
-                  `# Decrypted Value\n\n` +
-                  `**Original Value:**\n\`\`\`\n${decrypted}\n\`\`\`\n\n` +
-                  `✅ Successfully decrypted`,
-              },
-            ],
-          };
-        } catch (error: unknown) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text:
-                  `❌ Decryption failed: ${error instanceof Error ? error.message : String(error)}\n\n` +
-                  `Possible reasons:\n` +
-                  `- Wrong password\n` +
-                  `- Corrupted encrypted data\n` +
-                  `- Invalid base64 encoding`,
-              },
-            ],
-            isError: true,
-          };
-        }
-      }
-    },
-  },
-  {
-    name: 'crypto_file',
-    description: 'Encrypts or decrypts a file and saves the result to disk.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: {
-          type: 'string',
-          enum: ['encrypt', 'decrypt'],
-          description: "Operation to perform: 'encrypt' or 'decrypt'",
+          description: "Optional tag for encryptValue (ex: 'github_token', 'api_key')",
         },
         inputPath: {
           type: 'string',
-          description: 'Path to the file to encrypt or the .enc file to decrypt',
+          description: 'Path to the file to encrypt or the .enc file to decrypt (encryptFile/decryptFile)',
         },
         outputPath: {
           type: 'string',
           description:
-            'Where to save the result (optional). Encrypt default: <inputPath>.enc. Decrypt default: <inputPath>.dec (or strips .enc extension)',
-        },
-        password: {
-          type: 'string',
-          description: 'Encryption/decryption password',
+            'Where to save the result (optional). encryptFile default: <inputPath>.enc. decryptFile default: strips .enc extension',
         },
       },
-      required: ['action', 'inputPath', 'password'],
+      required: ['action', 'password'],
     },
     handler: async (args: unknown) => {
-      const { action, inputPath, outputPath, password } = z
+      const { action, data, password, label, inputPath, outputPath } = z
         .object({
-          action: z.enum(['encrypt', 'decrypt']),
-          inputPath: z.string(),
-          outputPath: z.string().optional(),
+          action: z.enum(['encryptValue', 'decryptValue', 'encryptFile', 'decryptFile']),
+          data: z.string().optional(),
           password: z.string(),
+          label: z.string().optional(),
+          inputPath: z.string().optional(),
+          outputPath: z.string().optional(),
         })
         .parse(args);
 
-      if (!fs.existsSync(inputPath)) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `❌ File not found: ${inputPath}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      if (action === 'encrypt') {
-        const content = fs.readFileSync(inputPath, 'utf8');
-        const encrypted = encrypt(content, password);
-
-        const output = outputPath || `${inputPath}.enc`;
-        fs.writeFileSync(output, encrypted, 'utf8');
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text:
-                `# File Encrypted\n\n` +
-                `**Source:** ${inputPath}\n` +
-                `**Output:** ${output}\n` +
-                `**Size:** ${content.length} bytes → ${encrypted.length} bytes\n\n` +
-                `✅ File encrypted successfully`,
-            },
-          ],
-        };
-      } else {
-        try {
-          const encryptedContent = fs.readFileSync(inputPath, 'utf8');
-          const decrypted = decrypt(encryptedContent, password);
-
-          const output = outputPath || inputPath.replace(/\.enc$/, '.dec');
-          fs.writeFileSync(output, decrypted, 'utf8');
-
+      switch (action) {
+        case 'encryptValue': {
+          if (!data) throw new Error('data is required for action=encryptValue');
+          const encrypted = encrypt(data, password);
           return {
             content: [
               {
                 type: 'text',
                 text:
-                  `# File Decrypted\n\n` +
-                  `**Source:** ${inputPath}\n` +
-                  `**Output:** ${output}\n` +
-                  `**Size:** ${encryptedContent.length} bytes → ${decrypted.length} bytes\n\n` +
-                  `✅ File decrypted successfully`,
+                  `# Encrypted Value\n\n` +
+                  (label ? `**Label:** ${label}\n\n` : '') +
+                  `**Encrypted:**\n\`\`\`\n${encrypted}\n\`\`\`\n\n` +
+                  `⚠️ **IMPORTANT:**\n` +
+                  `- Store this encrypted value safely\n` +
+                  `- Keep your password secure (not in code!)\n` +
+                  `- Use \`crypto\` with action 'decryptValue' to retrieve original value`,
               },
             ],
           };
-        } catch (error: unknown) {
+        }
+
+        case 'decryptValue': {
+          if (!data) throw new Error('data is required for action=decryptValue');
+          try {
+            const decrypted = decrypt(data, password);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    `# Decrypted Value\n\n` +
+                    `**Original Value:**\n\`\`\`\n${decrypted}\n\`\`\`\n\n` +
+                    `✅ Successfully decrypted`,
+                },
+              ],
+            };
+          } catch (error: unknown) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    `❌ Decryption failed: ${error instanceof Error ? error.message : String(error)}\n\n` +
+                    `Possible reasons:\n` +
+                    `- Wrong password\n` +
+                    `- Corrupted encrypted data\n` +
+                    `- Invalid base64 encoding`,
+                },
+              ],
+              isError: true,
+            };
+          }
+        }
+
+        case 'encryptFile': {
+          if (!inputPath) throw new Error('inputPath is required for action=encryptFile');
+          if (!fs.existsSync(inputPath)) {
+            return {
+              content: [{ type: 'text', text: `❌ File not found: ${inputPath}` }],
+              isError: true,
+            };
+          }
+          const content = fs.readFileSync(inputPath, 'utf8');
+          const encrypted = encrypt(content, password);
+          const output = outputPath || `${inputPath}.enc`;
+          fs.writeFileSync(output, encrypted, 'utf8');
           return {
             content: [
               {
                 type: 'text',
-                text: `❌ Decryption failed: ${error instanceof Error ? error.message : String(error)}`,
+                text:
+                  `# File Encrypted\n\n` +
+                  `**Source:** ${inputPath}\n` +
+                  `**Output:** ${output}\n` +
+                  `**Size:** ${content.length} bytes → ${encrypted.length} bytes\n\n` +
+                  `✅ File encrypted successfully`,
               },
             ],
-            isError: true,
           };
+        }
+
+        case 'decryptFile': {
+          if (!inputPath) throw new Error('inputPath is required for action=decryptFile');
+          if (!fs.existsSync(inputPath)) {
+            return {
+              content: [{ type: 'text', text: `❌ File not found: ${inputPath}` }],
+              isError: true,
+            };
+          }
+          try {
+            const encryptedContent = fs.readFileSync(inputPath, 'utf8');
+            const decrypted = decrypt(encryptedContent, password);
+            const output = outputPath || inputPath.replace(/\.enc$/, '.dec');
+            fs.writeFileSync(output, decrypted, 'utf8');
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    `# File Decrypted\n\n` +
+                    `**Source:** ${inputPath}\n` +
+                    `**Output:** ${output}\n` +
+                    `**Size:** ${encryptedContent.length} bytes → ${decrypted.length} bytes\n\n` +
+                    `✅ File decrypted successfully`,
+                },
+              ],
+            };
+          } catch (error: unknown) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `❌ Decryption failed: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              ],
+              isError: true,
+            };
+          }
         }
       }
     },

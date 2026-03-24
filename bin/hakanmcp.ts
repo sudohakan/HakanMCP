@@ -3266,7 +3266,7 @@ const CONFIG_INFO: Record<string, { title: string; description: string }> = {
     description: [
       'System-level security and execution constraints.',
       '',
-      'allowedPaths          Path allowlist for fs_* and sys_runCommand tools.',
+      'allowedPaths          Path allowlist for fs_* and sys (action: runCommand) tools.',
       '                      When set, all file/command paths must resolve under',
       '                      one of these directories. Empty array = allow all.',
       '',
@@ -3638,8 +3638,8 @@ async function main(): Promise<void> {
       const mod = await import(
         pathToFileURL(path.join(PROJECT_ROOT, 'dist', 'src', 'tools', 'aiTools.js')).href
       );
-      const tool = mod.aiTools.find((t: { name: string }) => t.name === 'ai_chat');
-      if (!tool) throw new Error('ai_chat tool not found');
+      const tool = mod.aiTools.find((t: { name: string }) => t.name === 'ai');
+      if (!tool) throw new Error('ai tool not found');
       const dryRun = state.mode === 'dry-run';
       let consecutiveTimeouts = 0;
       for (let i = 0; i < state.iterations.max; i++) {
@@ -3654,6 +3654,7 @@ async function main(): Promise<void> {
         try {
           result = await withTimeout(
             tool.handler({
+              action: 'chat',
               message: `Ralph loop iteration ${i + 1}/${state.iterations.max}. Review project state and suggest improvements.${dryRun ? ' (dry run - do not apply changes)' : ''}`,
             }),
             ITER_TIMEOUT,

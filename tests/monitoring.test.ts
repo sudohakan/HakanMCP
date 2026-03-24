@@ -33,10 +33,11 @@ describe('Monitoring Tools', () => {
 
   describe('monitor_healthCheck', () => {
     it('should perform health check on current instance', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_healthCheck');
+      const tool = monitoringTools[0]!;
       expect(tool).toBeDefined();
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'healthCheck',
         instancePath: testInstancePath,
       });
       expect(result.content).toBeDefined();
@@ -44,9 +45,10 @@ describe('Monitoring Tools', () => {
     });
 
     it('should check peer instance if configured', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_healthCheck');
+      const tool = monitoringTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'healthCheck',
         instancePath: testInstancePath,
       });
 
@@ -57,10 +59,11 @@ describe('Monitoring Tools', () => {
 
   describe('monitor_compare', () => {
     it('should compare two instances', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_compare');
+      const tool = monitoringTools[0]!;
       expect(tool).toBeDefined();
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'compare',
         instance1: testInstancePath,
         instance2: testInstancePath,
       });
@@ -70,7 +73,7 @@ describe('Monitoring Tools', () => {
     });
 
     it('should report differences when files diverge', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_compare');
+      const tool = monitoringTools[0]!;
       expect(tool).toBeDefined();
 
       const secondPath = path.join(testInstancePath, 'diff-instance');
@@ -85,7 +88,8 @@ describe('Monitoring Tools', () => {
         JSON.stringify({ name: 'diff-other' }),
       );
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'compare',
         instance1: testInstancePath,
         instance2: secondPath,
       });
@@ -95,8 +99,9 @@ describe('Monitoring Tools', () => {
     });
 
     it('should support deep mode (SHA-256)', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_compare');
-      const result = await tool!.handler({
+      const tool = monitoringTools[0]!;
+      const result = await tool.handler({
+        action: 'compare',
         instance1: testInstancePath,
         instance2: testInstancePath,
         deep: true,
@@ -132,10 +137,11 @@ describe('Monitoring Tools', () => {
 
   describe('monitor_sync', () => {
     it('should sync configurations between instances', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_sync');
+      const tool = monitoringTools[0]!;
       expect(tool).toBeDefined();
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'sync',
         sourceInstance: testInstancePath,
         targetInstance: path.join(testInstancePath, 'sync-target'),
         includeNodeModules: false,
@@ -147,14 +153,15 @@ describe('Monitoring Tools', () => {
 
   describe('monitor_updateDependencies', () => {
     it('should be defined', () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_updateDependencies');
+      const tool = monitoringTools[0]!;
       expect(tool).toBeDefined();
     });
 
     it('should check for outdated packages', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_updateDependencies');
+      const tool = monitoringTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'updateDependencies',
         instancePath: testInstancePath,
         autoCommit: false,
       });
@@ -166,14 +173,15 @@ describe('Monitoring Tools', () => {
 
   describe('monitor_rollback', () => {
     it('should be defined', () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_rollback');
+      const tool = monitoringTools[0]!;
       expect(tool).toBeDefined();
     });
 
     it('should handle rollback operation', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_rollback');
+      const tool = monitoringTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'rollback',
         instancePath: testInstancePath,
       });
 
@@ -194,10 +202,11 @@ describe('Monitoring Tools', () => {
       };
 
       try {
-        const tool = monitoringTools.find((t) => t.name === 'monitor_autoHeal');
+        const tool = monitoringTools[0]!;
         expect(tool).toBeDefined();
 
-        const result = await tool!.handler({
+        const result = await tool.handler({
+          action: 'autoHeal',
           brokenInstance: testInstancePath,
           healthyInstance: testInstancePath,
           issueType: 'file',
@@ -213,7 +222,7 @@ describe('Monitoring Tools', () => {
   });
 
   describe('monitor_selfRecover', () => {
-    const tool = monitoringTools.find((t) => t.name === 'monitor_selfRecover');
+    const tool = monitoringTools[0]!;
 
     it.each([
       ['port_conflict', 'Change port'],
@@ -222,7 +231,8 @@ describe('Monitoring Tools', () => {
     ] as const)('handles %s scenarios', async (errorType, expectedText) => {
       expect(tool).toBeDefined();
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'selfRecover',
         instancePath: testInstancePath,
         errorType,
       });
@@ -232,21 +242,18 @@ describe('Monitoring Tools', () => {
   });
 
   describe('All Monitoring Tools', () => {
-    it('should export all expected monitoring tools', () => {
-      const expectedTools = [
-        'monitor_healthCheck',
-        'monitor_autoHeal',
-        'monitor_compare',
-        'monitor_sync',
-        'monitor_updateDependencies',
-        'monitor_selfRecover',
-        'monitor_rollback',
-      ];
-
-      for (const toolName of expectedTools) {
-        const tool = monitoringTools.find((t) => t.name === toolName);
-        expect(tool).toBeDefined();
-      }
+    it('should export the monitor tool with all actions', () => {
+      expect(monitoringTools.length).toBeGreaterThan(0);
+      const tool = monitoringTools[0]!;
+      expect(tool.name).toBe('monitor');
+      const actions = tool.inputSchema.properties.action.enum as string[];
+      expect(actions).toContain('healthCheck');
+      expect(actions).toContain('autoHeal');
+      expect(actions).toContain('compare');
+      expect(actions).toContain('sync');
+      expect(actions).toContain('updateDependencies');
+      expect(actions).toContain('selfRecover');
+      expect(actions).toContain('rollback');
     });
 
     it('all monitoring tools should have valid schemas', () => {
@@ -262,11 +269,12 @@ describe('Monitoring Tools', () => {
 
   describe('Health Check Advanced', () => {
     it('should detect missing files', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_healthCheck');
+      const tool = monitoringTools[0]!;
 
       const missingFilePath = path.join(testInstancePath, 'missing-instance');
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'healthCheck',
         instancePath: missingFilePath,
       });
 
@@ -274,9 +282,10 @@ describe('Monitoring Tools', () => {
     });
 
     it('should validate build status', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_healthCheck');
+      const tool = monitoringTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'healthCheck',
         instancePath: testInstancePath,
       });
 
@@ -286,10 +295,11 @@ describe('Monitoring Tools', () => {
 
   describe('Auto-Heal Functionality', () => {
     it('should require issueType parameter', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_autoHeal');
+      const tool = monitoringTools[0]!;
 
       try {
-        await tool!.handler({
+        await tool.handler({
+          action: 'autoHeal',
           brokenInstance: testInstancePath,
           healthyInstance: testInstancePath,
           // Missing issueType
@@ -311,9 +321,10 @@ describe('Monitoring Tools', () => {
       };
 
       try {
-        const tool = monitoringTools.find((t) => t.name === 'monitor_autoHeal');
+        const tool = monitoringTools[0]!;
 
-        const result = await tool!.handler({
+        const result = await tool.handler({
+          action: 'autoHeal',
           brokenInstance: testInstancePath,
           healthyInstance: testInstancePath,
           issueType: 'file',
@@ -337,9 +348,10 @@ describe('Monitoring Tools', () => {
       };
 
       try {
-        const tool = monitoringTools.find((t) => t.name === 'monitor_autoHeal');
+        const tool = monitoringTools[0]!;
 
-        const result = await tool!.handler({
+        const result = await tool.handler({
+          action: 'autoHeal',
           brokenInstance: testInstancePath,
           healthyInstance: testInstancePath,
           issueType: 'build',
@@ -354,9 +366,10 @@ describe('Monitoring Tools', () => {
 
   describe('Dependency Management', () => {
     it('should handle auto-apply flag', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_updateDependencies');
+      const tool = monitoringTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'updateDependencies',
         instancePath: testInstancePath,
         autoApply: true,
         runTests: false,
@@ -366,9 +379,10 @@ describe('Monitoring Tools', () => {
     });
 
     it('should handle test execution flag', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_updateDependencies');
+      const tool = monitoringTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'updateDependencies',
         instancePath: testInstancePath,
         autoApply: false,
         runTests: true,
@@ -380,11 +394,12 @@ describe('Monitoring Tools', () => {
 
   describe('Sync Operations', () => {
     it('should handle node_modules inclusion', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_sync');
+      const tool = monitoringTools[0]!;
 
       const targetPath = path.join(testInstancePath, 'sync-with-modules');
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'sync',
         sourceInstance: testInstancePath,
         targetInstance: targetPath,
         includeNodeModules: true,
@@ -398,9 +413,10 @@ describe('Monitoring Tools', () => {
     });
 
     it('should handle missing source instance', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_sync');
+      const tool = monitoringTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'sync',
         sourceInstance: '/non/existent/path',
         targetInstance: testInstancePath,
         includeNodeModules: false,
@@ -412,10 +428,11 @@ describe('Monitoring Tools', () => {
 
   describe('Error Recovery', () => {
     it('should handle unknown error types', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_selfRecover');
+      const tool = monitoringTools[0]!;
 
       await expect(
-        tool!.handler({
+        tool.handler({
+          action: 'selfRecover',
           instancePath: testInstancePath,
           errorType: 'unknown_error' as const,
         }),
@@ -423,9 +440,10 @@ describe('Monitoring Tools', () => {
     });
 
     it('should provide recovery suggestions', async () => {
-      const tool = monitoringTools.find((t) => t.name === 'monitor_selfRecover');
+      const tool = monitoringTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'selfRecover',
         instancePath: testInstancePath,
         errorType: 'port_conflict',
       });

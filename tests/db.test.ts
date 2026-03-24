@@ -14,15 +14,8 @@ describe('Database Tools', () => {
 
   afterEach(async () => {
     // Clean up connections
-    const closeTool = dbTools.find((t: { name: string }) => t.name === 'db_closeConnections');
-    if (closeTool) {
-      await closeTool.handler({});
-    } else {
-      console.log(
-        'Available DB tools:',
-        dbTools.map((t: { name: string }) => t.name),
-      );
-    }
+    const tool = dbTools[0]!;
+    await tool.handler({ action: 'closeConnections' });
 
     // Clean up test files
     if (fs.existsSync(testSqlitePath)) {
@@ -33,23 +26,29 @@ describe('Database Tools', () => {
   describe('SQLite Tools', () => {
     describe('db_querySQLite', () => {
       it('should create table and insert data', async () => {
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_querySQLite');
+        const tool = dbTools[0]!;
         expect(tool).toBeDefined();
 
         // Create table
-        await tool!.handler({
+        await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)',
         });
 
         // Insert data
-        await tool!.handler({
+        await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: "INSERT INTO users (name, email) VALUES ('John Doe', 'john@example.com')",
         });
 
         // Query data
-        const result = await tool!.handler({
+        const result = await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'SELECT * FROM users',
         });
@@ -61,26 +60,34 @@ describe('Database Tools', () => {
       });
 
       it('should handle multiple queries', async () => {
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_querySQLite');
+        const tool = dbTools[0]!;
 
         // Setup
-        await tool!.handler({
+        await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, price REAL)',
         });
 
         // Insert multiple rows
-        await tool!.handler({
+        await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: "INSERT INTO products (name, price) VALUES ('Product 1', 10.99)",
         });
-        await tool!.handler({
+        await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: "INSERT INTO products (name, price) VALUES ('Product 2', 20.50)",
         });
 
         // Query all
-        const result = await tool!.handler({
+        const result = await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'SELECT * FROM products ORDER BY id',
         });
@@ -93,20 +100,27 @@ describe('Database Tools', () => {
 
     describe('db_listSQLiteTables', () => {
       it('should list tables in SQLite database', async () => {
-        const queryTool = dbTools.find((t: { name: string }) => t.name === 'db_querySQLite');
-        const listTool = dbTools.find((t: { name: string }) => t.name === 'db_listSQLiteTables');
+        const tool = dbTools[0]!;
 
         // Create test tables
-        await queryTool!.handler({
+        await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE table1 (id INTEGER PRIMARY KEY)',
         });
-        await queryTool!.handler({
+        await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE table2 (id INTEGER PRIMARY KEY)',
         });
 
-        const result = await listTool!.handler({ dbPath: testSqlitePath });
+        const result = await tool.handler({
+          action: 'listTables',
+          dbType: 'sqlite',
+          dbPath: testSqlitePath,
+        });
 
         const response = JSON.parse(result.content[0].text);
         expect(response.count).toBe(2);
@@ -118,16 +132,21 @@ describe('Database Tools', () => {
       });
 
       it('should exclude sqlite internal tables', async () => {
-        const queryTool = dbTools.find((t: { name: string }) => t.name === 'db_querySQLite');
-        const listTool = dbTools.find((t: { name: string }) => t.name === 'db_listSQLiteTables');
+        const tool = dbTools[0]!;
 
         // Create a user table
-        await queryTool!.handler({
+        await tool.handler({
+          action: 'query',
+          dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE my_table (id INTEGER PRIMARY KEY)',
         });
 
-        const result = await listTool!.handler({ dbPath: testSqlitePath });
+        const result = await tool.handler({
+          action: 'listTables',
+          dbType: 'sqlite',
+          dbPath: testSqlitePath,
+        });
 
         const response = JSON.parse(result.content[0].text);
 
@@ -151,9 +170,11 @@ describe('Database Tools', () => {
           return;
         }
 
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_queryPostgres');
+        const tool = dbTools[0]!;
 
-        const result = await tool!.handler({
+        const result = await tool.handler({
+          action: 'query',
+          dbType: 'postgres',
           connectionString: pgConnectionString,
           query: 'SELECT 1 as test',
         });
@@ -171,9 +192,11 @@ describe('Database Tools', () => {
           return;
         }
 
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_listPostgresTables');
+        const tool = dbTools[0]!;
 
-        const result = await tool!.handler({
+        const result = await tool.handler({
+          action: 'listTables',
+          dbType: 'postgres',
           connectionString: pgConnectionString,
         });
 
@@ -190,10 +213,11 @@ describe('Database Tools', () => {
           return;
         }
 
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_getTableSchema');
+        const tool = dbTools[0]!;
 
         // Assuming there's a test table, or create one first
-        const result = await tool!.handler({
+        const result = await tool.handler({
+          action: 'getTableSchema',
           dbType: 'postgres',
           connectionString: pgConnectionString,
           tableName: 'users', // Replace with actual test table
@@ -223,9 +247,11 @@ describe('Database Tools', () => {
           return;
         }
 
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_queryMySQL');
+        const tool = dbTools[0]!;
 
-        const result = await tool!.handler({
+        const result = await tool.handler({
+          action: 'query',
+          dbType: 'mysql',
           ...mysqlConfig,
           query: 'SELECT 1 as test',
         });
@@ -242,9 +268,13 @@ describe('Database Tools', () => {
           return;
         }
 
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_listMySQLTables');
+        const tool = dbTools[0]!;
 
-        const result = await tool!.handler(mysqlConfig);
+        const result = await tool.handler({
+          action: 'listTables',
+          dbType: 'mysql',
+          ...mysqlConfig,
+        });
 
         const response = JSON.parse(result.content[0].text);
         expect(response.tables).toBeInstanceOf(Array);
@@ -255,9 +285,9 @@ describe('Database Tools', () => {
   describe('Connection Management', () => {
     describe('db_closeConnections', () => {
       it('should close all connection pools', async () => {
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_closeConnections');
+        const tool = dbTools[0]!;
 
-        const result = await tool!.handler({});
+        const result = await tool.handler({ action: 'closeConnections' });
 
         expect(result.content[0].text).toContain('closed');
         expect(result.content[0].text).toContain('database');
@@ -274,13 +304,15 @@ describe('Database Tools', () => {
           return;
         }
 
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_backupPostgres');
+        const tool = dbTools[0]!;
         const outputFile = '/tmp/test-pg-backup.sql';
 
         try {
-          const result = await tool!.handler({
+          const result = await tool.handler({
+            action: 'backup',
+            dbType: 'postgres',
             connectionString: pgConnectionString,
-            outputFile,
+            outputPath: outputFile,
           });
 
           expect(result.content[0].text).toContain('Backup created');
@@ -301,17 +333,19 @@ describe('Database Tools', () => {
           return;
         }
 
-        const tool = dbTools.find((t: { name: string }) => t.name === 'db_backupMySQL');
+        const tool = dbTools[0]!;
         const outputFile = '/tmp/test-mysql-backup.sql';
 
         try {
-          const result = await tool!.handler({
+          const result = await tool.handler({
+            action: 'backup',
+            dbType: 'mysql',
             host: process.env.TEST_MYSQL_HOST,
             port: parseInt(process.env.TEST_MYSQL_PORT || '3306'),
             user: process.env.TEST_MYSQL_USER,
             password: process.env.TEST_MYSQL_PASSWORD,
             database: process.env.TEST_MYSQL_DATABASE,
-            outputFile,
+            outputPath: outputFile,
           });
 
           expect(result.content[0].text).toContain('Backup created');

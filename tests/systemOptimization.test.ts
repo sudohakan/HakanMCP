@@ -25,9 +25,6 @@ const setupSystemOptimizationModule = async (options?: { fsMock?: Record<string,
   };
 };
 
-const findTool = (tools: Array<{ name: string }>, name: string) =>
-  tools.find((t) => t.name === name);
-
 describe('systemOptimization tools', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -37,8 +34,8 @@ describe('systemOptimization tools', () => {
     const { systemOptimizationTools, execAsyncMock } = await setupSystemOptimizationModule();
     execAsyncMock.mockImplementationOnce(async () => ({ stdout: 'Batch OK', stderr: '' }));
 
-    const tool = findTool(systemOptimizationTools, 'sysopt_run_main_panel');
-    const result = await tool.handler({});
+    const tool = systemOptimizationTools[0]!;
+    const result = await tool.handler({ action: 'runAdmin', task: 'main_panel' });
 
     expect(execAsyncMock).toHaveBeenCalledWith(expect.stringContaining('MAIN_PANEL.bat'));
     expect(result.content[0].text).toContain('Main panel started');
@@ -48,8 +45,8 @@ describe('systemOptimization tools', () => {
     const { systemOptimizationTools, execAsyncMock } = await setupSystemOptimizationModule();
     execAsyncMock.mockImplementation(async () => ({ stdout: '{"status":"ok"}', stderr: '' }));
 
-    const tool = findTool(systemOptimizationTools, 'sysopt_analyze_system');
-    const result = await tool.handler({ jsonOutput: true });
+    const tool = systemOptimizationTools[0]!;
+    const result = await tool.handler({ action: 'analyzeSystem', jsonOutput: true });
 
     expect(execAsyncMock).toHaveBeenCalledWith(
       expect.stringContaining('system_status.ps1'),
@@ -61,9 +58,9 @@ describe('systemOptimization tools', () => {
   it('skips docker cleanup when requested in full optimization', async () => {
     const { systemOptimizationTools, execAsyncMock } = await setupSystemOptimizationModule();
     execAsyncMock.mockImplementation(async () => ({ stdout: 'done', stderr: '' }));
-    const tool = findTool(systemOptimizationTools, 'sysopt_full_optimize');
+    const tool = systemOptimizationTools[0]!;
 
-    const result = await tool.handler({ skipDocker: true });
+    const result = await tool.handler({ action: 'fullOptimize', skipDocker: true });
 
     expect(execAsyncMock).toHaveBeenCalledWith(
       expect.stringContaining('system_status.ps1'),
@@ -79,8 +76,8 @@ describe('systemOptimization tools', () => {
     };
     const { systemOptimizationTools } = await setupSystemOptimizationModule({ fsMock });
 
-    const tool = findTool(systemOptimizationTools, 'sysopt_view_logs');
-    const result = await tool.handler({ lines: 2 });
+    const tool = systemOptimizationTools[0]!;
+    const result = await tool.handler({ action: 'viewLogs', lines: 2 });
 
     expect(fsMock.existsSync).toHaveBeenCalled();
     expect(result.content[0].text).toContain('Log Record');

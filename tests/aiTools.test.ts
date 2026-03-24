@@ -102,7 +102,6 @@ describe('AI Tools', () => {
         'ai_generate',
         'ai_chat',
         'ai_history',
-        'ai_clear_history',
       ];
 
       const actualTools = aiTools.map((t: { name: string }) => t.name);

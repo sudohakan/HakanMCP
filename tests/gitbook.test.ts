@@ -5,10 +5,10 @@ describe('GitBook Tools', () => {
 
   describe('getPage', () => {
     it('should fetch GitBook page content', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'getPage');
+      const tool = gitbookTools[0]!;
       expect(tool).toBeDefined();
 
-      const result = await tool!.handler({ path: testPath });
+      const result = await tool.handler({ action: 'getPage', path: testPath });
 
       expect(result.content).toBeDefined();
       expect(result.content[0].type).toBe('text');
@@ -20,9 +20,10 @@ describe('GitBook Tools', () => {
     }, 30000);
 
     it('should handle full URL', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'getPage');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'getPage',
         path: 'https://finekra.gitbook.io/finekra-api',
       });
 
@@ -32,9 +33,9 @@ describe('GitBook Tools', () => {
 
   describe('listLinks', () => {
     it('should list internal links', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'listLinks');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({ path: testPath });
+      const result = await tool.handler({ action: 'listLinks', path: testPath });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.base).toBeDefined();
@@ -42,9 +43,9 @@ describe('GitBook Tools', () => {
     }, 30000);
 
     it('should deduplicate links', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'listLinks');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({ path: testPath });
+      const result = await tool.handler({ action: 'listLinks', path: testPath });
 
       const response = JSON.parse(result.content[0].text);
       const hrefs = response.links.map((l: { href?: string }) => l.href);
@@ -57,9 +58,10 @@ describe('GitBook Tools', () => {
 
   describe('find', () => {
     it('should search for text pattern', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'find');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'find',
         path: testPath,
         pattern: 'API',
       });
@@ -70,9 +72,10 @@ describe('GitBook Tools', () => {
     }, 30000);
 
     it('should support regex patterns', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'find');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'find',
         path: testPath,
         pattern: '\\d+', // Find numbers
       });
@@ -82,9 +85,10 @@ describe('GitBook Tools', () => {
     }, 30000);
 
     it('should limit results to 50', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'find');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'find',
         path: testPath,
         pattern: '.', // Match everything
       });
@@ -96,9 +100,9 @@ describe('GitBook Tools', () => {
 
   describe('gb_headings', () => {
     it('should extract H1-H3 headings', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'gb_headings');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({ path: testPath });
+      const result = await tool.handler({ action: 'headings', path: testPath });
 
       const headings = JSON.parse(result.content[0].text);
       expect(headings).toBeInstanceOf(Array);
@@ -113,9 +117,9 @@ describe('GitBook Tools', () => {
 
   describe('gb_outline', () => {
     it('should extract headings with IDs', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'gb_outline');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({ path: testPath });
+      const result = await tool.handler({ action: 'outline', path: testPath });
 
       const outline = JSON.parse(result.content[0].text);
       expect(outline).toBeInstanceOf(Array);
@@ -130,9 +134,9 @@ describe('GitBook Tools', () => {
 
   describe('gb_getMetadata', () => {
     it('should extract page metadata', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'gb_getMetadata');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({ path: testPath });
+      const result = await tool.handler({ action: 'getMetadata', path: testPath });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.url).toBeDefined();
@@ -147,9 +151,9 @@ describe('GitBook Tools', () => {
     }, 30000);
 
     it('should handle pages without all metadata', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'gb_getMetadata');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({ path: testPath });
+      const result = await tool.handler({ action: 'getMetadata', path: testPath });
 
       const response = JSON.parse(result.content[0].text);
       // Should not throw, just return empty strings
@@ -159,9 +163,10 @@ describe('GitBook Tools', () => {
 
   describe('gb_searchContent', () => {
     it('should search content with context', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'gb_searchContent');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'searchContent',
         path: testPath,
         searchTerm: 'API',
         contextLines: 2,
@@ -175,9 +180,10 @@ describe('GitBook Tools', () => {
     }, 30000);
 
     it('should include context lines', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'gb_searchContent');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'searchContent',
         path: testPath,
         searchTerm: 'API',
         contextLines: 3,
@@ -195,9 +201,10 @@ describe('GitBook Tools', () => {
     }, 30000);
 
     it('should limit results to 20 matches', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'gb_searchContent');
+      const tool = gitbookTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'searchContent',
         path: testPath,
         searchTerm: 'a', // Common letter
       });
@@ -207,14 +214,16 @@ describe('GitBook Tools', () => {
     }, 30000);
 
     it('should be case insensitive', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'gb_searchContent');
+      const tool = gitbookTools[0]!;
 
-      const result1 = await tool!.handler({
+      const result1 = await tool.handler({
+        action: 'searchContent',
         path: testPath,
         searchTerm: 'API',
       });
 
-      const result2 = await tool!.handler({
+      const result2 = await tool.handler({
+        action: 'searchContent',
         path: testPath,
         searchTerm: 'api',
       });
@@ -228,13 +237,13 @@ describe('GitBook Tools', () => {
 
   describe('caching', () => {
     it('should cache repeated requests', async () => {
-      const tool = gitbookTools.find((t) => t.name === 'getPage');
+      const tool = gitbookTools[0]!;
 
       // First request - cache miss
-      const result1 = await tool!.handler({ path: testPath });
+      const result1 = await tool.handler({ action: 'getPage', path: testPath });
 
       // Second request - should hit cache
-      const result2 = await tool!.handler({ path: testPath });
+      const result2 = await tool.handler({ action: 'getPage', path: testPath });
 
       expect(result1.content[0].text).toBe(result2.content[0].text);
     }, 30000);

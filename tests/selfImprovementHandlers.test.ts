@@ -5,7 +5,7 @@ import { config } from '../src/config.js';
 import { selfImprovementTools } from '../src/tools/selfImprovement.js';
 
 describe('selfImprovement handlers', () => {
-  const proposeTool = selfImprovementTools.find((t) => t.name === 'self_proposeChange')!;
+  const proposeTool = selfImprovementTools[0]!;
   const originalCwd = process.cwd();
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'self-imp-'));
 
@@ -29,6 +29,7 @@ describe('selfImprovement handlers', () => {
 
   it('rejects restricted paths', async () => {
     const res = await proposeTool.handler({
+      action: 'propose',
       operation: 'fix',
       files: ['forbid/file.ts'],
       description: 'try',
@@ -40,6 +41,7 @@ describe('selfImprovement handlers', () => {
 
   it('creates proposal when allowed', async () => {
     const res = await proposeTool.handler({
+      action: 'propose',
       operation: 'fix',
       files: ['ok.ts', 'tests/ok.test.ts'],
       description: 'desc',
@@ -76,6 +78,7 @@ describe('selfImprovement handlers', () => {
     );
 
     const res = await proposeTool.handler({
+      action: 'propose',
       operation: 'fix',
       files: ['ok2.ts', 'tests/ok2.test.ts'],
       description: 'desc2',

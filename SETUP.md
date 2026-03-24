@@ -35,11 +35,11 @@ HakanMCP uses **lazy-loading** for database drivers and heavy modules. If you do
 
 | Missing Dependency | Affected Tools |
 |-------------------|----------------|
-| `pg` (PostgreSQL) | `db_query`, `db_backup`, `db_getTableSchema`, `db_listTables` |
-| `mongodb` | `mongo_find`, `mongo_insert`, `mongo_update`, `mongo_delete`, `mongo_aggregate` |
-| `mysql2` | MySQL variant of `db_query`, `db_backup` |
-| `mssql` | MSSQL variant of `db_query`, `db_backup` |
-| `sqlite` / `sqlite3` | SQLite variant of `db_query` |
+| `pg` (PostgreSQL) | `db` tool (actions: query, backup, getTableSchema, listTables) |
+| `mongodb` | `mongo` tool (actions: find, insert, update, delete, aggregate, etc.) |
+| `mysql2` | `db` tool with dbType: mysql |
+| `mssql` | `db` tool with dbType: mssql |
+| `sqlite` / `sqlite3` | `db` tool with dbType: sqlite |
 | Python 3.8+ | `aidefence` tools (input scan, PII check, redaction) |
 
 All other tools work without any optional dependencies.
@@ -166,7 +166,7 @@ HakanMCP reads `.env` on startup, generates `config.yaml`, and validates all val
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `GITBOOK_URL` | — | Optional | GitBook instance URL for `gb_*` tools (e.g. `https://your-instance.gitbook.io/your-api`) |
+| `GITBOOK_URL` | — | Optional | GitBook instance URL for `gitbook` tool (e.g. `https://your-instance.gitbook.io/your-api`) |
 | `MONITORING_PEER_INSTANCE` | — | Optional | Peer instance URL for monitoring sync (usually `/peer` in Docker setups) |
 
 #### Scheduler & Automation
@@ -289,7 +289,7 @@ In Cursor settings, add MCP server:
 | Symptom | Cause | Solution |
 |---------|-------|----------|
 | `sqlite3` build fails | Missing C++ build tools | Install Visual Studio Build Tools (Windows) or `build-essential` (Linux), or skip: `npm install --ignore-optional` |
-| `ECONNREFUSED` on db_query | Database service not running | Start PostgreSQL/MongoDB/MySQL service |
+| `ECONNREFUSED` on db tool | Database service not running | Start PostgreSQL/MongoDB/MySQL service |
 | `EADDRINUSE` — port already in use | Another process using the port | Change `PORT` in `.env` or kill the blocking process |
 | `MODULE_NOT_FOUND: pg` | Optional dependency not installed | `npm install pg` (or the specific driver you need) |
 | Config validation error | Invalid values in `.env` | Compare your `.env` against `.env.example` — check types and formats |

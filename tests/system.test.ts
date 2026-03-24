@@ -23,28 +23,28 @@ describe('System Tools', () => {
   describe('System Commands', () => {
     describe('sys_runCommand', () => {
       it('should execute simple command', async () => {
-        const tool = systemTools.find((t) => t.name === 'sys_runCommand');
+        const tool = systemTools[0]!;
 
         const command = process.platform === 'win32' ? 'echo test' : 'echo test';
 
-        const result = await tool!.handler({ command });
+        const result = await tool.handler({ action: 'runCommand', command });
 
         expect(result.content[0].text).toContain('STDOUT');
         expect(result.content[0].text).toContain('test');
       });
 
       it('should respect cwd parameter', async () => {
-        const tool = systemTools.find((t) => t.name === 'sys_runCommand');
+        const tool = systemTools[0]!;
 
         const command = process.platform === 'win32' ? 'cd' : 'pwd';
 
-        const result = await tool!.handler({ command, cwd: testDir });
+        const result = await tool.handler({ action: 'runCommand', command, cwd: testDir });
 
         expect(result.content[0].text).toContain(testDir);
       });
 
       it('should populate HOME and USERPROFILE when missing', async () => {
-        const tool = systemTools.find((t) => t.name === 'sys_runCommand');
+        const tool = systemTools[0]!;
         const originalHome = process.env.HOME;
         const originalUserProfile = process.env.USERPROFILE;
 
@@ -57,7 +57,7 @@ describe('System Tools', () => {
             : 'printf "HOME=%s\\nUSERPROFILE=%s\\n" "$HOME" "$USERPROFILE"';
 
         try {
-          const result = await tool!.handler({ command });
+          const result = await tool.handler({ action: 'runCommand', command });
 
           expect(result.content[0].text).toContain('HOME=');
           expect(result.content[0].text).toContain('USERPROFILE=');
@@ -70,9 +70,9 @@ describe('System Tools', () => {
 
     describe('sys_getSystemInfo', () => {
       it('should return system information', async () => {
-        const tool = systemTools.find((t) => t.name === 'sys_getSystemInfo');
+        const tool = systemTools[0]!;
 
-        const result = await tool!.handler({});
+        const result = await tool.handler({ action: 'getSystemInfo' });
 
         const info = JSON.parse(result.content[0].text);
         expect(info.platform).toBeDefined();
@@ -86,9 +86,9 @@ describe('System Tools', () => {
 
     describe('sys_listProcesses', () => {
       it('should list running processes', async () => {
-        const tool = systemTools.find((t) => t.name === 'sys_listProcesses');
+        const tool = systemTools[0]!;
 
-        const result = await tool!.handler({});
+        const result = await tool.handler({ action: 'listProcesses' });
 
         expect(result.content[0].text).toBeDefined();
         expect(result.content[0].text.length).toBeGreaterThan(0);

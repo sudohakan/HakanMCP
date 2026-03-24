@@ -23,10 +23,10 @@ describe('Environment Tools', () => {
 
   describe('env_getVar', () => {
     it('should get existing environment variable', async () => {
-      const tool = envTools.find((t) => t.name === 'env_getVar');
+      const tool = envTools[0]!;
       process.env.TEST_VAR = 'test-value';
 
-      const result = await tool!.handler({ key: 'TEST_VAR' });
+      const result = await tool.handler({ action: 'getVar', key: 'TEST_VAR' });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.key).toBe('TEST_VAR');
@@ -34,9 +34,9 @@ describe('Environment Tools', () => {
     });
 
     it('should return null for non-existent variable', async () => {
-      const tool = envTools.find((t) => t.name === 'env_getVar');
+      const tool = envTools[0]!;
 
-      const result = await tool!.handler({ key: 'NON_EXISTENT_VAR' });
+      const result = await tool.handler({ action: 'getVar', key: 'NON_EXISTENT_VAR' });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.value).toBeNull();
@@ -45,9 +45,10 @@ describe('Environment Tools', () => {
 
   describe('env_setVar', () => {
     it('should set environment variable', async () => {
-      const tool = envTools.find((t) => t.name === 'env_setVar');
+      const tool = envTools[0]!;
 
-      const result = await tool!.handler({
+      const result = await tool.handler({
+        action: 'setVar',
         key: 'NEW_VAR',
         value: 'new-value',
       });
@@ -59,9 +60,9 @@ describe('Environment Tools', () => {
 
   describe('env_listVars', () => {
     it('should list all environment variables', async () => {
-      const tool = envTools.find((t) => t.name === 'env_listVars');
+      const tool = envTools[0]!;
 
-      const result = await tool!.handler({});
+      const result = await tool.handler({ action: 'listVars' });
 
       const response = JSON.parse(result.content[0].text);
       expect(response.count).toBeGreaterThan(0);
@@ -71,12 +72,12 @@ describe('Environment Tools', () => {
 
   describe('env_loadFromFile', () => {
     it('should load variables from .env file', async () => {
-      const tool = envTools.find((t) => t.name === 'env_loadFromFile');
+      const tool = envTools[0]!;
 
       // Create test .env file
       fs.writeFileSync(testEnvFile, 'TEST_LOAD_VAR=loaded-value\n', 'utf8');
 
-      const result = await tool!.handler({ path: testEnvFile });
+      const result = await tool.handler({ action: 'loadFile', path: testEnvFile });
 
       expect(result.content[0].text).toContain('Loaded environment variables');
       expect(result.content[0].text).toContain(testEnvFile);
@@ -85,10 +86,10 @@ describe('Environment Tools', () => {
 
   describe('env_saveToFile', () => {
     it('should save environment variables to file', async () => {
-      const tool = envTools.find((t) => t.name === 'env_saveToFile');
+      const tool = envTools[0]!;
       process.env.SAVE_TEST_VAR = 'save-value';
 
-      const result = await tool!.handler({ path: testEnvFile });
+      const result = await tool.handler({ action: 'saveFile', path: testEnvFile });
 
       expect(result.content[0].text).toContain('Saved environment variables');
       expect(fs.existsSync(testEnvFile)).toBe(true);
@@ -100,10 +101,10 @@ describe('Environment Tools', () => {
 
   describe('env_deleteVar', () => {
     it('should delete environment variable', async () => {
-      const tool = envTools.find((t) => t.name === 'env_deleteVar');
+      const tool = envTools[0]!;
       process.env.DELETE_TEST_VAR = 'to-delete';
 
-      const result = await tool!.handler({ key: 'DELETE_TEST_VAR' });
+      const result = await tool.handler({ action: 'deleteVar', key: 'DELETE_TEST_VAR' });
 
       expect(result.content[0].text).toContain('Deleted environment variable');
       expect(process.env.DELETE_TEST_VAR).toBeUndefined();

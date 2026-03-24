@@ -18,10 +18,10 @@ describe('Backup Tools', () => {
 
   describe('backup_list', () => {
     it('should list all backups', async () => {
-      const tool = backupTools.find((t: { name: string }) => t.name === 'backup_list');
+      const tool = backupTools[0]!;
       expect(tool).toBeDefined();
 
-      const result = await tool!.handler({});
+      const result = await tool.handler({ action: 'list' });
       expect(result.content).toBeDefined();
 
       const content = result.content[0];
@@ -36,10 +36,10 @@ describe('Backup Tools', () => {
 
   describe('backup_getStats', () => {
     it('should return backup statistics', async () => {
-      const tool = backupTools.find((t: { name: string }) => t.name === 'backup_getStats');
+      const tool = backupTools[0]!;
       expect(tool).toBeDefined();
 
-      const result = await tool!.handler({});
+      const result = await tool.handler({ action: 'stats' });
       expect(result.content).toBeDefined();
 
       const content = result.content[0];
@@ -53,10 +53,10 @@ describe('Backup Tools', () => {
 
   describe('backup_deleteOld', () => {
     it('should delete old backups', async () => {
-      const tool = backupTools.find((t: { name: string }) => t.name === 'backup_deleteOld');
+      const tool = backupTools[0]!;
       expect(tool).toBeDefined();
 
-      const result = await tool!.handler({ olderThanHours: 1000 });
+      const result = await tool.handler({ action: 'deleteOld', olderThanHours: 1000 });
       expect(result.content).toBeDefined();
       expect(result.content[0].text).toContain('Deleted');
     });
@@ -64,11 +64,12 @@ describe('Backup Tools', () => {
 
   describe('backup_restore', () => {
     it('should reject non-existent backup path', async () => {
-      const tool = backupTools.find((t: { name: string }) => t.name === 'backup_restore');
+      const tool = backupTools[0]!;
       expect(tool).toBeDefined();
 
       try {
-        await tool!.handler({
+        await tool.handler({
+          action: 'restore',
           backupPath: '/non/existent/backup.zip',
         });
         fail('Should have thrown an error');
@@ -81,11 +82,11 @@ describe('Backup Tools', () => {
 
   describe('backup_create', () => {
     it('should create a backup', async () => {
-      const tool = backupTools.find((t: { name: string }) => t.name === 'backup_create');
+      const tool = backupTools[0]!;
       expect(tool).toBeDefined();
 
       try {
-        const result = await tool!.handler({});
+        const result = await tool.handler({ action: 'create' });
         expect(result.content).toBeDefined();
         expect(result.content[0].text).toContain('Backup created');
 

@@ -240,11 +240,11 @@ describe('MCP Server Entry Point', () => {
     it('should validate tool handler return types', async () => {
       const { systemTools } = await import('../src/tools/system.js');
 
-      const sysInfoTool = systemTools.find((t) => t.name === 'sys_getSystemInfo');
+      const sysInfoTool = systemTools[0]!;
       expect(sysInfoTool).toBeDefined();
 
       // Handler should be a function
-      expect(typeof sysInfoTool!.handler).toBe('function');
+      expect(typeof sysInfoTool.handler).toBe('function');
     });
   });
 

@@ -135,7 +135,8 @@ async function cleanByPatterns(
       const matches = patterns.some((p) => globMatch(item.name, p));
       if (matches) {
         try {
-          const stat = await fs.stat(fullPath);
+          const stat = await fs.lstat(fullPath);
+          if (stat.isSymbolicLink()) continue;
           const size = item.isDirectory()
             ? await platform.getDirectorySize(fullPath)
             : stat.size;
@@ -208,6 +209,12 @@ export async function moveItem(
 ): Promise<{ success: boolean; message: string }> {
   assertNotProtected(source);
   assertNotProtected(destination);
+  try {
+    await fs.access(destination);
+    return { success: false, message: `Destination already exists: ${destination}` };
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+  }
   const platform = getPlatform();
   await platform.moveItem(source, destination);
   return { success: true, message: `Moved: ${source} → ${destination}` };

@@ -131,7 +131,7 @@ export const diskTools: ToolDefinition[] = [
           }
           case 'top': {
             if (!parsed.path) throw new Error('path required for top');
-            result = await scanner.top(parsed.path, parsed.count ?? 20, parsed.type ?? 'all');
+            result = await scanner.top(parsed.path, parsed.count ?? 20, parsed.type ?? 'all', parsed.depth ?? 10);
             break;
           }
           case 'types': {
@@ -141,7 +141,7 @@ export const diskTools: ToolDefinition[] = [
           }
           case 'age': {
             if (!parsed.path) throw new Error('path required for age');
-            result = await scanner.age(parsed.path, parsed.brackets ?? [30, 60, 90, 180, 365]);
+            result = await scanner.age(parsed.path, parsed.brackets ?? [30, 60, 90, 180, 365], parsed.depth ?? 10);
             break;
           }
           case 'duplicates': {
@@ -172,9 +172,10 @@ export const diskTools: ToolDefinition[] = [
             const nlResult = await aiEngine.ask(parsed.query, aiCall);
             if (nlResult.action && !nlResult.conversational) {
               const resolvedAction = nlResult.action as Record<string, unknown>;
-              // Guard: prevent recursive ask and strip destructive flags from AI output
-              if (resolvedAction.action === 'ask' || resolvedAction.action === 'suggest') {
-                result = { interpretation: nlResult.explanation, action: nlResult.action, conversational: true };
+              // Allowlist: only read-only actions can be dispatched by AI
+              const SAFE_DISPATCH = new Set(['scan', 'drives', 'top', 'types', 'age', 'duplicates', 'tree', 'history', 'snapshot']);
+              if (!SAFE_DISPATCH.has(resolvedAction.action as string)) {
+                result = { interpretation: nlResult.explanation, action: nlResult.action, conversational: true, note: 'Bu islem onay gerektirir. Dogrudan calistirin.' };
                 break;
               }
               const safeArgs = { ...resolvedAction, dryRun: true, confirm: false };

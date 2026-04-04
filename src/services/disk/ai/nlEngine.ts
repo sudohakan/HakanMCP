@@ -15,6 +15,14 @@ interface ConversationState {
 
 let activeConversation: ConversationState | null = null;
 
+function sanitizeQuery(query: string): string {
+  return query
+    .slice(0, 500)
+    .replace(/[<>]/g, '')
+    .replace(/```/g, '')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
 export async function processQuery(
   query: string,
   aiCall: (prompt: string) => Promise<string>,
@@ -32,7 +40,7 @@ ${conversationHistory ? `## Conversation history\n${conversationHistory}\n` : ''
 
 ## Task: Interpret natural language disk query
 
-User query: "${query}"
+<user_query>${sanitizeQuery(query)}</user_query>
 
 Available actions and their parameters:
 - scan: { path, depth, minSize }

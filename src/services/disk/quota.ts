@@ -21,10 +21,13 @@ async function loadQuotas(): Promise<Record<string, QuotaDefinition>> {
 
 async function saveQuotas(quotas: Record<string, QuotaDefinition>): Promise<void> {
   const file = await getQuotasFile();
-  await fs.writeFile(file, JSON.stringify(quotas, null, 2));
+  const tmpFile = `${file}.tmp`;
+  await fs.writeFile(tmpFile, JSON.stringify(quotas, null, 2));
+  await fs.rename(tmpFile, file);
 }
 
 export async function setQuota(dirPath: string, limitBytes: number): Promise<QuotaDefinition> {
+  if (limitBytes <= 0) throw new Error('limitBytes must be greater than 0');
   const quotas = await loadQuotas();
   const now = new Date().toISOString();
   const existing = quotas[dirPath];

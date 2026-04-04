@@ -11,3 +11,7 @@ export function getPlatform(): DiskPlatform {
   cachedPlatform = process.platform === 'win32' ? new WindowsPlatform() : new LinuxPlatform();
   return cachedPlatform;
 }
+
+export function setPlatform(platform: DiskPlatform): void {
+  cachedPlatform = platform;
+}

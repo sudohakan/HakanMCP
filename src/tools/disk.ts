@@ -171,7 +171,14 @@ export const diskTools: ToolDefinition[] = [
             const aiCall = await getAiCall();
             const nlResult = await aiEngine.ask(parsed.query, aiCall);
             if (nlResult.action && !nlResult.conversational) {
-              const innerResult = await diskTools[0].handler({ ...nlResult.action, dryRun: parsed.dryRun ?? true });
+              const resolvedAction = nlResult.action as Record<string, unknown>;
+              // Guard: prevent recursive ask and strip destructive flags from AI output
+              if (resolvedAction.action === 'ask' || resolvedAction.action === 'suggest') {
+                result = { interpretation: nlResult.explanation, action: nlResult.action, conversational: true };
+                break;
+              }
+              const safeArgs = { ...resolvedAction, dryRun: true, confirm: false };
+              const innerResult = await diskTools[0].handler(safeArgs);
               setLastResult(innerResult);
               result = { interpretation: nlResult.explanation, action: nlResult.action, result: innerResult };
             } else {

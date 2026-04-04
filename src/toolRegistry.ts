@@ -40,7 +40,6 @@ export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   monitor: { modulePath: './tools/monitoring.js', exportName: 'monitoringTools', nativeDeps: [], core: true, featureName: '' },
   self: { modulePath: './tools/selfImprovement.js', exportName: 'selfImprovementTools', nativeDeps: [], core: true, featureName: '' },
   crypto: { modulePath: './tools/encryption.js', exportName: 'encryptionTools', nativeDeps: [], core: true, featureName: '' },
-  scheduler: { modulePath: './tools/scheduler.js', exportName: 'schedulerTools', nativeDeps: [], core: true, featureName: '' },
   api: { modulePath: './tools/api.js', exportName: 'apiTools', nativeDeps: [], core: true, featureName: '' },
   perf: { modulePath: './tools/performance.js', exportName: 'performanceTools', nativeDeps: [], core: true, featureName: '' },
   dx: { modulePath: './tools/dx.js', exportName: 'dxTools', nativeDeps: [], core: true, featureName: '' },
@@ -51,6 +50,7 @@ export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   moe: { modulePath: './tools/moeRouter.js', exportName: 'moeRouterTools', nativeDeps: [], core: true, featureName: '' },
   aidefence: { modulePath: './tools/aiDefence.js', exportName: 'aiDefenceTools', nativeDeps: [], core: true, featureName: '' },
   guidance: { modulePath: './tools/guidance.js', exportName: 'guidanceTools', nativeDeps: [], core: true, featureName: '' },
+  disk: { modulePath: './tools/disk.js', exportName: 'diskTools', nativeDeps: [], core: true, featureName: '' },
 
   db: { modulePath: './tools/db.js', exportName: 'dbTools', nativeDeps: ['pg', 'mysql2', 'mssql', 'sqlite3', 'sqlite'], core: false, featureName: 'database' },
   mongo: { modulePath: './tools/mongodb.js', exportName: 'mongoTools', nativeDeps: ['mongodb'], core: false, featureName: 'mongodb' },

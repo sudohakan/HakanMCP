@@ -1,4 +1,5 @@
 import { buildContext, contextToPrompt } from './contextBuilder.js';
+import { extractJsonArray } from '../utils.js';
 import type { ScanResult, AnomalyResult } from '../../../types/disk.js';
 
 export async function detectAnomalies(
@@ -37,13 +38,9 @@ Return empty array if no anomalies found.`;
 
   const response = await aiCall(prompt);
   try {
-    return JSON.parse(extractJson(response));
+    return JSON.parse(extractJsonArray(response));
   } catch {
     return [];
   }
 }
 
-function extractJson(text: string): string {
-  const match = text.match(/\[[\s\S]*\]/);
-  return match ? match[0] : '[]';
-}

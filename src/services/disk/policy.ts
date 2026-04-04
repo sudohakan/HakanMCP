@@ -3,14 +3,11 @@ import * as path from 'node:path';
 import { getPlatform } from './platforms/index.js';
 import { getDataDir } from './history.js';
 import { assertNotProtected } from './cleaner.js';
+import { assertValidName, parseBytes } from './utils.js';
 import type { PolicyDefinition, PolicyRule, PolicyRunResult, ScanEntry } from '../../types/disk.js';
 
-const VALID_NAME_RE = /^[a-zA-Z0-9_-]{1,64}$/;
-
-function assertValidName(name: string): void {
-  if (!VALID_NAME_RE.test(name)) {
-    throw new Error(`Invalid policy name: "${name}". Only alphanumeric, underscore, and hyphen allowed (max 64 chars).`);
-  }
+function assertPolicyName(name: string): void {
+  assertValidName(name, 'policy');
 }
 
 async function getPoliciesDir(): Promise<string> {
@@ -21,7 +18,7 @@ async function getPoliciesDir(): Promise<string> {
 }
 
 export async function createPolicy(name: string, description: string, rules: PolicyRule[]): Promise<PolicyDefinition> {
-  assertValidName(name);
+  assertPolicyName(name);
   const dir = await getPoliciesDir();
   const now = new Date().toISOString();
   const policy: PolicyDefinition = { name, description, rules, createdAt: now, updatedAt: now };
@@ -30,7 +27,7 @@ export async function createPolicy(name: string, description: string, rules: Pol
 }
 
 export async function getPolicy(name: string): Promise<PolicyDefinition | null> {
-  assertValidName(name);
+  assertPolicyName(name);
   const dir = await getPoliciesDir();
   try {
     const content = await fs.readFile(path.join(dir, `${name}.json`), 'utf-8');
@@ -51,7 +48,7 @@ export async function listPolicies(): Promise<string[]> {
 }
 
 export async function updatePolicy(name: string, updates: Partial<Pick<PolicyDefinition, 'description' | 'rules'>>): Promise<PolicyDefinition | null> {
-  assertValidName(name);
+  assertPolicyName(name);
   const existing = await getPolicy(name);
   if (!existing) return null;
   const updated: PolicyDefinition = {
@@ -65,7 +62,7 @@ export async function updatePolicy(name: string, updates: Partial<Pick<PolicyDef
 }
 
 export async function deletePolicy(name: string): Promise<boolean> {
-  assertValidName(name);
+  assertPolicyName(name);
   const dir = await getPoliciesDir();
   try {
     await fs.unlink(path.join(dir, `${name}.json`));
@@ -132,10 +129,10 @@ async function findMatchingFiles(rule: PolicyRule, platform: ReturnType<typeof g
       })) return false;
     }
     if (rule.match.minSize) {
-      if (entry.size < parseSize(rule.match.minSize)) return false;
+      if (entry.size < parseBytes(rule.match.minSize)) return false;
     }
     if (rule.match.maxSize) {
-      if (entry.size > parseSize(rule.match.maxSize)) return false;
+      if (entry.size > parseBytes(rule.match.maxSize)) return false;
     }
     if (rule.match.name) {
       if (!rule.match.name.includes(entry.name)) return false;
@@ -202,15 +199,4 @@ function parseAge(ageStr: string): number | null {
   }
 }
 
-function parseSize(size: string): number {
-  const match = size.match(/^(\d+(?:\.\d+)?)\s*(KB|MB|GB|TB)$/i);
-  if (!match) return 0;
-  const val = Number(match[1]);
-  switch (match[2].toUpperCase()) {
-    case 'KB': return val * 1024;
-    case 'MB': return val * 1024 * 1024;
-    case 'GB': return val * 1024 * 1024 * 1024;
-    case 'TB': return val * 1024 * 1024 * 1024 * 1024;
-    default: return 0;
-  }
-}
+// parseBytes imported from ./utils.js

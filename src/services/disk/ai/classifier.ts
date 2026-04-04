@@ -1,5 +1,6 @@
 import { buildContext, contextToPrompt } from './contextBuilder.js';
 import { loadPreferences, getCategoryConfidence } from './learner.js';
+import { extractJsonArray } from '../utils.js';
 import type { ScanEntry, ClassificationResult, FileCategory, UserPreferences } from '../../../types/disk.js';
 
 export async function classifyEntries(
@@ -36,7 +37,7 @@ Respond in JSON array format: [{ "path": "...", "category": "...", "confidence":
 
   const response = await aiCall(prompt);
   try {
-    const parsed = JSON.parse(extractJson(response)) as ClassificationResult[];
+    const parsed = JSON.parse(extractJsonArray(response)) as ClassificationResult[];
     return parsed.map((r) => ({
       ...r,
       confidence: adjustConfidence(r.confidence, r.category, prefs),
@@ -61,7 +62,3 @@ function adjustConfidence(
   return base * 0.7 + userConf * 0.3;
 }
 
-function extractJson(text: string): string {
-  const match = text.match(/\[[\s\S]*\]/);
-  return match ? match[0] : '[]';
-}

@@ -21,11 +21,14 @@ export async function buildContext(options?: {
     ...options,
   };
 
-  const driveInfo = await drives().catch(() => []);
-  const history = opts.includeHistory ? await getHistory(opts.historyLimit).catch(() => []) : [];
-  const snapshots = opts.includeSnapshots ? await listSnapshots().catch(() => []) : [];
-  const policies = opts.includePolicies ? await listPolicies().catch(() => []) : [];
-  const user = opts.includeUser ? await loadPreferences().catch(() => null) : null;
+  const [driveInfo, historyData, snapshots, policies, user] = await Promise.all([
+    drives().catch(() => []),
+    opts.includeHistory ? getHistory(opts.historyLimit).catch(() => []) : Promise.resolve([]),
+    opts.includeSnapshots ? listSnapshots().catch(() => []) : Promise.resolve([]),
+    opts.includePolicies ? listPolicies().catch(() => []) : Promise.resolve([]),
+    opts.includeUser ? loadPreferences().catch(() => null) : Promise.resolve(null),
+  ]);
+  const history = historyData;
 
   return {
     system: { platform: process.platform, drives: driveInfo },

@@ -21,8 +21,6 @@ import { monitoringTools } from './tools/monitoring.js';
 import { selfImprovementTools } from './tools/selfImprovement.js';
 import { encryptionTools } from './tools/encryption.js';
 import { aiProviderTools } from './tools/aiProviders.js';
-import { schedulerTools } from './tools/scheduler.js';
-
 import { cacheTools } from './tools/cache.js';
 import { dbMonitoringTools } from './tools/dbMonitoring.js';
 import { apiTools } from './tools/api.js';
@@ -36,6 +34,7 @@ import { ruvectorTools } from './tools/ruvector.js';
 import { moeRouterTools } from './tools/moeRouter.js';
 import { aiDefenceTools } from './tools/aiDefence.js';
 import { guidanceTools } from './tools/guidance.js';
+import { diskTools } from './tools/disk.js';
 
 import { ToolRegistry, FEATURE_TOOL_METADATA } from './toolRegistry.js';
 import { isPackageAvailable } from './dependencyResolver.js';
@@ -47,7 +46,6 @@ import { conversationManager } from './services/conversationHistory.js';
 import { logger } from './utils/logger.js';
 import { logActiveCooldowns } from './services/aiProviderCooldown.js';
 import { processRegistry } from './utils/processRegistry.js';
-import { schedulerManager } from './tools/scheduler.js';
 import { ConsciousnessService } from './services/consciousnessService.js';
 import { scheduleDailyHealthCheck } from './services/toolHealthCheck.js';
 
@@ -60,10 +58,11 @@ const coreToolArrays = [
   gitbookTools, postmanTools, systemTools, httpTools, envTools,
   parserTools, templateTools, aiTools, systemOptimizationTools,
   backupTools, mcpClientTools, monitoringTools, selfImprovementTools,
-  encryptionTools, aiProviderTools, schedulerTools,
+  encryptionTools, aiProviderTools,
   cacheTools, dbMonitoringTools, apiTools, performanceTools,
   dxTools, flowTools, swarmTools, consensusTools,
   ruvectorTools, moeRouterTools, aiDefenceTools, guidanceTools,
+  diskTools,
 ];
 
 for (const toolArray of coreToolArrays) {
@@ -293,12 +292,32 @@ async function syncOllamaModels() {
       if (models.length > 0) {
         import('./config.js').then(({ config, updateConfig }) => {
           const current = config.availableModels || [];
-          const changed =
+          const modelsChanged =
             current.length !== models.length || !current.every((m, i) => m === models[i]);
-          if (changed) {
-            updateConfig({ availableModels: models });
-            logger.info('Synced Ollama models to config.yaml', { count: models.length });
+
+          const updates: Partial<typeof config> = {};
+          if (modelsChanged) {
+            updates.availableModels = models;
           }
+
+          const currentDefault = config.ollamaModel;
+          const currentDefaultExists = models.some((m) => m === currentDefault || m.startsWith(`${currentDefault}:`));
+          if (!currentDefaultExists) {
+            const preferred = models.find((m) => m.includes('Gemma3-Instruct-Abliterated'));
+            if (preferred) {
+              updates.ollamaModel = preferred;
+              logger.info('Auto-selected Ollama default model', { previous: currentDefault, selected: preferred });
+            } else {
+              logger.warn('Preferred Ollama model not found, keeping current default', { current: currentDefault, available: models });
+            }
+          }
+
+          if (Object.keys(updates).length > 0) {
+            updateConfig(updates);
+            logger.info('Synced Ollama models to config.yaml', { count: models.length, default: updates.ollamaModel ?? currentDefault });
+          }
+        }).catch((err) => {
+          logger.warn('Failed to apply Ollama model sync', { error: err instanceof Error ? err.message : String(err) });
         });
       }
     }
@@ -328,58 +347,63 @@ async function main() {
   await server.connect(transport);
 
   logger.info('Hakan Personal MCP Server started');
-  logActiveCooldowns();
-  conversationManager.loadFromDisk();
 
-  const role = (process.env.INSTANCE_ROLE || 'main').toLowerCase();
+  // Defer heavy services — run after MCP handshake so connection doesn't timeout
+  setImmediate(() => {
+    logActiveCooldowns();
+    conversationManager.loadFromDisk();
 
-  if (role === 'main') {
-    logger.info('Auto-reload mechanism active', { version: 'v3' });
-    if (config.aiProviders?.localModels && process.env.DISABLE_LOCAL_MODELS !== '1') {
-      syncOllamaModels();
-    }
-  } else {
-    logger.info('Skipping Ollama model sync', { reason: 'non-main instance role', role });
-  }
+    const role = (process.env.INSTANCE_ROLE || 'main').toLowerCase();
 
-  try {
-    backupService.start();
-    const backupStats = backupService.getStats();
-    if (backupStats.enabled) {
-      logger.info('Automatic backup service started', {
-        intervalHours: backupStats.intervalHours,
-        retentionHours: backupStats.retentionHours,
-        backupDir: backupStats.backupDir,
-      });
+    if (role === 'main') {
+      logger.info('Auto-reload mechanism active', { version: 'v3' });
+      if (config.aiProviders?.localModels && process.env.DISABLE_LOCAL_MODELS !== '1') {
+        syncOllamaModels();
+      }
     } else {
-      logger.info('Automatic backup service disabled via config');
+      logger.info('Skipping Ollama model sync', { reason: 'non-main instance role', role });
     }
-  } catch (error) {
-    logger.error('Failed to start backup service', error);
-  }
 
-  startGuardianLoop(role);
+    try {
+      backupService.start();
+      const backupStats = backupService.getStats();
+      if (backupStats.enabled) {
+        logger.info('Automatic backup service started', {
+          intervalHours: backupStats.intervalHours,
+          retentionHours: backupStats.retentionHours,
+          backupDir: backupStats.backupDir,
+        });
+      } else {
+        logger.info('Automatic backup service disabled via config');
+      }
+    } catch (error) {
+      logger.error('Failed to start backup service', error);
+    }
 
-  const healthCheckTools = registry.listTools().map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: t.inputSchema,
-    handler: async (args: unknown) => {
-      const h = await registry.getHandler(t.name);
-      if (!h) return { content: [{ type: 'text' as const, text: 'Tool not available' }], isError: true };
-      return h(args);
-    },
-  }));
-  const stopToolHealthCheck = scheduleDailyHealthCheck(healthCheckTools, PROJECT_ROOT);
-  logger.info('Tool health check scheduler active', { frequency: 'daily' });
+    startGuardianLoop(role);
 
-  if (config.consciousness?.enabled !== false) {
-    const maxEntries = config.consciousness?.maxJournalEntries ?? 500;
-    const consciousnessService = new ConsciousnessService(PROJECT_ROOT, maxEntries);
-    consciousnessService.ensureDir();
-    logger.info('Consciousness service initialized (event-driven mode)');
-  }
+    const healthCheckTools = registry.listTools().map((t) => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+      handler: async (args: unknown) => {
+        const h = await registry.getHandler(t.name);
+        if (!h) return { content: [{ type: 'text' as const, text: 'Tool not available' }], isError: true };
+        return h(args);
+      },
+    }));
+    stopToolHealthCheckRef = scheduleDailyHealthCheck(healthCheckTools, PROJECT_ROOT);
+    logger.info('Tool health check scheduler active', { frequency: 'daily' });
 
+    if (config.consciousness?.enabled !== false) {
+      const maxEntries = config.consciousness?.maxJournalEntries ?? 500;
+      const consciousnessService = new ConsciousnessService(PROJECT_ROOT, maxEntries);
+      consciousnessService.ensureDir();
+      logger.info('Consciousness service initialized (event-driven mode)');
+    }
+  });
+
+  let stopToolHealthCheckRef: (() => void) | null = null;
   let shuttingDown = false;
   const gracefulShutdown = async (signal: string) => {
     if (shuttingDown) return;
@@ -388,14 +412,13 @@ async function main() {
     try {
       conversationManager.shutdown();
       backupService.stop();
-      schedulerManager.shutdown();
-      stopToolHealthCheck();
+      if (stopToolHealthCheckRef) stopToolHealthCheckRef();
 
       try {
         const { stopMongoCleanup } = await import('./tools/mongodb.js');
         stopMongoCleanup();
       } catch (err) {
-        console.error('Cleanup failed:', err instanceof Error ? err.message : String(err));
+        logger.error('MongoDB cleanup failed during shutdown', err);
       }
 
       await processRegistry.killAll(3000);
@@ -404,7 +427,7 @@ async function main() {
         const { dbPoolManager } = await import('./utils/dbPoolManager.js');
         await dbPoolManager.closeAll();
       } catch (err) {
-        console.error('Cleanup failed:', err instanceof Error ? err.message : String(err));
+        logger.error('DB pool cleanup failed during shutdown', err);
       }
     } catch (err) {
       logger.error('Cleanup error during shutdown', err);

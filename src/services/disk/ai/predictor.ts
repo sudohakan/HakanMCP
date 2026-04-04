@@ -1,5 +1,6 @@
 import { listSnapshots } from '../archiver.js';
 import { drives } from '../scanner.js';
+import { extractJsonArray } from '../utils.js';
 import * as fs from 'node:fs/promises';
 import type { PredictionResult } from '../../../types/disk.js';
 
@@ -38,7 +39,7 @@ Respond in JSON: [{ "drive": "...", "currentUsedPercent": N, "trend": "growing|s
 
   const response = await aiCall(prompt);
   try {
-    return JSON.parse(extractJson(response));
+    return JSON.parse(extractJsonArray(response));
   } catch {
     return driveList.map((d) => ({
       drive: d.name,
@@ -49,9 +50,4 @@ Respond in JSON: [{ "drive": "...", "currentUsedPercent": N, "trend": "growing|s
       hotspots: [],
     }));
   }
-}
-
-function extractJson(text: string): string {
-  const match = text.match(/\[[\s\S]*\]/);
-  return match ? match[0] : '[]';
 }

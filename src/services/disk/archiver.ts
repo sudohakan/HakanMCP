@@ -5,13 +5,10 @@ import { getDataDir } from './history.js';
 import { assertNotProtected } from './cleaner.js';
 import type { SnapshotMeta, CompareResult, ScanEntry } from '../../types/disk.js';
 import { scan } from './scanner.js';
-
-const VALID_NAME_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+import { assertValidName } from './utils.js';
 
 function assertValidSnapshotName(name: string): void {
-  if (!VALID_NAME_RE.test(name)) {
-    throw new Error(`Invalid snapshot name: "${name}". Only alphanumeric, underscore, and hyphen allowed (max 64 chars).`);
-  }
+  assertValidName(name, 'snapshot');
 }
 
 export async function archive(

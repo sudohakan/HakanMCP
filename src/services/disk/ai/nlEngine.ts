@@ -1,4 +1,5 @@
 import { buildContext, contextToPrompt } from './contextBuilder.js';
+import { extractJsonObject } from '../utils.js';
 
 interface ConversationTurn {
   role: 'user' | 'assistant';
@@ -82,7 +83,7 @@ If you need clarification: { "action": null, "explanation": "question for user",
   activeConversation.turns.push({ role: 'user', content: query });
 
   try {
-    const parsed = JSON.parse(extractJsonObj(response));
+    const parsed = JSON.parse(extractJsonObject(response));
     activeConversation.turns.push({ role: 'assistant', content: parsed.explanation });
     if (parsed.action) activeConversation.lastAction = parsed.action;
     return parsed;
@@ -101,7 +102,3 @@ export function clearConversation(): void {
   activeConversation = null;
 }
 
-function extractJsonObj(text: string): string {
-  const match = text.match(/\{[\s\S]*\}/);
-  return match ? match[0] : '{}';
-}

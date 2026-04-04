@@ -5,6 +5,14 @@ import { getDataDir } from './history.js';
 import { assertNotProtected } from './cleaner.js';
 import type { PolicyDefinition, PolicyRule, PolicyRunResult, ScanEntry } from '../../types/disk.js';
 
+const VALID_NAME_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+
+function assertValidName(name: string): void {
+  if (!VALID_NAME_RE.test(name)) {
+    throw new Error(`Invalid policy name: "${name}". Only alphanumeric, underscore, and hyphen allowed (max 64 chars).`);
+  }
+}
+
 async function getPoliciesDir(): Promise<string> {
   const dataDir = await getDataDir();
   const dir = path.join(dataDir, 'policies');
@@ -13,6 +21,7 @@ async function getPoliciesDir(): Promise<string> {
 }
 
 export async function createPolicy(name: string, description: string, rules: PolicyRule[]): Promise<PolicyDefinition> {
+  assertValidName(name);
   const dir = await getPoliciesDir();
   const now = new Date().toISOString();
   const policy: PolicyDefinition = { name, description, rules, createdAt: now, updatedAt: now };
@@ -21,6 +30,7 @@ export async function createPolicy(name: string, description: string, rules: Pol
 }
 
 export async function getPolicy(name: string): Promise<PolicyDefinition | null> {
+  assertValidName(name);
   const dir = await getPoliciesDir();
   try {
     const content = await fs.readFile(path.join(dir, `${name}.json`), 'utf-8');
@@ -41,6 +51,7 @@ export async function listPolicies(): Promise<string[]> {
 }
 
 export async function updatePolicy(name: string, updates: Partial<Pick<PolicyDefinition, 'description' | 'rules'>>): Promise<PolicyDefinition | null> {
+  assertValidName(name);
   const existing = await getPolicy(name);
   if (!existing) return null;
   const updated: PolicyDefinition = {
@@ -54,6 +65,7 @@ export async function updatePolicy(name: string, updates: Partial<Pick<PolicyDef
 }
 
 export async function deletePolicy(name: string): Promise<boolean> {
+  assertValidName(name);
   const dir = await getPoliciesDir();
   try {
     await fs.unlink(path.join(dir, `${name}.json`));
@@ -98,7 +110,8 @@ export async function runPolicy(name: string, dryRun: boolean = true): Promise<P
 }
 
 async function findMatchingFiles(rule: PolicyRule, platform: ReturnType<typeof getPlatform>): Promise<ScanEntry[]> {
-  const expandedPath = rule.match.path.replace(/^~/, process.env.HOME || '/tmp');
+  const expandedPath = path.resolve(rule.match.path.replace(/^~/, process.env.HOME || '/tmp'));
+  assertNotProtected(expandedPath);
   const entries = await platform.getDirectoryEntries(expandedPath, 5, 0).catch(() => []);
   const flat = flattenAll(entries);
   const now = Date.now();
@@ -160,7 +173,12 @@ async function executeRuleAction(rule: PolicyRule, files: ScanEntry[], platform:
       case 'archive':
         if (rule.destination) {
           const dest = rule.destination.replace(/^~/, process.env.HOME || '/tmp');
-          await platform.compress(file.path, rule.format || 'zip', path.join(dest, file.name));
+          const archivePath = await platform.compress(file.path, rule.format || 'zip', path.join(dest, file.name));
+          try {
+            await fs.stat(archivePath);
+          } catch {
+            break; // archive failed or missing — do not delete original
+          }
           if (file.type === 'dir') await platform.deleteDirRecursive(file.path);
           else await platform.deleteFile(file.path);
         }

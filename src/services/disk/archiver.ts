@@ -71,11 +71,21 @@ export async function listSnapshots(): Promise<SnapshotMeta[]> {
 export async function compare(snapshotA: string, snapshotB: string): Promise<CompareResult> {
   const dataDir = await getDataDir();
   const snapshotsDir = path.join(dataDir, 'snapshots');
-  const aPath = snapshotA.endsWith('.json') ? snapshotA : path.join(snapshotsDir, `${snapshotA}.json`);
-  const bPath = snapshotB.endsWith('.json') ? snapshotB : path.join(snapshotsDir, `${snapshotB}.json`);
+  const aPath = path.join(snapshotsDir, `${path.basename(snapshotA, '.json')}.json`);
+  const bPath = path.join(snapshotsDir, `${path.basename(snapshotB, '.json')}.json`);
 
-  const aData = JSON.parse(await fs.readFile(aPath, 'utf-8'));
-  const bData = JSON.parse(await fs.readFile(bPath, 'utf-8'));
+  let aData: { children?: ScanEntry[] };
+  let bData: { children?: ScanEntry[] };
+  try {
+    aData = JSON.parse(await fs.readFile(aPath, 'utf-8'));
+  } catch {
+    throw new Error(`Snapshot not found or corrupt: ${snapshotA}`);
+  }
+  try {
+    bData = JSON.parse(await fs.readFile(bPath, 'utf-8'));
+  } catch {
+    throw new Error(`Snapshot not found or corrupt: ${snapshotB}`);
+  }
 
   const aMap = buildPathMap(aData.children || []);
   const bMap = buildPathMap(bData.children || []);

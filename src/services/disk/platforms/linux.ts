@@ -1,15 +1,19 @@
-import { exec } from 'node:child_process';
+import { execFile, exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import * as fs from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
+import * as os from 'node:os';
 import type { DriveInfo, ScanEntry } from '../../../types/disk.js';
 import type { DiskPlatform } from './types.js';
 
+const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
 
 export class LinuxPlatform implements DiskPlatform {
   async getDrives(): Promise<DriveInfo[]> {
+    // getDrives uses no user input — safe to use exec for piped command
     const { stdout } = await execAsync(
       'df -B1 --output=source,fstype,size,used,avail,pcent,target -x tmpfs -x devtmpfs -x squashfs 2>/dev/null || df -k',
       { maxBuffer: 10 * 1024 * 1024 },
@@ -35,8 +39,9 @@ export class LinuxPlatform implements DiskPlatform {
   }
 
   async getDirectorySize(dirPath: string): Promise<number> {
-    const { stdout } = await execAsync(`du -sb "${dirPath}" 2>/dev/null | cut -f1`);
-    return Number(stdout.trim()) || 0;
+    const { stdout } = await execFileAsync('du', ['-sb', '--', dirPath]);
+    const match = stdout.match(/^(\d+)/);
+    return match ? Number(match[1]) : 0;
   }
 
   async getDirectoryEntries(dirPath: string, depth: number, minSize: number): Promise<ScanEntry[]> {
@@ -51,8 +56,9 @@ export class LinuxPlatform implements DiskPlatform {
     for (const item of items) {
       const fullPath = path.join(dirPath, item.name);
       try {
-        const stat = await fs.stat(fullPath);
-        if (item.isFile()) {
+        const stat = await fs.lstat(fullPath);
+        if (stat.isSymbolicLink()) continue;
+        if (stat.isFile()) {
           if (stat.size >= minSize) {
             results.push({
               name: item.name,
@@ -63,7 +69,7 @@ export class LinuxPlatform implements DiskPlatform {
               accessed: stat.atime.toISOString(),
             });
           }
-        } else if (item.isDirectory()) {
+        } else if (stat.isDirectory()) {
           const children: ScanEntry[] = [];
           await this.walkDir(fullPath, depth - 1, minSize, children);
           const dirSize = children.reduce((sum, c) => sum + c.size, 0);
@@ -95,21 +101,31 @@ export class LinuxPlatform implements DiskPlatform {
 
   async moveItem(source: string, destination: string): Promise<void> {
     await fs.mkdir(path.dirname(destination), { recursive: true });
-    await fs.rename(source, destination);
+    try {
+      await fs.rename(source, destination);
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === 'EXDEV') {
+        await fs.cp(source, destination, { recursive: true });
+        await fs.rm(source, { recursive: true, force: true });
+      } else {
+        throw err;
+      }
+    }
   }
 
   async getRecycleBinSize(): Promise<number> {
-    const trashPath = path.join(process.env.HOME || '/tmp', '.local/share/Trash/files');
+    const trashPath = path.join(os.homedir(), '.local/share/Trash/files');
     try {
-      const { stdout } = await execAsync(`du -sb "${trashPath}" 2>/dev/null | cut -f1`);
-      return Number(stdout.trim()) || 0;
+      const { stdout } = await execFileAsync('du', ['-sb', '--', trashPath]);
+      const match = stdout.match(/^(\d+)/);
+      return match ? Number(match[1]) : 0;
     } catch {
       return 0;
     }
   }
 
   async emptyRecycleBin(): Promise<void> {
-    const trashPath = path.join(process.env.HOME || '/tmp', '.local/share/Trash');
+    const trashPath = path.join(os.homedir(), '.local/share/Trash');
     await fs.rm(path.join(trashPath, 'files'), { recursive: true, force: true });
     await fs.rm(path.join(trashPath, 'info'), { recursive: true, force: true });
     await fs.mkdir(path.join(trashPath, 'files'), { recursive: true });
@@ -117,8 +133,8 @@ export class LinuxPlatform implements DiskPlatform {
   }
 
   async sendToRecycleBin(filePath: string): Promise<void> {
-    const trashFiles = path.join(process.env.HOME || '/tmp', '.local/share/Trash/files');
-    const trashInfo = path.join(process.env.HOME || '/tmp', '.local/share/Trash/info');
+    const trashFiles = path.join(os.homedir(), '.local/share/Trash/files');
+    const trashInfo = path.join(os.homedir(), '.local/share/Trash/info');
     await fs.mkdir(trashFiles, { recursive: true });
     await fs.mkdir(trashInfo, { recursive: true });
     const basename = path.basename(filePath);
@@ -130,33 +146,40 @@ export class LinuxPlatform implements DiskPlatform {
   async compress(sourcePath: string, format: string, destPath: string): Promise<string> {
     if (format === '7z') {
       const outPath = destPath.endsWith('.7z') ? destPath : `${destPath}.7z`;
-      await execAsync(`7z a "${outPath}" "${sourcePath}" -mx=5`);
+      await execFileAsync('7z', ['a', outPath, sourcePath, '-mx=5']);
       return outPath;
     }
     if (format === 'tar.gz' || format === 'tgz') {
       const outPath = destPath.endsWith('.tar.gz') ? destPath : `${destPath}.tar.gz`;
       const dir = path.dirname(sourcePath);
       const base = path.basename(sourcePath);
-      await execAsync(`tar -czf "${outPath}" -C "${dir}" "${base}"`);
+      await execFileAsync('tar', ['-czf', outPath, '-C', dir, base]);
       return outPath;
     }
     const outPath = destPath.endsWith('.zip') ? destPath : `${destPath}.zip`;
-    await execAsync(`zip -r "${outPath}" "${sourcePath}"`);
+    await execFileAsync('zip', ['-r', outPath, sourcePath]);
     return outPath;
   }
 
   async decompress(archivePath: string, destPath: string): Promise<void> {
     if (archivePath.endsWith('.7z')) {
-      await execAsync(`7z x "${archivePath}" -o"${destPath}" -y`);
+      await execFileAsync('7z', ['x', archivePath, `-o${destPath}`, '-y']);
     } else if (archivePath.endsWith('.tar.gz') || archivePath.endsWith('.tgz')) {
-      await execAsync(`tar -xzf "${archivePath}" -C "${destPath}"`);
+      await execFileAsync('tar', ['-xzf', archivePath, '-C', destPath]);
     } else {
-      await execAsync(`unzip -o "${archivePath}" -d "${destPath}"`);
+      await execFileAsync('unzip', ['-o', archivePath, '-d', destPath]);
     }
   }
 
   async getFileHash(filePath: string, algorithm: string): Promise<string> {
-    const content = await fs.readFile(filePath);
-    return crypto.createHash(algorithm).update(content).digest('hex');
+    const ALLOWED_ALGORITHMS = ['md5', 'sha1', 'sha256', 'sha512'];
+    const algo = ALLOWED_ALGORITHMS.includes(algorithm) ? algorithm : 'md5';
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash(algo);
+      const stream = createReadStream(filePath);
+      stream.on('data', (chunk) => hash.update(chunk));
+      stream.on('end', () => resolve(hash.digest('hex')));
+      stream.on('error', reject);
+    });
   }
 }

@@ -1,13 +1,15 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import * as os from 'node:os';
 import { randomUUID } from 'node:crypto';
 import type { HistoryEntry } from '../../types/disk.js';
 
-const DISK_DATA_DIR = path.join(process.env.HOME || '/tmp', '.hakanmcp', 'disk');
-const HISTORY_FILE = path.join(DISK_DATA_DIR, 'history.jsonl');
+function getDiskDataDir(): string {
+  return path.join(os.homedir(), '.hakanmcp', 'disk');
+}
 
 async function ensureDataDir(): Promise<void> {
-  await fs.mkdir(DISK_DATA_DIR, { recursive: true });
+  await fs.mkdir(getDiskDataDir(), { recursive: true });
 }
 
 export async function logOperation(
@@ -17,15 +19,17 @@ export async function logOperation(
   durationMs: number,
 ): Promise<HistoryEntry> {
   await ensureDataDir();
+  const { rules: _rules, ...safeParams } = params;
   const entry: HistoryEntry = {
     id: randomUUID(),
     action,
-    params,
+    params: safeParams,
     result,
     timestamp: new Date().toISOString(),
     durationMs,
   };
-  await fs.appendFile(HISTORY_FILE, JSON.stringify(entry) + '\n');
+  const historyFile = path.join(getDiskDataDir(), 'history.jsonl');
+  await fs.appendFile(historyFile, JSON.stringify(entry) + '\n');
   return entry;
 }
 
@@ -33,12 +37,20 @@ export async function getHistory(
   limit: number = 50,
   actionFilter?: string,
 ): Promise<HistoryEntry[]> {
+  const historyFile = path.join(getDiskDataDir(), 'history.jsonl');
   try {
-    const content = await fs.readFile(HISTORY_FILE, 'utf-8');
+    const content = await fs.readFile(historyFile, 'utf-8');
     const lines = content.trim().split('\n').filter(Boolean);
-    let entries: HistoryEntry[] = lines.map((line) => JSON.parse(line));
-    if (actionFilter) {
-      entries = entries.filter((e) => e.action === actionFilter);
+    const entries: HistoryEntry[] = [];
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line) as HistoryEntry;
+        if (!actionFilter || entry.action === actionFilter) {
+          entries.push(entry);
+        }
+      } catch {
+        // skip malformed lines
+      }
     }
     return entries.slice(-limit).reverse();
   } catch {
@@ -48,5 +60,5 @@ export async function getHistory(
 
 export async function getDataDir(): Promise<string> {
   await ensureDataDir();
-  return DISK_DATA_DIR;
+  return getDiskDataDir();
 }

@@ -12,16 +12,28 @@ const PROTECTED_PATHS_LINUX = [
 const PROTECTED_SUBPATHS = ['.ssh', '.gnupg', '.credentials'];
 
 function isProtected(targetPath: string): boolean {
-  const normalized = path.resolve(targetPath);
-  const protectedPaths = process.platform === 'win32' ? PROTECTED_PATHS_WIN : PROTECTED_PATHS_LINUX;
+  const resolved = path.resolve(targetPath);
+  const isWin = process.platform === 'win32';
+  const normalized = isWin ? resolved.toLowerCase() : resolved;
+  const protectedPaths = isWin ? PROTECTED_PATHS_WIN : PROTECTED_PATHS_LINUX;
   for (const pp of protectedPaths) {
-    if (normalized.startsWith(pp)) return true;
+    const normalizedPp = isWin ? pp.toLowerCase() : pp;
+    if (normalized === normalizedPp || normalized.startsWith(normalizedPp + path.sep)) return true;
   }
   const home = process.env.HOME || process.env.USERPROFILE || '';
-  for (const sub of PROTECTED_SUBPATHS) {
-    if (normalized.startsWith(path.join(home, sub))) return true;
+  if (home) {
+    for (const sub of PROTECTED_SUBPATHS) {
+      const subPath = isWin ? path.join(home, sub).toLowerCase() : path.join(home, sub);
+      if (normalized === subPath || normalized.startsWith(subPath + path.sep)) return true;
+    }
   }
   return false;
+}
+
+function globMatch(name: string, pattern: string): boolean {
+  if (!pattern.includes('*')) return name === pattern;
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}$`, 'i').test(name);
 }
 
 export function assertNotProtected(targetPath: string): void {
@@ -120,11 +132,7 @@ async function cleanByPatterns(
     for (const item of items) {
       const fullPath = path.join(dir, item.name);
       if (isProtected(fullPath)) continue;
-      const matches = patterns.some((p) => {
-        if (p.startsWith('*')) return item.name.endsWith(p.slice(1));
-        if (p.endsWith('*')) return item.name.startsWith(p.slice(0, -1));
-        return item.name === p;
-      });
+      const matches = patterns.some((p) => globMatch(item.name, p));
       if (matches) {
         try {
           const stat = await fs.stat(fullPath);
@@ -199,6 +207,7 @@ export async function moveItem(
   destination: string,
 ): Promise<{ success: boolean; message: string }> {
   assertNotProtected(source);
+  assertNotProtected(destination);
   const platform = getPlatform();
   await platform.moveItem(source, destination);
   return { success: true, message: `Moved: ${source} → ${destination}` };

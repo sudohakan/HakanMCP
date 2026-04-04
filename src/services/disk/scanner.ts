@@ -44,9 +44,10 @@ export async function top(
   dirPath: string,
   count: number = 20,
   type: 'file' | 'dir' | 'all' = 'all',
+  depth: number = 10,
 ): Promise<TopEntry[]> {
   const platform = getPlatform();
-  const entries = await platform.getDirectoryEntries(dirPath, 10, 0);
+  const entries = await platform.getDirectoryEntries(dirPath, depth, 0);
   const flat = flattenEntries(entries);
   const filtered = type === 'all' ? flat : flat.filter((e) => e.type === type);
   return filtered
@@ -91,9 +92,10 @@ export async function types(dirPath: string, depth: number = 5): Promise<TypeDis
 export async function age(
   dirPath: string,
   brackets: number[] = [30, 60, 90, 180, 365],
+  depth: number = 10,
 ): Promise<AgeBracket[]> {
   const platform = getPlatform();
-  const entries = await platform.getDirectoryEntries(dirPath, 10, 0);
+  const entries = await platform.getDirectoryEntries(dirPath, depth, 0);
   const flat = flattenEntries(entries).filter((e) => e.type === 'file');
   const now = Date.now();
   const result: AgeBracket[] = brackets.map((maxDays) => ({

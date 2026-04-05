@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { ConsensusEngine } from '../services/consensusEngine.js';
 
-const engine = new ConsensusEngine();
+let _engine: ConsensusEngine | null = null;
+function getEngine(): ConsensusEngine {
+  if (!_engine) _engine = new ConsensusEngine();
+  return _engine;
+}
 
 export const consensusTools = [
   {
@@ -52,20 +56,20 @@ export const consensusTools = [
           if (!protocol) throw new Error('protocol is required for action=reach');
           if (!agents) throw new Error('agents is required for action=reach');
           if (!proposal) throw new Error('proposal is required for action=reach');
-          const result = await engine.reachConsensus(protocol, agents, proposal);
+          const result = await getEngine().reachConsensus(protocol, agents, proposal);
           return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
 
         case 'protocols': {
           const protocols = ['majority', 'byzantine', 'raft', 'gossip', 'crdt'] as const;
           const info = Object.fromEntries(
-            protocols.map((p) => [p, engine.getProtocolInfo(p)]),
+            protocols.map((p) => [p, getEngine().getProtocolInfo(p)]),
           );
           return { content: [{ type: 'text', text: JSON.stringify(info, null, 2) }] };
         }
 
         case 'history': {
-          const history = engine.getHistory();
+          const history = getEngine().getHistory();
           const result = limit !== undefined ? history.slice(0, limit) : history;
           return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }

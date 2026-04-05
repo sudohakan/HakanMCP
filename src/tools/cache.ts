@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { MultiLevelCache } from '../services/cacheService.js';
 
-const cache = new MultiLevelCache<unknown>();
+let _cache: MultiLevelCache<unknown> | null = null;
+function getCache(): MultiLevelCache<unknown> {
+  if (!_cache) _cache = new MultiLevelCache<unknown>();
+  return _cache;
+}
 
 export const cacheTools = [
   {
@@ -34,7 +38,7 @@ export const cacheTools = [
       switch (action) {
         case 'get': {
           if (!key) throw new Error('key is required for action=get');
-          const result = await cache.get(key);
+          const result = await getCache().get(key);
           return { content: [{ type: 'text', text: JSON.stringify({ key, value: result }, null, 2) }] };
         }
 
@@ -48,23 +52,23 @@ export const cacheTools = [
               return value;
             }
           })();
-          await cache.set(key, parsed, ttlMs);
+          await getCache().set(key, parsed, ttlMs);
           return { content: [{ type: 'text', text: `✓ cache_set ${key}` }] };
         }
 
         case 'delete': {
           if (!key) throw new Error('key is required for action=delete');
-          await cache.delete(key);
+          await getCache().delete(key);
           return { content: [{ type: 'text', text: `✓ cache_delete ${key}` }] };
         }
 
         case 'clear': {
-          await cache.clear();
+          await getCache().clear();
           return { content: [{ type: 'text', text: '✓ cache cleared' }] };
         }
 
         case 'stats': {
-          return { content: [{ type: 'text', text: JSON.stringify(cache.stats(), null, 2) }] };
+          return { content: [{ type: 'text', text: JSON.stringify(getCache().stats(), null, 2) }] };
         }
       }
     },

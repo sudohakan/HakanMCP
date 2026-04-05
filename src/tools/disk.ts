@@ -1,18 +1,14 @@
 import { z } from 'zod';
 import {
   scanner, cleaner, archiver, quota, policy, history,
-  aiEngine, setLastResult,
 } from '../services/disk/index.js';
 import { parseBytes } from '../services/disk/utils.js';
 import { createJsonResponse, createErrorResponse } from '../utils/common.js';
-import { callClaudeCodeModel } from './aiProviders.js';
 import type { ToolDefinition, ToolResponse } from '../types/index.js';
-import type { ChatMessage } from './aiProviders.js';
 
 const DiskArgsSchema = z.object({
   action: z.enum([
     'scan', 'drives', 'top', 'types', 'age', 'duplicates', 'tree', 'compare',
-    'analyze', 'ask', 'suggest', 'predict', 'anomalies', 'plan',
     'cleanup', 'delete', 'move', 'archive',
     'quota', 'policy', 'policyRun',
     'history', 'snapshot',
@@ -26,9 +22,6 @@ const DiskArgsSchema = z.object({
   algorithm: z.string().optional(),
   snapshotA: z.string().optional(),
   snapshotB: z.string().optional(),
-  context: z.string().optional(),
-  query: z.string().optional(),
-  goalBytes: z.number().optional(),
   targets: z.array(z.string()).optional(),
   dryRun: z.boolean().optional(),
   confirm: z.boolean().optional(),
@@ -41,22 +34,9 @@ const DiskArgsSchema = z.object({
   description: z.string().optional(),
   rules: z.array(z.any()).optional(),
   actionFilter: z.string().optional(),
-  decision: z.enum(['accept', 'reject']).optional(),
-  category: z.string().optional(),
-  filePath: z.string().optional(),
 });
 
 type DiskArgs = z.infer<typeof DiskArgsSchema>;
-
-function getAiCall(): (prompt: string) => Promise<string> {
-  return async (prompt: string) => {
-    const messages: ChatMessage[] = [{ role: 'user', content: prompt }];
-    const result = await callClaudeCodeModel(messages);
-    return result.text;
-  };
-}
-
-const SAFE_AI_DISPATCH = new Set(['scan', 'drives', 'top', 'types', 'age', 'duplicates', 'tree', 'history']);
 
 async function handleDiskAction(parsed: DiskArgs): Promise<unknown> {
   const { action } = parsed;
@@ -91,41 +71,6 @@ async function handleDiskAction(parsed: DiskArgs): Promise<unknown> {
     case 'compare': {
       if (!parsed.snapshotA || !parsed.snapshotB) throw new Error('snapshotA and snapshotB required');
       return archiver.compare(parsed.snapshotA, parsed.snapshotB);
-    }
-
-    // AI actions
-    case 'analyze': {
-      if (!parsed.path) throw new Error('path required for analyze');
-      return aiEngine.analyze(parsed.path, getAiCall());
-    }
-    case 'predict':
-      return aiEngine.predict(getAiCall());
-    case 'anomalies': {
-      if (!parsed.path) throw new Error('path required for anomalies');
-      return aiEngine.anomalies(parsed.path, getAiCall());
-    }
-    case 'plan': {
-      if (!parsed.path) throw new Error('path required for plan');
-      return aiEngine.plan(parsed.path, parsed.goalBytes ?? null, getAiCall());
-    }
-    case 'ask': {
-      if (!parsed.query) throw new Error('query required for ask');
-      const nlResult = await aiEngine.ask(parsed.query, getAiCall());
-      if (nlResult.action && !nlResult.conversational) {
-        const resolvedAction = nlResult.action as Record<string, unknown>;
-        if (!SAFE_AI_DISPATCH.has(resolvedAction.action as string)) {
-          return { interpretation: nlResult.explanation, action: nlResult.action, conversational: true, note: 'Bu islem onay gerektirir. Dogrudan calistirin.' };
-        }
-        const safeArgs = DiskArgsSchema.parse({ ...resolvedAction, dryRun: true, confirm: false });
-        const innerResult = await handleDiskAction(safeArgs);
-        setLastResult(innerResult);
-        return { interpretation: nlResult.explanation, action: nlResult.action, result: innerResult };
-      }
-      return nlResult;
-    }
-    case 'suggest': {
-      if (!parsed.path) throw new Error('path required for suggest');
-      return aiEngine.suggest(parsed.path, getAiCall());
     }
 
     // Cleaner actions
@@ -222,7 +167,7 @@ async function handlePolicy(parsed: DiskArgs): Promise<unknown> {
 export const diskTools: ToolDefinition[] = [
   {
     name: 'disk',
-    description: 'Comprehensive disk management: scan usage, find duplicates, AI-driven analysis and cleanup suggestions, file operations, quotas, and policies. Use action parameter to specify operation.',
+    description: 'Disk management: scan usage, find duplicates, cleanup temp/cache/logs, archive, move, delete files, quota management, and policy-based automation.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -230,7 +175,6 @@ export const diskTools: ToolDefinition[] = [
           type: 'string',
           enum: [
             'scan', 'drives', 'top', 'types', 'age', 'duplicates', 'tree', 'compare',
-            'analyze', 'ask', 'suggest', 'predict', 'anomalies', 'plan',
             'cleanup', 'delete', 'move', 'archive',
             'quota', 'policy', 'policyRun',
             'history', 'snapshot',
@@ -246,9 +190,7 @@ export const diskTools: ToolDefinition[] = [
         algorithm: { type: 'string', description: 'Hash algorithm (default: md5)' },
         snapshotA: { type: 'string', description: 'First snapshot for compare' },
         snapshotB: { type: 'string', description: 'Second snapshot for compare' },
-        query: { type: 'string', description: 'Natural language query for ask' },
-        goalBytes: { type: 'number', description: 'Target bytes to free for plan' },
-        targets: { type: 'array', items: { type: 'string' }, description: 'Cleanup targets' },
+        targets: { type: 'array', items: { type: 'string' }, description: 'Cleanup targets: temp, cache, logs, empty_dirs, node_modules, recycle_bin, thumbnails, crash_dumps' },
         dryRun: { type: 'boolean', description: 'Preview mode (default: true)' },
         confirm: { type: 'boolean', description: 'Confirm destructive action' },
         source: { type: 'string', description: 'Source path for move' },
@@ -260,7 +202,6 @@ export const diskTools: ToolDefinition[] = [
         description: { type: 'string', description: 'Policy description' },
         rules: { type: 'array', description: 'Policy rules' },
         actionFilter: { type: 'string', description: 'Filter history by action' },
-        context: { type: 'string', description: 'Additional AI context' },
       },
       required: ['action'],
     },

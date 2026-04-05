@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { GuidanceEngine } from '../services/guidanceEngine.js';
 
-const engine = new GuidanceEngine();
+let _engine: GuidanceEngine | null = null;
+function getEngine(): GuidanceEngine {
+  if (!_engine) _engine = new GuidanceEngine();
+  return _engine;
+}
 
 export const guidanceTools = [
   {
@@ -34,18 +38,18 @@ export const guidanceTools = [
       switch (action) {
         case 'compile': {
           if (!content) throw new Error('content is required for action=compile');
-          const rules = engine.compilePolicy(content);
+          const rules = getEngine().compilePolicy(content);
           return { content: [{ type: 'text', text: JSON.stringify(rules, null, 2) }] };
         }
 
         case 'enforce': {
           if (!policyAction) throw new Error('policyAction is required for action=enforce');
-          const result = engine.enforce(policyAction, (context as Record<string, unknown>) ?? {});
+          const result = getEngine().enforce(policyAction, (context as Record<string, unknown>) ?? {});
           return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
 
         case 'audit': {
-          const trail = engine.getAuditTrail();
+          const trail = getEngine().getAuditTrail();
           return { content: [{ type: 'text', text: JSON.stringify(trail, null, 2) }] };
         }
       }

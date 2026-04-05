@@ -1,8 +1,17 @@
 import { z } from 'zod';
 import { HnswBridge, SonaEngine } from '../services/ruvectorBridge.js';
 
-const hnsw = new HnswBridge({ dimensions: 384 });
-const sona = new SonaEngine({ dimensions: 384 });
+let _hnsw: HnswBridge | null = null;
+function getHnsw(): HnswBridge {
+  if (!_hnsw) _hnsw = new HnswBridge({ dimensions: 384 });
+  return _hnsw;
+}
+
+let _sona: SonaEngine | null = null;
+function getSona(): SonaEngine {
+  if (!_sona) _sona = new SonaEngine({ dimensions: 384 });
+  return _sona;
+}
 
 export const ruvectorTools = [
   {
@@ -75,19 +84,19 @@ export const ruvectorTools = [
         case 'add': {
           if (!id) throw new Error('id is required for action=add');
           if (!vector) throw new Error('vector is required for action=add');
-          hnsw.add(id, vector, metadata as Record<string, unknown> | undefined);
-          return { content: [{ type: 'text', text: `Vector ${id} added (size=${hnsw.size()}).` }] };
+          getHnsw().add(id, vector, metadata as Record<string, unknown> | undefined);
+          return { content: [{ type: 'text', text: `Vector ${id} added (size=${getHnsw().size()}).` }] };
         }
 
         case 'search': {
           if (!query) throw new Error('query is required for action=search');
-          const results = hnsw.search(query, k ?? 5);
+          const results = getHnsw().search(query, k ?? 5);
           return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
         }
 
         case 'remove': {
           if (!id) throw new Error('id is required for action=remove');
-          const success = hnsw.remove(id);
+          const success = getHnsw().remove(id);
           return {
             content: [{ type: 'text', text: JSON.stringify({ id, success }, null, 2) }],
           };
@@ -95,13 +104,13 @@ export const ruvectorTools = [
 
         case 'learn': {
           if (!trajectories) throw new Error('trajectories is required for action=learn');
-          const result = sona.learn(trajectories);
+          const result = getSona().learn(trajectories);
           return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
 
         case 'patterns': {
           if (!query) throw new Error('query is required for action=patterns');
-          const patterns = sona.findPatterns(query, k ?? 5);
+          const patterns = getSona().findPatterns(query, k ?? 5);
           return { content: [{ type: 'text', text: JSON.stringify(patterns, null, 2) }] };
         }
       }

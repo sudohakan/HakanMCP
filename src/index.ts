@@ -3,72 +3,65 @@ process.setMaxListeners(20);
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import fetch from 'node-fetch';
 
-import { gitbookTools } from './tools/gitbook.js';
-import { postmanTools } from './tools/postman.js';
-import { systemTools } from './tools/system.js';
-import { httpTools } from './tools/http.js';
-import { envTools } from './tools/env.js';
-import { parserTools } from './tools/parser.js';
-import { templateTools } from './tools/template.js';
-import { aiTools, setAgenticToolsRef } from './tools/aiTools.js';
-import { systemOptimizationTools } from './tools/systemOptimization.js';
-import { backupTools } from './tools/backup.js';
-import { mcpClientTools } from './tools/mcpClient.js';
-
-import { monitoringTools } from './tools/monitoring.js';
-import { selfImprovementTools } from './tools/selfImprovement.js';
-import { encryptionTools } from './tools/encryption.js';
-import { aiProviderTools } from './tools/aiProviders.js';
-import { cacheTools } from './tools/cache.js';
-import { dbMonitoringTools } from './tools/dbMonitoring.js';
-import { apiTools } from './tools/api.js';
-import { performanceTools } from './tools/performance.js';
-
-import { dxTools } from './tools/dx.js';
-import { flowTools } from './tools/flow.js';
-import { swarmTools } from './tools/swarm.js';
-import { consensusTools } from './tools/consensus.js';
-import { ruvectorTools } from './tools/ruvector.js';
-import { moeRouterTools } from './tools/moeRouter.js';
-import { aiDefenceTools } from './tools/aiDefence.js';
-import { guidanceTools } from './tools/guidance.js';
-import { diskTools } from './tools/disk.js';
-
-import { ToolRegistry, FEATURE_TOOL_METADATA } from './toolRegistry.js';
+import { ToolRegistry, FEATURE_TOOL_MAP, FEATURE_TOOL_METADATA } from './toolRegistry.js';
 import { isPackageAvailable } from './dependencyResolver.js';
-
 import { config } from './config.js';
 import { PROJECT_ROOT } from './utils/projectRoot.js';
-import { backupService } from './services/backupService.js';
-import { conversationManager } from './services/conversationHistory.js';
 import { logger } from './utils/logger.js';
-import { logActiveCooldowns } from './services/aiProviderCooldown.js';
-import { processRegistry } from './utils/processRegistry.js';
-import { ConsciousnessService } from './services/consciousnessService.js';
-import { scheduleDailyHealthCheck } from './services/toolHealthCheck.js';
 
 const registry = new ToolRegistry({
   timeoutSec: config.system?.commandTimeout ?? 60,
   logger,
 });
 
-const coreToolArrays = [
-  gitbookTools, postmanTools, systemTools, httpTools, envTools,
-  parserTools, templateTools, aiTools, systemOptimizationTools,
-  backupTools, mcpClientTools, monitoringTools, selfImprovementTools,
-  encryptionTools, aiProviderTools,
-  cacheTools, dbMonitoringTools, apiTools, performanceTools,
-  dxTools, flowTools, swarmTools, consensusTools,
-  ruvectorTools, moeRouterTools, aiDefenceTools, guidanceTools,
-  diskTools,
-];
+// Tool modules — loaded lazily via dynamic import after MCP handshake
+const TOOL_MODULES = [
+  { path: './tools/gitbook.js', export: 'gitbookTools' },
+  { path: './tools/postman.js', export: 'postmanTools' },
+  { path: './tools/system.js', export: 'systemTools' },
+  { path: './tools/http.js', export: 'httpTools' },
+  { path: './tools/env.js', export: 'envTools' },
+  { path: './tools/parser.js', export: 'parserTools' },
+  { path: './tools/template.js', export: 'templateTools' },
+  { path: './tools/aiTools.js', export: 'aiTools' },
+  { path: './tools/systemOptimization.js', export: 'systemOptimizationTools' },
+  { path: './tools/backup.js', export: 'backupTools' },
+  { path: './tools/mcpClient.js', export: 'mcpClientTools' },
+  { path: './tools/monitoring.js', export: 'monitoringTools' },
+  { path: './tools/selfImprovement.js', export: 'selfImprovementTools' },
+  { path: './tools/encryption.js', export: 'encryptionTools' },
+  { path: './tools/aiProviders.js', export: 'aiProviderTools' },
+  { path: './tools/cache.js', export: 'cacheTools' },
+  { path: './tools/dbMonitoring.js', export: 'dbMonitoringTools' },
+  { path: './tools/api.js', export: 'apiTools' },
+  { path: './tools/performance.js', export: 'performanceTools' },
+  { path: './tools/dx.js', export: 'dxTools' },
+  { path: './tools/flow.js', export: 'flowTools' },
+  { path: './tools/swarm.js', export: 'swarmTools' },
+  { path: './tools/consensus.js', export: 'consensusTools' },
+  { path: './tools/ruvector.js', export: 'ruvectorTools' },
+  { path: './tools/moeRouter.js', export: 'moeRouterTools' },
+  { path: './tools/aiDefence.js', export: 'aiDefenceTools' },
+  { path: './tools/guidance.js', export: 'guidanceTools' },
+  { path: './tools/disk.js', export: 'diskTools' },
+] as const;
 
-for (const toolArray of coreToolArrays) {
-  for (const tool of toolArray) {
-    registry.registerTool(tool as unknown as import('./types/index.js').ToolDefinition, null);
-  }
+async function loadCoreTools(): Promise<void> {
+  const loadPromises = TOOL_MODULES.map(async (mod) => {
+    try {
+      const module = await import(mod.path);
+      const tools = module[mod.export] as Array<import('./types/index.js').ToolDefinition>;
+      for (const tool of tools) {
+        registry.registerTool(tool as unknown as import('./types/index.js').ToolDefinition, null);
+      }
+    } catch (err) {
+      logger.warn(`Failed to load tool module: ${mod.path}`, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+  await Promise.all(loadPromises);
 }
 
 const featureModules: Array<{
@@ -143,7 +136,7 @@ function buildAgenticToolsRef(): Array<{
       const handler = await registry.getHandler(t.name);
       if (!handler) {
         return {
-          content: [{ type: 'text', text: `Tool not available: ${t.name}` }],
+          content: [{ type: 'text', text: `Tool ${t.name} is not available` }],
           isError: true,
         };
       }
@@ -152,155 +145,90 @@ function buildAgenticToolsRef(): Array<{
   }));
 }
 
-function isTruthy(value: string | undefined): boolean {
-  if (!value) return false;
-  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
-}
-
-function firstNonEmptyLine(text: string): string {
-  return (
-    text
-      .split('\n')
-      .map((line) => line.trim())
-      .find((line) => line.length > 0) || ''
-  );
-}
-
-async function runGuardianPeerCheck(role: string): Promise<void> {
-  const peerPath = config.monitoring?.peerInstance;
-  if (!peerPath) return;
-
-  const monitorTool = monitoringTools.find((t) => t.name === 'monitor');
-
-  if (!monitorTool) {
-    logger.warn('Guardian loop skipped: monitor tool unavailable');
-    return;
-  }
-
-  try {
-    const health = await monitorTool.handler({ action: 'healthCheck', instancePath: peerPath, issueType: 'file' });
-    const healthText = health.content?.[0]?.text || '';
-    const unhealthy = healthText.includes('❌');
-
-    if (!unhealthy) return;
-
-    logger.warn('Guardian detected peer drift', {
-      role,
-      peerPath,
-      cwd: PROJECT_ROOT,
-    });
-    const heal = await monitorTool.handler({
-      action: 'autoHeal',
-      brokenInstance: peerPath,
-      healthyInstance: PROJECT_ROOT,
-      issueType: 'file',
-    });
-    const healText = heal.content?.[0]?.text || '';
-    logger.info('Guardian auto-heal result', { role, result: firstNonEmptyLine(healText) });
-  } catch (error: unknown) {
-    logger.warn('Guardian check failed', { role, error: error instanceof Error ? error.message : String(error) });
-  }
-}
-
-function startGuardianLoop(role: string): void {
-  if (config.monitoring?.enabled === false) {
-    logger.info('Guardian loop disabled', { reason: 'monitoring disabled' });
-    return;
-  }
-
-  const peerPath = config.monitoring?.peerInstance;
-  if (!peerPath) {
-    logger.info('Guardian loop skipped', { reason: 'peer path not configured' });
-    return;
-  }
-
-  if (
-    process.env.GUARDIAN_LOOP_ENABLED !== undefined &&
-    !isTruthy(process.env.GUARDIAN_LOOP_ENABLED)
-  ) {
-    logger.info('Guardian loop disabled', { reason: 'GUARDIAN_LOOP_ENABLED env var' });
-    return;
-  }
-
-  const envInterval = Number.parseInt(process.env.GUARDIAN_INTERVAL_SEC || '', 10);
-  const configuredIntervalSec =
-    Number.isFinite(envInterval) && envInterval > 0
-      ? envInterval
-      : config.monitoring?.checkInterval || 300;
-  const intervalSec = Math.max(30, configuredIntervalSec);
-  logger.info('Guardian loop enabled', { role, target: peerPath, interval: intervalSec, mode: 'file' });
-
-  setTimeout(() => {
-    void runGuardianPeerCheck(role);
-  }, 8000);
-
-  setInterval(() => {
-    void runGuardianPeerCheck(role);
-  }, intervalSec * 1000);
-}
-
 const server = new Server(
-  { name: config.serverName, version: '1.0.0' },
-  { capabilities: { tools: {} } },
+  { name: 'hakan-mcp', version: '2.2.0' },
+  {
+    capabilities: {
+      tools: {},
+      resources: {},
+      prompts: {},
+    },
+  },
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: registry.listTools(),
-}));
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return { tools: registry.listTools() };
+});
 
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const { name, arguments: args } = req.params as {
-    name: string;
-    arguments?: Record<string, unknown>;
-  };
-
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
   const handler = await registry.getHandler(name);
+
   if (!handler) {
     return {
-      content: [{ type: 'text' as const, text: `Unknown tool: ${name}` }],
+      content: [{ type: 'text', text: `Unknown tool: ${name}` }],
       isError: true,
-    };
+    } as unknown as Record<string, unknown>;
   }
 
   try {
-    const result = (await handler(args)) as {
-      content: Array<{ type: string; text: string }>;
-      isError?: boolean;
-    };
-    return result;
-  } catch (error: unknown) {
+    return await handler(args) as unknown as Record<string, unknown>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error('Tool execution error', { tool: name, error: message });
     return {
-      content: [
-        {
-          type: 'text' as const,
-          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
+      content: [{ type: 'text', text: `Error: ${message}` }],
       isError: true,
-    };
+    } as unknown as Record<string, unknown>;
   }
 });
 
+function startGuardianLoop(role: string) {
+  if (role !== 'main') return;
+
+  const interval = config.monitoring?.checkInterval ?? 300_000;
+  setInterval(async () => {
+    try {
+      const memUsage = process.memoryUsage();
+      const heapUsedMB = memUsage.heapUsed / 1024 / 1024;
+
+      const maxHeap = (config.monitoring as Record<string, unknown>)?.maxHeapMB as number ?? 512;
+      if (heapUsedMB > maxHeap) {
+        logger.warn('High heap usage detected', {
+          heapUsedMB: heapUsedMB.toFixed(1),
+          threshold: maxHeap,
+        });
+        if (global.gc) {
+          global.gc();
+          logger.info('Manual GC triggered');
+        }
+      }
+    } catch (err) {
+      logger.error('Guardian loop error', { error: err instanceof Error ? err.message : String(err) });
+    }
+  }, interval);
+}
+
 async function syncOllamaModels() {
   try {
-    const url = `${config.ollamaUrl}/api/tags`;
-    const response = await fetch(url);
+    const ollamaUrl = config.ollamaUrl || 'http://localhost:11434';
+    const response = await fetch(`${ollamaUrl}/api/tags`);
     if (response.ok) {
-      const data = (await response.json()) as { models?: Array<{ name?: string }> };
-      const models = data.models?.map((m) => m.name).filter((n): n is string => n != null) ?? [];
+      const data = (await response.json()) as { models?: Array<{ name: string }> };
+      const models = (data.models || []).map((m) => m.name).sort();
 
       if (models.length > 0) {
-        import('./config.js').then(({ config, updateConfig }) => {
-          const current = config.availableModels || [];
+        import('./config.js').then(({ config: cfg, updateConfig }) => {
+          const current = cfg.availableModels || [];
           const modelsChanged =
             current.length !== models.length || !current.every((m, i) => m === models[i]);
 
-          const updates: Partial<typeof config> = {};
+          const updates: Partial<typeof cfg> = {};
           if (modelsChanged) {
             updates.availableModels = models;
           }
 
-          const currentDefault = config.ollamaModel;
+          const currentDefault = cfg.ollamaModel;
           const currentDefaultExists = models.some((m) => m === currentDefault || m.startsWith(`${currentDefault}:`));
           if (!currentDefaultExists) {
             const preferred = models.find((m) => m.includes('Gemma3-Instruct-Abliterated'));
@@ -337,19 +265,28 @@ async function main() {
     process.exit(1);
   });
 
-  await registerFeatureTools();
+  // Phase 1: Connect MCP transport FIRST — minimal latency
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  logger.info('Hakan Personal MCP Server connected');
 
+  // Phase 2: Load all tools in parallel (after handshake)
+  await Promise.all([loadCoreTools(), registerFeatureTools()]);
+
+  // Wire agentic tools reference
+  const { setAgenticToolsRef } = await import('./tools/aiTools.js');
   setAgenticToolsRef(buildAgenticToolsRef());
 
   logger.info(`ToolRegistry initialized: ${registry.getToolCount()} tools registered`);
 
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  // Phase 3: Defer heavy services
+  setImmediate(async () => {
+    const { logActiveCooldowns } = await import('./services/aiProviderCooldown.js');
+    const { conversationManager } = await import('./services/conversationHistory.js');
+    const { backupService } = await import('./services/backupService.js');
+    const { ConsciousnessService } = await import('./services/consciousnessService.js');
+    const { scheduleDailyHealthCheck } = await import('./services/toolHealthCheck.js');
 
-  logger.info('Hakan Personal MCP Server started');
-
-  // Defer heavy services — run after MCP handshake so connection doesn't timeout
-  setImmediate(() => {
     logActiveCooldowns();
     conversationManager.loadFromDisk();
 
@@ -410,6 +347,8 @@ async function main() {
     shuttingDown = true;
     logger.info('Shutdown signal received, shutting down', { signal });
     try {
+      const { conversationManager } = await import('./services/conversationHistory.js');
+      const { backupService } = await import('./services/backupService.js');
       conversationManager.shutdown();
       backupService.stop();
       if (stopToolHealthCheckRef) stopToolHealthCheckRef();
@@ -421,6 +360,7 @@ async function main() {
         logger.error('MongoDB cleanup failed during shutdown', err);
       }
 
+      const { processRegistry } = await import('./utils/processRegistry.js');
       await processRegistry.killAll(3000);
 
       try {
@@ -435,8 +375,11 @@ async function main() {
     process.exit(0);
   };
 
-  process.on('SIGINT', () => { void gracefulShutdown('SIGINT'); });
-  process.on('SIGTERM', () => { void gracefulShutdown('SIGTERM'); });
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 }
 
-main().catch(err => logger.error('Fatal startup error', err));
+main().catch((err) => {
+  logger.error('Fatal error during startup', { error: err instanceof Error ? err.message : String(err) });
+  process.exit(1);
+});

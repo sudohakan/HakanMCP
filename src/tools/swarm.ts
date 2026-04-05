@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { SwarmCoordinator } from '../services/swarmCoordinator.js';
 
-const swarm = new SwarmCoordinator();
+let _swarm: SwarmCoordinator | null = null;
+function getSwarm(): SwarmCoordinator {
+  if (!_swarm) _swarm = new SwarmCoordinator();
+  return _swarm;
+}
 
 export const swarmTools = [
   {
@@ -74,14 +78,14 @@ export const swarmTools = [
             status: 'idle' as const,
             load: 0,
           }));
-          const state = swarm.createSwarm(topology, swarmAgents);
+          const state = getSwarm().createSwarm(topology, swarmAgents);
           return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
         }
 
         case 'addAgent': {
           if (!id) throw new Error('id is required for action=addAgent');
           if (!role) throw new Error('role is required for action=addAgent');
-          swarm.addAgent({
+          getSwarm().addAgent({
             id,
             role: role as 'queen' | 'lead' | 'worker' | 'peer',
             capabilities: capabilities ?? [],
@@ -93,7 +97,7 @@ export const swarmTools = [
 
         case 'routeTask': {
           if (!type) throw new Error('type is required for action=routeTask');
-          const agentId = swarm.routeTask({ type, complexity: complexity ?? 5 });
+          const agentId = getSwarm().routeTask({ type, complexity: complexity ?? 5 });
           return {
             content: [
               { type: 'text', text: JSON.stringify({ routedAgent: agentId, taskType: type }, null, 2) },
@@ -103,13 +107,13 @@ export const swarmTools = [
 
         case 'reconfigure': {
           if (!topology) throw new Error('topology is required for action=reconfigure');
-          const state = swarm.reconfigure(topology);
+          const state = getSwarm().reconfigure(topology);
           return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
         }
 
         case 'status': {
           try {
-            const state = swarm.getStatus();
+            const state = getSwarm().getStatus();
             return { content: [{ type: 'text', text: JSON.stringify(state, null, 2) }] };
           } catch (err) {
             return {

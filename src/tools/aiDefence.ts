@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { AIDefence } from '../services/aiDefence.js';
 
-const defence = new AIDefence();
+let _defence: AIDefence | null = null;
+function getDefence(): AIDefence {
+  if (!_defence) _defence = new AIDefence();
+  return _defence;
+}
 
 export const aiDefenceTools = [
   {
@@ -33,15 +37,15 @@ export const aiDefenceTools = [
 
       switch (parsed.action) {
         case 'scan': {
-          const result = defence.scan(parsed.text);
+          const result = getDefence().scan(parsed.text);
           return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         }
         case 'hasPii': {
-          const hasPii = defence.hasPii(parsed.text);
+          const hasPii = getDefence().hasPii(parsed.text);
           return { content: [{ type: 'text', text: JSON.stringify({ hasPii }, null, 2) }] };
         }
         case 'redactPii': {
-          const redacted = defence.redactPii(parsed.text);
+          const redacted = getDefence().redactPii(parsed.text);
           return { content: [{ type: 'text', text: JSON.stringify({ redacted }, null, 2) }] };
         }
       }

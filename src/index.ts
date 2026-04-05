@@ -4,7 +4,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
-import { ToolRegistry, FEATURE_TOOL_MAP, FEATURE_TOOL_METADATA } from './toolRegistry.js';
+import { ToolRegistry, FEATURE_TOOL_METADATA } from './toolRegistry.js';
 import { isPackageAvailable } from './dependencyResolver.js';
 import { config } from './config.js';
 import { PROJECT_ROOT } from './utils/projectRoot.js';
@@ -265,22 +265,22 @@ async function main() {
     process.exit(1);
   });
 
-  // Phase 1: Connect MCP transport FIRST — minimal latency
+  // Phase 1: Load all tools in parallel
+  const loadStart = Date.now();
+  await Promise.all([loadCoreTools(), registerFeatureTools()]);
+  const { setAgenticToolsRef } = await import('./tools/aiTools.js');
+  setAgenticToolsRef(buildAgenticToolsRef());
+  logger.info(`ToolRegistry initialized: ${registry.getToolCount()} tools in ${Date.now() - loadStart}ms`);
+
+  // Phase 2: Connect MCP transport (tools ready before first request)
   const transport = new StdioServerTransport();
   await server.connect(transport);
   logger.info('Hakan Personal MCP Server connected');
 
-  // Phase 2: Load all tools in parallel (after handshake)
-  await Promise.all([loadCoreTools(), registerFeatureTools()]);
-
-  // Wire agentic tools reference
-  const { setAgenticToolsRef } = await import('./tools/aiTools.js');
-  setAgenticToolsRef(buildAgenticToolsRef());
-
-  logger.info(`ToolRegistry initialized: ${registry.getToolCount()} tools registered`);
-
   // Phase 3: Defer heavy services
+  let stopToolHealthCheckRef: (() => void) | null = null;
   setImmediate(async () => {
+    try {
     const { logActiveCooldowns } = await import('./services/aiProviderCooldown.js');
     const { conversationManager } = await import('./services/conversationHistory.js');
     const { backupService } = await import('./services/backupService.js');
@@ -338,9 +338,13 @@ async function main() {
       consciousnessService.ensureDir();
       logger.info('Consciousness service initialized (event-driven mode)');
     }
+
+    logger.info('Phase 3 initialization complete');
+    } catch (err) {
+      logger.error('Phase 3 initialization failed', { error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
-  let stopToolHealthCheckRef: (() => void) | null = null;
   let shuttingDown = false;
   const gracefulShutdown = async (signal: string) => {
     if (shuttingDown) return;

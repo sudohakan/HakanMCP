@@ -163,13 +163,19 @@ async function executeRuleAction(rule: PolicyRule, files: ScanEntry[], platform:
         break;
       case 'move':
         if (rule.destination) {
-          const dest = rule.destination.replace(/^~/, process.env.HOME || '/tmp');
+          const home = process.env.HOME;
+          if (!home && rule.destination.startsWith('~')) throw new Error('HOME not set, cannot expand tilde');
+          const dest = rule.destination.replace(/^~/, home || '');
+          assertNotProtected(dest);
           await platform.moveItem(file.path, path.join(dest, file.name));
         }
         break;
       case 'archive':
         if (rule.destination) {
-          const dest = rule.destination.replace(/^~/, process.env.HOME || '/tmp');
+          const home = process.env.HOME;
+          if (!home && rule.destination.startsWith('~')) throw new Error('HOME not set, cannot expand tilde');
+          const dest = rule.destination.replace(/^~/, home || '');
+          assertNotProtected(dest);
           const archivePath = await platform.compress(file.path, rule.format || 'zip', path.join(dest, file.name));
           try {
             await fs.stat(archivePath);

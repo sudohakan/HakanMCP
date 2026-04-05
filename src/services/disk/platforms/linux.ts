@@ -86,7 +86,9 @@ export class LinuxPlatform extends AbstractDiskPlatform {
       return outPath;
     }
     const outPath = destPath.endsWith('.zip') ? destPath : `${destPath}.zip`;
-    await execFileAsync('zip', ['-r', outPath, sourcePath]);
+    const dir = path.dirname(sourcePath);
+    const base = path.basename(sourcePath);
+    await execFileAsync('zip', ['-r', outPath, base], { cwd: dir });
     return outPath;
   }
 

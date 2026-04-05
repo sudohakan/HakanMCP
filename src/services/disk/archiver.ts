@@ -75,6 +75,8 @@ export async function listSnapshots(): Promise<SnapshotMeta[]> {
 }
 
 export async function compare(snapshotA: string, snapshotB: string): Promise<CompareResult> {
+  assertValidSnapshotName(snapshotA);
+  assertValidSnapshotName(snapshotB);
   const dataDir = await getDataDir();
   const snapshotsDir = path.join(dataDir, 'snapshots');
   const aPath = path.join(snapshotsDir, `${path.basename(snapshotA, '.json')}.json`);

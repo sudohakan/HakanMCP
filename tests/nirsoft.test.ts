@@ -2,8 +2,16 @@ import { isWSL, isSupported, toWindowsPath } from '../src/services/nirsoft/platf
 import { loadCatalog } from '../src/services/nirsoft/catalog.js';
 import { parseCsvToJson } from '../src/services/nirsoft/csvParser.js';
 import { createTempFile } from '../src/services/nirsoft/tempFile.js';
-import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
+import { existsSync, writeFileSync, unlinkSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+
+const BIN_DIR = path.resolve(__dirname, '..', 'data', 'nirsoft', 'bin');
+const CATALOG_PATH = path.resolve(__dirname, '..', 'data', 'nirsoft', 'catalog.json');
+const FIXTURES_DIR = path.resolve(__dirname, 'nirsoft-fixtures');
+const IS_WSL_ENV = isWSL();
+const SKIP_LIVE = process.platform !== 'win32' && !IS_WSL_ENV;
+const IS_LIVE = !SKIP_LIVE && process.env.TEST_NIRSOFT_LIVE === '1';
+const describeLive = IS_LIVE ? describe : describe.skip;
 
 // --- Platform ---
 
@@ -134,4 +142,110 @@ describe('nirsoft tempFile', () => {
     const dir = path.dirname(tf.linuxPath);
     expect(existsSync(dir)).toBe(true);
   });
+});
+
+// --- Tier 1: Catalog Integrity ---
+
+describe('nirsoft catalog integrity', () => {
+  const catalog = loadCatalog(CATALOG_PATH);
+
+  catalog.tools.forEach((tool) => {
+    it(`${tool.id}: exe exists`, () => {
+      expect(existsSync(path.join(BIN_DIR, tool.exe))).toBe(true);
+    });
+  });
+
+  it('all tools have valid categories', () => {
+    for (const tool of catalog.tools) {
+      expect(catalog.categories).toContain(tool.category);
+    }
+  });
+
+  it('all tools have valid id format', () => {
+    for (const tool of catalog.tools) {
+      expect(tool.id).toMatch(/^[a-z0-9_-]+$/);
+    }
+  });
+
+  it('all tools have positive timeout', () => {
+    for (const tool of catalog.tools) {
+      expect(tool.timeout).toBeGreaterThan(0);
+    }
+  });
+
+  it('no tools have empty outputColumns array', () => {
+    for (const tool of catalog.tools) {
+      if (Array.isArray(tool.outputColumns)) {
+        expect(tool.outputColumns.length).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+// --- Tier 2: Fixture Parse ---
+
+describe('nirsoft fixture parse', () => {
+  it('parses cports fixture', () => {
+    const fixturePath = path.join(FIXTURES_DIR, 'sample-cports.csv');
+    if (!existsSync(fixturePath)) return;
+    const csv = readFileSync(fixturePath, 'utf8');
+    const catalog = loadCatalog(CATALOG_PATH);
+    const tool = catalog.tools.find((t) => t.id === 'cports');
+    if (!tool || !tool.outputColumns) return;
+    const result = parseCsvToJson(csv, tool.outputColumns);
+    expect(Array.isArray(result)).toBe(true);
+    const arr = result as Record<string, string>[];
+    if (arr.length > 0) {
+      expect(arr[0]).toHaveProperty(tool.outputColumns[0]);
+    }
+  });
+});
+
+// --- Tier 3: Live Integration ---
+// Live tests use MCP stdin/stdout protocol via child_process
+// because Jest can't import the full tool chain (logger/winston deps).
+// Run with: TEST_NIRSOFT_LIVE=1 npx jest tests/nirsoft.test.ts
+
+import { execSync } from 'node:child_process';
+
+function mcpCall(action: string, extra: Record<string, unknown> = {}): any {
+  const args = { action, ...extra };
+  const request = JSON.stringify({
+    jsonrpc: '2.0',
+    method: 'tools/call',
+    params: { name: 'nirsoft', arguments: args },
+    id: 1,
+  });
+  const result = execSync(
+    `echo '${request}' | node dist/index.js 2>/dev/null`,
+    { cwd: path.resolve(__dirname, '..'), timeout: 30000 },
+  ).toString();
+  // Find JSON response line
+  const lines = result.split('\n').filter((l) => l.startsWith('{'));
+  for (const line of lines) {
+    try {
+      const parsed = JSON.parse(line);
+      if (parsed.result?.content) {
+        return JSON.parse(parsed.result.content[0].text);
+      }
+    } catch { /* skip non-JSON lines */ }
+  }
+  throw new Error('No valid MCP response found');
+}
+
+describeLive('nirsoft live integration', () => {
+  it('list action returns tools', () => {
+    const data = mcpCall('list');
+    expect(data.total).toBeGreaterThan(0);
+  }, 30000);
+
+  it('list with category filter', () => {
+    const data = mcpCall('list', { category: 'network' });
+    expect(data.tools.every((t: any) => t.category === 'network')).toBe(true);
+  }, 30000);
+
+  it('info returns tool details', () => {
+    const data = mcpCall('info', { tool: 'cports' });
+    expect(data.id).toBe('cports');
+  }, 30000);
 });

@@ -86,6 +86,17 @@ const featureModules: Array<{
     loader: () => import('./tools/mongodb.js'),
     exportName: 'mongoTools',
   },
+  {
+    prefix: 'nirsoft',
+    check: () => {
+      try {
+        const { isSupported } = require('./services/nirsoft/platform.js');
+        return isSupported();
+      } catch { return false; }
+    },
+    loader: () => import('./tools/nirsoft.js'),
+    exportName: 'nirsoftTools',
+  },
 ];
 
 async function registerFeatureTools(): Promise<void> {

@@ -1,9 +1,20 @@
 {
   "version": 1,
-  "categories": ["network", "password", "browser", "system", "disk", "process", "registry", "outlook", "audio", "programmer"],
+  "categories": [
+    "network",
+    "password",
+    "browser",
+    "system",
+    "disk",
+    "process",
+    "registry",
+    "outlook",
+    "audio",
+    "programmer"
+  ],
   "tools": [
     {
-      "id": "AppResourcesUsageView",
+      "id": "appresourcesusageview",
       "exe": "AppResourcesUsageView.exe",
       "name": "App Resources Usage View",
       "description": "Displays the history of CPU/memory/network/disk usage for apps stored in the Windows system",
@@ -15,7 +26,7 @@
       "outputColumns": null
     },
     {
-      "id": "BluetoothLEView",
+      "id": "bluetoothleview",
       "exe": "BluetoothLEView.exe",
       "name": "Bluetooth LE View",
       "description": "Scans and displays information about nearby Bluetooth Low Energy devices",
@@ -27,7 +38,7 @@
       "outputColumns": null
     },
     {
-      "id": "BrowserDownloadsView",
+      "id": "browserdownloadsview",
       "exe": "BrowserDownloadsView.exe",
       "name": "Browser Downloads View",
       "description": "Displays the downloads history of all major web browsers",
@@ -39,7 +50,7 @@
       "outputColumns": null
     },
     {
-      "id": "ChromePass",
+      "id": "chromepass",
       "exe": "ChromePass.exe",
       "name": "ChromePass",
       "description": "Reveals passwords stored in Google Chrome browser",
@@ -51,7 +62,7 @@
       "outputColumns": null
     },
     {
-      "id": "CredHistView",
+      "id": "credhistview",
       "exe": "CredHistView.exe",
       "name": "CredHistView",
       "description": "Displays the credential history entries stored in the Windows Credential Manager",
@@ -63,7 +74,7 @@
       "outputColumns": null
     },
     {
-      "id": "CredentialsFileView",
+      "id": "credentialsfileview",
       "exe": "CredentialsFileView.exe",
       "name": "Credentials File View",
       "description": "Decrypts and displays the credentials stored in Windows Credentials files",
@@ -75,7 +86,7 @@
       "outputColumns": null
     },
     {
-      "id": "CustomExplorerToolbar",
+      "id": "customexplorertoolbar",
       "exe": "CustomExplorerToolbar.exe",
       "name": "Custom Explorer Toolbar",
       "description": "Allows you to add new buttons to Windows Explorer toolbar",
@@ -87,7 +98,7 @@
       "outputColumns": null
     },
     {
-      "id": "DHCPLogView",
+      "id": "dhcplogview",
       "exe": "DHCPLogView.exe",
       "name": "DHCP Log View",
       "description": "Displays the log file of the Windows DHCP server",
@@ -99,7 +110,7 @@
       "outputColumns": null
     },
     {
-      "id": "DNSLookupView",
+      "id": "dnslookupview",
       "exe": "DNSLookupView.exe",
       "name": "DNS Lookup View",
       "description": "Displays information about all DNS lookups made by the Windows OS",
@@ -111,7 +122,7 @@
       "outputColumns": null
     },
     {
-      "id": "DomainHostingView",
+      "id": "domainhostingview",
       "exe": "DomainHostingView.exe",
       "name": "Domain Hosting View",
       "description": "Retrieves information about multiple domains (IP, DNS records, hosting info)",
@@ -123,7 +134,7 @@
       "outputColumns": null
     },
     {
-      "id": "DownTester",
+      "id": "downtester",
       "exe": "DownTester.exe",
       "name": "DownTester",
       "description": "Tests the download speed of multiple HTTP/FTP URLs",
@@ -135,7 +146,7 @@
       "outputColumns": null
     },
     {
-      "id": "ESEDatabaseView",
+      "id": "esedatabaseview",
       "exe": "ESEDatabaseView.exe",
       "name": "ESE Database View",
       "description": "Opens and views ESE database files (Extensible Storage Engine)",
@@ -147,7 +158,7 @@
       "outputColumns": null
     },
     {
-      "id": "EdgeCookiesView",
+      "id": "edgecookiesview",
       "exe": "EdgeCookiesView.exe",
       "name": "Edge Cookies View",
       "description": "Displays and exports cookies stored by Microsoft Edge browser",
@@ -159,7 +170,7 @@
       "outputColumns": null
     },
     {
-      "id": "ExtPassword",
+      "id": "extpassword",
       "exe": "ExtPassword.exe",
       "name": "ExtPassword",
       "description": "Recovers passwords from external drives encrypted by Windows",
@@ -171,7 +182,7 @@
       "outputColumns": null
     },
     {
-      "id": "FastResolver",
+      "id": "fastresolver",
       "exe": "FastResolver.exe",
       "name": "FastResolver",
       "description": "Resolves multiple host names and IP addresses quickly (multi-threaded)",
@@ -183,7 +194,7 @@
       "outputColumns": null
     },
     {
-      "id": "FirefoxDownloadsView",
+      "id": "firefoxdownloadsview",
       "exe": "FirefoxDownloadsView.exe",
       "name": "Firefox Downloads View",
       "description": "Displays the downloads history of Firefox browser",
@@ -195,7 +206,7 @@
       "outputColumns": null
     },
     {
-      "id": "FlashCookiesView",
+      "id": "flashcookiesview",
       "exe": "FlashCookiesView.exe",
       "name": "Flash Cookies View",
       "description": "Displays and deletes Flash cookies (Local Shared Objects) stored on your computer",
@@ -207,7 +218,7 @@
       "outputColumns": null
     },
     {
-      "id": "FreeSpaceLogView",
+      "id": "freespacelogview",
       "exe": "FreeSpaceLogView.exe",
       "name": "Free Space Log View",
       "description": "Monitors and logs the free disk space of all drives over time",
@@ -219,7 +230,7 @@
       "outputColumns": null
     },
     {
-      "id": "FullUpdatesHistoryView",
+      "id": "fullupdateshistoryview",
       "exe": "FullUpdatesHistoryView.exe",
       "name": "Full Updates History View",
       "description": "Displays the history of all Windows updates installations",
@@ -231,7 +242,7 @@
       "outputColumns": null
     },
     {
-      "id": "GetNir",
+      "id": "getnir",
       "exe": "GetNir.exe",
       "name": "GetNir",
       "description": "Runs any NirSoft tool and returns the result to another tool or script",
@@ -243,7 +254,7 @@
       "outputColumns": null
     },
     {
-      "id": "HostedNetworkStarter",
+      "id": "hostednetworkstarter",
       "exe": "HostedNetworkStarter.exe",
       "name": "Hosted Network Starter",
       "description": "Creates and manages a wireless hosted network (software access point)",
@@ -255,7 +266,7 @@
       "outputColumns": null
     },
     {
-      "id": "HtmlAsText",
+      "id": "htmlastext",
       "exe": "HtmlAsText.exe",
       "name": "HTML As Text",
       "description": "Converts HTML files to plain text",
@@ -267,7 +278,7 @@
       "outputColumns": null
     },
     {
-      "id": "IPNeighborsView",
+      "id": "ipneighborsview",
       "exe": "IPNeighborsView.exe",
       "name": "IP Neighbors View",
       "description": "Displays the IPv6 neighbor table and IPv4 ARP table",
@@ -279,7 +290,7 @@
       "outputColumns": null
     },
     {
-      "id": "IPPathTableView",
+      "id": "ippathtableview",
       "exe": "IPPathTableView.exe",
       "name": "IP Path Table View",
       "description": "Displays the IP path table of Windows (source/destination path caches)",
@@ -291,7 +302,7 @@
       "outputColumns": null
     },
     {
-      "id": "InstalledAppView",
+      "id": "installedappview",
       "exe": "InstalledAppView.exe",
       "name": "Installed App View",
       "description": "Displays a list of all apps installed on your system from the Windows Store",
@@ -303,7 +314,7 @@
       "outputColumns": null
     },
     {
-      "id": "LANIPScanner",
+      "id": "lanipscanner",
       "exe": "LANIPScanner.exe",
       "name": "LAN IP Scanner",
       "description": "Scans all IP addresses in the local network and displays information about them",
@@ -315,7 +326,7 @@
       "outputColumns": null
     },
     {
-      "id": "LostMyPassword",
+      "id": "lostmypassword",
       "exe": "LostMyPassword.exe",
       "name": "LostMyPassword",
       "description": "Finds and recovers lost Windows/application passwords",
@@ -327,7 +338,7 @@
       "outputColumns": null
     },
     {
-      "id": "MadPassExt",
+      "id": "madpassext",
       "exe": "MadPassExt.exe",
       "name": "MadPassExt",
       "description": "Extension for password recovery tools to run advanced password attacks",
@@ -339,7 +350,7 @@
       "outputColumns": null
     },
     {
-      "id": "ManageWirelessNetworks",
+      "id": "managewirelessnetworks",
       "exe": "ManageWirelessNetworks.exe",
       "name": "Manage Wireless Networks",
       "description": "Manages and views all wireless networks stored in the Windows registry",
@@ -351,7 +362,7 @@
       "outputColumns": null
     },
     {
-      "id": "OutlookAccountsView",
+      "id": "outlookaccountsview",
       "exe": "OutlookAccountsView.exe",
       "name": "Outlook Accounts View",
       "description": "Displays the accounts configured in Microsoft Outlook",
@@ -363,7 +374,7 @@
       "outputColumns": null
     },
     {
-      "id": "ProductKeyScanner",
+      "id": "productkeyscanner",
       "exe": "ProductKeyScanner.exe",
       "name": "Product Key Scanner",
       "description": "Scans the registry and displays product keys of installed software",
@@ -375,7 +386,7 @@
       "outputColumns": null
     },
     {
-      "id": "PropertySystemView",
+      "id": "propertysystemview",
       "exe": "PropertySystemView.exe",
       "name": "Property System View",
       "description": "Displays all properties registered in the Windows Property System",
@@ -387,7 +398,7 @@
       "outputColumns": null
     },
     {
-      "id": "PstPassword",
+      "id": "pstpassword",
       "exe": "PstPassword.exe",
       "name": "PstPassword",
       "description": "Recovers lost passwords for Outlook PST files",
@@ -399,7 +410,7 @@
       "outputColumns": null
     },
     {
-      "id": "RuntimeClassesView",
+      "id": "runtimeclassesview",
       "exe": "RuntimeClassesView.exe",
       "name": "Runtime Classes View",
       "description": "Displays the list of WinRT runtime classes registered in the Windows Registry",
@@ -411,7 +422,7 @@
       "outputColumns": null
     },
     {
-      "id": "SecurityQuestionsView",
+      "id": "securityquestionsview",
       "exe": "SecurityQuestionsView.exe",
       "name": "Security Questions View",
       "description": "Displays the security questions and answers stored in Windows",
@@ -423,7 +434,7 @@
       "outputColumns": null
     },
     {
-      "id": "SniffPass",
+      "id": "sniffpass",
       "exe": "SniffPass.exe",
       "name": "SniffPass",
       "description": "Captures network packets and extracts passwords from POP3, IMAP, SMTP, FTP, HTTP protocols",
@@ -435,7 +446,7 @@
       "outputColumns": null
     },
     {
-      "id": "TCPConnectProblemView",
+      "id": "tcpconnectproblemview",
       "exe": "TCPConnectProblemView.exe",
       "name": "TCP Connect Problem View",
       "description": "Displays information about failed TCP connections detected by Windows Event Log",
@@ -447,7 +458,7 @@
       "outputColumns": null
     },
     {
-      "id": "USBDriveLog",
+      "id": "usbdrivelog",
       "exe": "USBDriveLog.exe",
       "name": "USB Drive Log",
       "description": "Displays log entries of USB drive connections and disconnections from the Windows Event Log",
@@ -459,7 +470,7 @@
       "outputColumns": null
     },
     {
-      "id": "VNCPassView",
+      "id": "vncpassview",
       "exe": "VNCPassView.exe",
       "name": "VNC Pass View",
       "description": "Recovers the passwords stored by VNC clients and servers",
@@ -471,7 +482,7 @@
       "outputColumns": null
     },
     {
-      "id": "WebBrowserBookmarksView",
+      "id": "webbrowserbookmarksview",
       "exe": "WebBrowserBookmarksView.exe",
       "name": "Web Browser Bookmarks View",
       "description": "Displays the bookmarks stored in Chrome, Firefox, IE, Edge, and Opera",
@@ -483,7 +494,7 @@
       "outputColumns": null
     },
     {
-      "id": "WebBrowserPassView",
+      "id": "webbrowserpassview",
       "exe": "WebBrowserPassView.exe",
       "name": "Web Browser Pass View",
       "description": "Recovers passwords stored in Internet Explorer, Firefox, Chrome, Safari, and Opera",
@@ -495,7 +506,7 @@
       "outputColumns": null
     },
     {
-      "id": "WifiDiagnosticsView",
+      "id": "wifidiagnosticsview",
       "exe": "WifiDiagnosticsView.exe",
       "name": "WiFi Diagnostics View",
       "description": "Displays WiFi diagnostic events logged by the Windows operating system",
@@ -507,7 +518,7 @@
       "outputColumns": null
     },
     {
-      "id": "WifiHistoryView",
+      "id": "wifihistoryview",
       "exe": "WifiHistoryView.exe",
       "name": "WiFi History View",
       "description": "Displays the history of WiFi connections on your system",
@@ -519,7 +530,7 @@
       "outputColumns": null
     },
     {
-      "id": "WinMailPassRec",
+      "id": "winmailpassrec",
       "exe": "WinMailPassRec.exe",
       "name": "WinMail PassRec",
       "description": "Recovers passwords stored in Windows Mail / Windows Live Mail",
@@ -531,7 +542,7 @@
       "outputColumns": null
     },
     {
-      "id": "WinUpdatesView",
+      "id": "winupdatesview",
       "exe": "WinUpdatesView.exe",
       "name": "Windows Updates View",
       "description": "Displays the history of Windows updates installations from external drives",
@@ -708,7 +719,35 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": ["Dump File", "Crash Time", "Bug Check String", "Bug Check Code", "Parameter 1", "Parameter 2", "Parameter 3", "Parameter 4", "Caused By Driver", "Caused By Address", "File Description", "Product Name", "Company", "File Version", "Processor", "Crash Address", "Stack Address 1", "Stack Address 2", "Stack Address 3", "Stack Address 4", "Computer Name", "Full Path", "Processors Count", "Major Version", "Minor Version", "Dump File Size", "Dump File Time"]
+      "outputColumns": [
+        "Dump File",
+        "Crash Time",
+        "Bug Check String",
+        "Bug Check Code",
+        "Parameter 1",
+        "Parameter 2",
+        "Parameter 3",
+        "Parameter 4",
+        "Caused By Driver",
+        "Caused By Address",
+        "File Description",
+        "Product Name",
+        "Company",
+        "File Version",
+        "Processor",
+        "Crash Address",
+        "Stack Address 1",
+        "Stack Address 2",
+        "Stack Address 3",
+        "Stack Address 4",
+        "Computer Name",
+        "Full Path",
+        "Processors Count",
+        "Major Version",
+        "Minor Version",
+        "Dump File Size",
+        "Dump File Time"
+      ]
     },
     {
       "id": "bluetoothcl",
@@ -768,7 +807,20 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": ["URL", "Title", "Visit Time", "Visit Count", "Typed Count", "Referrer", "Record Time", "Web Browser", "User Profile", "Browser Profile", "History File", "URL Length"]
+      "outputColumns": [
+        "URL",
+        "Title",
+        "Visit Time",
+        "Visit Count",
+        "Typed Count",
+        "Referrer",
+        "Record Time",
+        "Web Browser",
+        "User Profile",
+        "Browser Profile",
+        "History File",
+        "URL Length"
+      ]
     },
     {
       "id": "bulkfilechanger",
@@ -876,7 +928,37 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": ["Process Name", "PID", "Protocol", "Local Port", "Local Port Name", "Local Address", "Local Address Name", "Remote Port", "Remote Address", "Remote Address Name", "State", "Process Path", "Product Name", "File Description", "File Version", "Company", "Process Created Time", "User Name", "Process Services", "Process Attributes", "Remote Host Name", "Module Filename", "Remote IP Country", "Remote IP City", "Remote IP Latitude", "Remote IP Longitude", "Incoming Bytes", "Outgoing Bytes", "Incoming Packets"]
+      "outputColumns": [
+        "Process Name",
+        "PID",
+        "Protocol",
+        "Local Port",
+        "Local Port Name",
+        "Local Address",
+        "Local Address Name",
+        "Remote Port",
+        "Remote Address",
+        "Remote Address Name",
+        "State",
+        "Process Path",
+        "Product Name",
+        "File Description",
+        "File Version",
+        "Company",
+        "Process Created Time",
+        "User Name",
+        "Process Services",
+        "Process Attributes",
+        "Remote Host Name",
+        "Module Filename",
+        "Remote IP Country",
+        "Remote IP City",
+        "Remote IP Latitude",
+        "Remote IP Longitude",
+        "Incoming Bytes",
+        "Outgoing Bytes",
+        "Incoming Packets"
+      ]
     },
     {
       "id": "cprocess",
@@ -1380,7 +1462,28 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": ["Driver Name", "Display Name", "Description", "Startup Type", "Driver Type", "Error Control", "Group", "Filename", "Driver File Type", "File Created Time", "File Modified Time", "File Size", "File Description", "File Version", "File Company", "File Product Name", "Base Memory Address", "End Address", "Memory Size", "Load Count"]
+      "outputColumns": [
+        "Driver Name",
+        "Display Name",
+        "Description",
+        "Startup Type",
+        "Driver Type",
+        "Error Control",
+        "Group",
+        "Filename",
+        "Driver File Type",
+        "File Created Time",
+        "File Modified Time",
+        "File Size",
+        "File Description",
+        "File Version",
+        "File Company",
+        "File Product Name",
+        "Base Memory Address",
+        "End Address",
+        "Memory Size",
+        "Load Count"
+      ]
     },
     {
       "id": "installedpackagesview",
@@ -1452,7 +1555,14 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": ["Action Time", "Description", "Filename", "Full Path", "More Information", "File Extension"]
+      "outputColumns": [
+        "Action Time",
+        "Description",
+        "Filename",
+        "Full Path",
+        "More Information",
+        "File Extension"
+      ]
     },
     {
       "id": "livecontactsview",
@@ -2040,7 +2150,26 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": ["Thread ID", "Context Switches", "Last Context Switches", "Status", "Base Priority", "Dynamic Priority", "Created Time", "User Time", "Kernel Time", "Visible Windows", "Hidden Windows", "Window Title", "Window Class", "Start Address", "Stack Base", "Stack Limit", "Stack Size", "TEB Address"]
+      "outputColumns": [
+        "Thread ID",
+        "Context Switches",
+        "Last Context Switches",
+        "Status",
+        "Base Priority",
+        "Dynamic Priority",
+        "Created Time",
+        "User Time",
+        "Kernel Time",
+        "Visible Windows",
+        "Hidden Windows",
+        "Window Title",
+        "Window Class",
+        "Start Address",
+        "Stack Base",
+        "Stack Limit",
+        "Stack Size",
+        "TEB Address"
+      ]
     },
     {
       "id": "quicksetdns",
@@ -2568,7 +2697,47 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": ["Device ID", "Device Name", "Device Type", "Connected", "Safe To Unplug", "Disabled", "USB Hub", "Drive Letter", "Serial Number", "Created Date", "Last Plug/Unplug Date", "VendorID", "ProductID", "USB Class", "USB SubClass", "USB Protocol", "Hub", "Computer Name", "Service Name", "Service Description", "Driver Filename", "Device Address", "Vendor Name", "Product Name", "Friendly Name", "Power", "USB Version", "Driver Description", "Driver Version", "Driver InfSection", "Driver InfPath", "Instance ID", "Capabilities", "Location Information", "Bus Reported Device Description", "ParentId Prefix", "UIID", "Last Plug Date", "Last Unplug Date"]
+      "outputColumns": [
+        "Device ID",
+        "Device Name",
+        "Device Type",
+        "Connected",
+        "Safe To Unplug",
+        "Disabled",
+        "USB Hub",
+        "Drive Letter",
+        "Serial Number",
+        "Created Date",
+        "Last Plug/Unplug Date",
+        "VendorID",
+        "ProductID",
+        "USB Class",
+        "USB SubClass",
+        "USB Protocol",
+        "Hub",
+        "Computer Name",
+        "Service Name",
+        "Service Description",
+        "Driver Filename",
+        "Device Address",
+        "Vendor Name",
+        "Product Name",
+        "Friendly Name",
+        "Power",
+        "USB Version",
+        "Driver Description",
+        "Driver Version",
+        "Driver InfSection",
+        "Driver InfPath",
+        "Instance ID",
+        "Capabilities",
+        "Location Information",
+        "Bus Reported Device Description",
+        "ParentId Prefix",
+        "UIID",
+        "Last Plug Date",
+        "Last Unplug Date"
+      ]
     },
     {
       "id": "usblogview",
@@ -2808,7 +2977,40 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": ["SSID", "MAC Address", "PHY Type", "RSSI", "Signal Quality", "Average Signal Quality", "Frequency", "Channel", "Information Size", "Elements Count", "Company", "Router Model", "Router Name", "Security", "Cipher", "Maximum Speed", "Channel Width", "Channels Range", "BSS Type", "WPS Support", "First Detection", "Last Detection", "Detection Count", "Start Time", "Minimum Signal Quality", "Maximum Signal Quality", "802.11 Standards", "Connected", "Stations Count", "Channel Utilization", "Country Code", "Description"]
+      "outputColumns": [
+        "SSID",
+        "MAC Address",
+        "PHY Type",
+        "RSSI",
+        "Signal Quality",
+        "Average Signal Quality",
+        "Frequency",
+        "Channel",
+        "Information Size",
+        "Elements Count",
+        "Company",
+        "Router Model",
+        "Router Name",
+        "Security",
+        "Cipher",
+        "Maximum Speed",
+        "Channel Width",
+        "Channels Range",
+        "BSS Type",
+        "WPS Support",
+        "First Detection",
+        "Last Detection",
+        "Detection Count",
+        "Start Time",
+        "Minimum Signal Quality",
+        "Maximum Signal Quality",
+        "802.11 Standards",
+        "Connected",
+        "Stations Count",
+        "Channel Utilization",
+        "Country Code",
+        "Description"
+      ]
     },
     {
       "id": "wincrashreport",

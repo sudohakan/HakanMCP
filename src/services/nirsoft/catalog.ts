@@ -22,7 +22,12 @@ export interface NirsoftCatalog {
 const SUPPORTED_CATALOG_VERSION = 1;
 
 export function loadCatalog(catalogPath: string): NirsoftCatalog {
-  const raw = JSON.parse(readFileSync(catalogPath, 'utf8'));
+  let raw: any;
+  try {
+    raw = JSON.parse(readFileSync(catalogPath, 'utf8'));
+  } catch (err) {
+    throw new Error(`Failed to parse catalog at ${catalogPath}: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   if (raw.version !== SUPPORTED_CATALOG_VERSION) {
     throw new Error(`Unsupported catalog version: ${raw.version}`);

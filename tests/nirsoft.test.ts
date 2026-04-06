@@ -146,7 +146,10 @@ describe('nirsoft tempFile', () => {
 
 // --- Tier 1: Catalog Integrity ---
 
-describe('nirsoft catalog integrity', () => {
+const hasCatalog = existsSync(CATALOG_PATH);
+const describeCatalog = hasCatalog ? describe : describe.skip;
+
+describeCatalog('nirsoft catalog integrity', () => {
   const catalog = loadCatalog(CATALOG_PATH);
 
   catalog.tools.forEach((tool) => {
@@ -245,7 +248,7 @@ describeLive('nirsoft live integration', () => {
   }, 30000);
 
   it('info returns tool details', () => {
-    const data = mcpCall('info', { tool: 'cports' });
+    const data = mcpCall('info', { id: 'cports' });
     expect(data.id).toBe('cports');
   }, 30000);
 });

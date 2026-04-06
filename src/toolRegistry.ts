@@ -54,6 +54,7 @@ export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
 
   db: { modulePath: './tools/db.js', exportName: 'dbTools', nativeDeps: ['pg', 'mysql2', 'mssql', 'sqlite3', 'sqlite'], core: false, featureName: 'database' },
   mongo: { modulePath: './tools/mongodb.js', exportName: 'mongoTools', nativeDeps: ['mongodb'], core: false, featureName: 'mongodb' },
+  nirsoft: { modulePath: './tools/nirsoft.js', exportName: 'nirsoftTools', nativeDeps: [], core: false, featureName: 'nirsoft' },
 };
 
 interface PlaceholderToolMeta {
@@ -68,6 +69,9 @@ export const FEATURE_TOOL_METADATA: Record<string, PlaceholderToolMeta[]> = {
   ],
   mongo: [
     { name: 'mongo', description: 'MongoDB operations (connect, find, insert, update, delete, countDocuments, aggregate, createIndex, listCollections, listDatabases, disconnect). Requires action parameter.', inputSchema: { type: 'object', properties: { action: { type: 'string' } }, required: ['action'] } },
+  ],
+  nirsoft: [
+    { name: 'nirsoft', description: 'NirSoft Windows utilities (247 tools). Actions: list, info, run, setup. Requires Windows or WSL.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['list', 'info', 'run', 'setup'] }, tool: { type: 'string' }, category: { type: 'string' }, args: { type: 'array', items: { type: 'string' } }, format: { type: 'string', enum: ['json', 'csv', 'raw'] }, dependency: { type: 'string' } }, required: ['action'] } },
   ],
 };
 

@@ -4330,6 +4330,548 @@
         "win32",
         "wsl"
       ]
+    },
+    {
+      "id": "browser-history",
+      "name": "Browser History",
+      "description": "Browsing history from Chrome, Firefox, and Edge in unified format",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-bookmarks",
+      "name": "Browser Bookmarks",
+      "description": "Bookmarks from all major browsers in unified format",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-cookies",
+      "name": "Browser Cookies",
+      "description": "Cookies from all major browsers with domain, name, value, expiry",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-downloads",
+      "name": "Browser Downloads",
+      "description": "Download history from all major browsers",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-extensions",
+      "name": "Browser Extensions",
+      "description": "Extensions/addons installed in Chrome, Edge, and Firefox",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-autofill",
+      "name": "Browser Autofill",
+      "description": "Autofill data stored by Chrome/Edge and Firefox",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-cache",
+      "name": "Browser Cache",
+      "description": "Cache metadata from all major browsers (no content)",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-search-history",
+      "name": "Browser Search History",
+      "description": "Last search queries from all major browsers",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-profiles",
+      "name": "Browser Profiles",
+      "description": "Browser profile listing for Chrome, Edge, and Firefox",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-forms",
+      "name": "Browser Form Data",
+      "description": "Saved form data and address profiles from all major browsers",
+      "category": "browser",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "registry-search",
+      "name": "Registry Search",
+      "description": "Search Windows registry for keys and values matching a pattern",
+      "category": "registry",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "registry-snapshot-diff",
+      "name": "Registry Snapshot Diff",
+      "description": "Take registry snapshots and diff two snapshots to show added/removed/changed entries",
+      "category": "registry",
+      "adminRequired": false,
+      "timeout": 60,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "registry-hive",
+      "name": "Registry Hive Reader",
+      "description": "Read offline Windows registry hive files (.hiv)",
+      "category": "registry",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "registry-startup",
+      "name": "Registry Startup Entries",
+      "description": "List startup programs from Windows registry Run/RunOnce keys",
+      "category": "registry",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "registry-uninstall",
+      "name": "Registry Uninstall Entries",
+      "description": "List installed programs from Windows registry Uninstall keys",
+      "category": "registry",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "registry-usb",
+      "name": "Registry USB History",
+      "description": "List USB device history from Windows registry USBSTOR/USB keys",
+      "category": "registry",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "registry-associations",
+      "name": "Registry Shell Associations",
+      "description": "List file extension to application associations from Windows registry HKCR",
+      "category": "registry",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "registry-mru",
+      "name": "Registry MRU Lists",
+      "description": "List Most Recently Used file paths from Windows registry Explorer keys",
+      "category": "registry",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-chrome-passwords",
+      "name": "Chrome Saved Passwords",
+      "description": "Extract saved passwords from Google Chrome using DPAPI decryption (Windows-only)",
+      "category": "password",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "browser-firefox-passwords",
+      "name": "Firefox Saved Passwords",
+      "description": "Extract saved passwords from Firefox using NSS key4.db decryption (cross-platform)",
+      "category": "password",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "wifi-passwords",
+      "name": "Wi-Fi Saved Passwords",
+      "description": "Extract saved Wi-Fi passwords via netsh (Windows) or NetworkManager (Linux)",
+      "category": "password",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "credential-manager",
+      "name": "Windows Credential Manager",
+      "description": "Read credentials stored in Windows Credential Manager",
+      "category": "password",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "windows-vault",
+      "name": "Windows Vault Reader",
+      "description": "Read Web Credentials from Windows Vault",
+      "category": "password",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "rdp-credentials",
+      "name": "RDP Saved Credentials",
+      "description": "Read saved RDP credentials from registry and Credential Manager",
+      "category": "password",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "vnc-passwords",
+      "name": "VNC Password Files",
+      "description": "Decrypt VNC password files using the well-known VNC DES key",
+      "category": "password",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "mail-passwords",
+      "name": "Mail Client Passwords",
+      "description": "Extract passwords from Thunderbird (NSS) and Outlook (Credential Manager)",
+      "category": "password",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "lsa-secrets",
+      "name": "LSA Secrets Reader",
+      "description": "Read Windows LSA secrets (requires admin/SYSTEM privilege)",
+      "category": "password",
+      "adminRequired": true,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "network-passwords",
+      "name": "Network Saved Passwords",
+      "description": "Read saved network passwords from Windows Credential Manager (requires admin)",
+      "category": "password",
+      "adminRequired": true,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "dll-exports",
+      "name": "DLL/SO Export Listing",
+      "description": "List exported symbols from DLL (Windows) or shared object (Linux)",
+      "category": "programmer",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "pe-headers",
+      "name": "PE/ELF Header Reader",
+      "description": "Parse PE (Windows) or ELF (Linux) binary file headers",
+      "category": "programmer",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "hash-batch",
+      "name": "File Hash Batch Calculator",
+      "description": "Compute cryptographic hashes for all files in a directory",
+      "category": "programmer",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "dotnet-info",
+      "name": ".NET Assembly Info Reader",
+      "description": "Read .NET assembly metadata (version, culture, public key token)",
+      "category": "programmer",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "resource-extract",
+      "name": "PE Resource Extractor",
+      "description": "List resources (icons, strings, version info) from PE/DLL files",
+      "category": "programmer",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "gac-viewer",
+      "name": "Global Assembly Cache Viewer",
+      "description": "List assemblies in the Windows GAC or Mono GAC",
+      "category": "programmer",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "outlook-attachments",
+      "name": "Outlook Attachment Listing",
+      "description": "List email attachments from Outlook via COM automation",
+      "category": "outlook",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "outlook-stats",
+      "name": "Outlook Mailbox Statistics",
+      "description": "Message counts, sizes, and folder statistics from Outlook",
+      "category": "outlook",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "outlook-addressbook",
+      "name": "Outlook Address Book Reader",
+      "description": "List contacts from Outlook address book via COM automation",
+      "category": "outlook",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "audio-devices",
+      "name": "Audio Device Listing",
+      "description": "List audio input and output devices with name, driver, and default status",
+      "category": "audio",
+      "adminRequired": false,
+      "timeout": 15000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "audio-volume",
+      "name": "Audio Volume Getter/Setter",
+      "description": "Get or set system audio volume and mute state",
+      "category": "audio",
+      "adminRequired": false,
+      "timeout": 15000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "audio-codecs",
+      "name": "Audio Codec Listing",
+      "description": "List installed audio codecs and sound card PCM devices",
+      "category": "audio",
+      "adminRequired": false,
+      "timeout": 15000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
     }
   ]
 }

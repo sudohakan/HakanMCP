@@ -33,8 +33,10 @@ class Logger {
   private fileLogger!: winston.Logger;
 
   constructor() {
-    this.logDir = process.env.LOG_DIR
+    const resolvedDir = process.env.LOG_DIR
       || path.join(PROJECT_ROOT, 'logs', 'general');
+    // Ensure logDir is always an absolute path to prevent files leaking into CWD
+    this.logDir = path.isAbsolute(resolvedDir) ? resolvedDir : path.join(PROJECT_ROOT, resolvedDir);
     this.ensureLogDir();
     this.initFileTransport();
     process.on('beforeExit', () => this.scheduleFlush());

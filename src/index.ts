@@ -45,6 +45,7 @@ const TOOL_MODULES = [
   { path: './tools/aiDefence.js', export: 'aiDefenceTools' },
   { path: './tools/guidance.js', export: 'guidanceTools' },
   { path: './tools/disk.js', export: 'diskTools' },
+  { path: './tools/sysint.js', export: 'sysintTools' },
 ] as const;
 
 async function loadCoreTools(): Promise<void> {

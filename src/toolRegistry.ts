@@ -55,6 +55,7 @@ export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   db: { modulePath: './tools/db.js', exportName: 'dbTools', nativeDeps: ['pg', 'mysql2', 'mssql', 'sqlite3', 'sqlite'], core: false, featureName: 'database' },
   mongo: { modulePath: './tools/mongodb.js', exportName: 'mongoTools', nativeDeps: ['mongodb'], core: false, featureName: 'mongodb' },
   nirsoft: { modulePath: './tools/nirsoft.js', exportName: 'nirsoftTools', nativeDeps: [], core: false, featureName: 'nirsoft' },
+  sysint: { modulePath: './tools/sysint.js', exportName: 'sysintTools', nativeDeps: [], core: true, featureName: '' },
 };
 
 interface PlaceholderToolMeta {

@@ -3,6 +3,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { logger } from '../utils/logger.js';
 import { processRegistry } from '../utils/processRegistry.js';
 import { loadCatalog, getCatalogServer, listCatalogServers } from '../catalog/index.js';
+import { resolveEnvKeys } from '../utils/credentials.js';
 
 type SpawnFunction = (
   command: string,
@@ -54,7 +55,7 @@ export class MCPConnectionManager {
   /**
    * Create a new connection to an MCP server
    */
-  async connect(command: string, args: string[]): Promise<string> {
+  async connect(command: string, args: string[], env?: Record<string, string>): Promise<string> {
     if (this.connections.size >= this.maxConnections) {
       throw new Error(`Maximum connections (${this.maxConnections}) reached`);
     }
@@ -69,6 +70,7 @@ export class MCPConnectionManager {
         this.spawnFn(command, args, {
           stdio: ['pipe', 'pipe', 'pipe'],
           shell: isWindows,
+          ...(env && { env: { ...process.env, ...env } }),
         }),
         `mcp-${command}`,
       );
@@ -613,19 +615,25 @@ const _mcpLegacyTools = [
           items: { type: 'string' },
           description: 'Command arguments',
         },
+        env: {
+          type: 'object',
+          description: 'Environment variables to pass to the MCP server process',
+          additionalProperties: { type: 'string' },
+        },
       },
       required: ['command', 'args'],
     },
     handler: async (args: unknown) => {
-      const { command, args: cmdArgs } = z
+      const { command, args: cmdArgs, env } = z
         .object({
           command: z.string(),
           args: z.array(z.string()),
+          env: z.record(z.string(), z.string()).optional(),
         })
         .parse(args);
 
       try {
-        const connectionId = await connectionManager.connect(command, cmdArgs);
+        const connectionId = await connectionManager.connect(command, cmdArgs, env);
 
         return {
           content: [
@@ -810,7 +818,7 @@ const _mcpLegacyTools = [
   {
     name: 'mcp_catalog',
     description:
-      'Lists available on-demand MCP servers from the built-in catalog. These servers require no API key or authentication and can be connected via mcp_connectFromCatalog.',
+      'Lists available on-demand MCP servers from the built-in catalog. Servers with envKeys load credentials automatically. Connect via mcp_connectFromCatalog.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -843,7 +851,7 @@ const _mcpLegacyTools = [
   {
     name: 'mcp_connectFromCatalog',
     description:
-      'Connects to an MCP server from the built-in catalog by name. No API key or authentication required. Use mcp_catalog to see available servers.',
+      'Connects to an MCP server from the built-in catalog by name. Servers with envKeys load credentials automatically from ~/.credentials.env. Use mcp_catalog to see available servers.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -881,12 +889,14 @@ const _mcpLegacyTools = [
       const finalArgs = [...server.args, ...(extraArgs || [])];
 
       try {
-        const connectionId = await connectionManager.connect(server.command, finalArgs);
+        const env = server.envKeys?.length ? resolveEnvKeys(server.envKeys) : undefined;
+        const connectionId = await connectionManager.connect(server.command, finalArgs, env);
+        const envNote = env ? `\nCredentials: ${Object.keys(env).join(', ')} loaded from credentials.env` : '';
         return {
           content: [
             {
               type: 'text',
-              text: `Connected to ${server.name} (${serverKey})\n\nConnection ID: ${connectionId}\nCommand: ${server.command} ${finalArgs.join(' ')}\n\nUse mcp_listTools to see available tools, mcp_callTool to execute, mcp_disconnect when done.`,
+              text: `Connected to ${server.name} (${serverKey})\n\nConnection ID: ${connectionId}\nCommand: ${server.command} ${finalArgs.join(' ')}${envNote}\n\nUse mcp_listTools to see available tools, mcp_callTool to execute, mcp_disconnect when done.`,
             },
           ],
         };
@@ -1481,6 +1491,7 @@ export const mcpClientTools = [
         },
         command: { type: 'string', description: "Command to start MCP server (connect action)" },
         args: { type: 'array', items: { type: 'string' }, description: 'Command arguments (connect action)' },
+        env: { type: 'object', description: 'Environment variables for MCP server (connect action)', additionalProperties: { type: 'string' } },
         connectionId: { type: 'string', description: 'Connection ID (listTools/callTool/disconnect actions)' },
         toolName: { type: 'string', description: 'Name of the tool to run (callTool action)' },
         toolArguments: { type: 'object', description: 'Arguments to send to tool (callTool action)' },

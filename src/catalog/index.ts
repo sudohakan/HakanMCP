@@ -16,6 +16,7 @@ export interface CatalogServer {
   command: string;
   args: string[];
   dynamicArgs?: string[];
+  envKeys?: string[];
   conditions: string[];
 }
 

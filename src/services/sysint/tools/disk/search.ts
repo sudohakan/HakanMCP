@@ -125,7 +125,7 @@ async function hashFile(filePath: string, bytesToRead = 65536): Promise<string> 
   });
 }
 
-export async function computeFileHash(filePath: string, algorithm = 'sha256'): Promise<string> {
+async function computeFileHash(filePath: string, algorithm = 'sha256'): Promise<string> {
   return new Promise((resolve, reject) => {
     const hash = createHash(algorithm);
     const stream = createReadStream(filePath);

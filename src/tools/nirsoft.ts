@@ -35,9 +35,14 @@ const NirsoftArgsSchema = z.object({
   action: z.enum(['list', 'info', 'run', 'setup']),
   category: z.string().optional(),
   id: z.string().optional(),
+  tool: z.string().optional(),
   args: z.array(z.string()).optional(),
   format: z.enum(['json', 'csv', 'raw']).optional(),
-});
+  dependency: z.string().optional(),
+}).transform((data) => ({
+  ...data,
+  id: data.id ?? data.tool,
+}));
 
 type NirsoftArgs = z.infer<typeof NirsoftArgsSchema>;
 

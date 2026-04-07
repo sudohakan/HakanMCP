@@ -115,8 +115,8 @@ __pycache__/
 .turbo/
 .agentic-flow/
 
-# Planning docs (internal, not for GitHub)
-.planning/
+# Planning docs tracked for SysInt project
+# .planning/
 
 # Codex local config
 .codex/

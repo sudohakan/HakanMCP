@@ -1015,8 +1015,8 @@
       "description": "Displays the list of all currently opened TCP/IP and UDP ports on your computer",
       "category": "network",
       "adminRequired": false,
-      "timeout": 10,
-      "native": false,
+      "timeout": 30,
+      "native": true,
       "platforms": [
         "win32",
         "linux",
@@ -3406,6 +3406,383 @@
       "adminRequired": false,
       "timeout": 15,
       "native": false,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "process-list",
+      "name": "Process List",
+      "description": "Lists all running processes with PID, name, CPU%, memory, user, and command line",
+      "category": "process",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "process-connections",
+      "name": "Process Connections",
+      "description": "Maps each process PID to its open TCP/UDP ports",
+      "category": "process",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "process-modules",
+      "name": "Process Modules",
+      "description": "Lists loaded DLLs/shared libraries for a given process",
+      "category": "process",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "process-threads",
+      "name": "Process Threads",
+      "description": "Lists threads for a given process",
+      "category": "process",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "process-handles",
+      "name": "Process Handles",
+      "description": "Lists open file handles/descriptors for a given process",
+      "category": "process",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "process-io",
+      "name": "Process IO",
+      "description": "Shows read/write byte counters for a process",
+      "category": "process",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "process-tree",
+      "name": "Process Tree",
+      "description": "Returns the full process tree showing parent-child relationships",
+      "category": "process",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "service-list",
+      "name": "Service List",
+      "description": "Lists Windows services or Linux systemd units with status",
+      "category": "process",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "network-interfaces",
+      "name": "Network Interfaces",
+      "description": "Lists all network interfaces with IP, MAC, speed, and status",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "dns-lookup",
+      "name": "DNS Lookup",
+      "description": "Resolves DNS records (A, AAAA, MX, TXT, NS, CNAME) for a hostname",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "wifi-scan",
+      "name": "Wi-Fi Scanner",
+      "description": "Lists available Wi-Fi networks with SSID, signal, channel, and security type",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "wifi-history",
+      "name": "Wi-Fi History",
+      "description": "Lists previously connected Wi-Fi networks",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "ping-test",
+      "name": "Ping Test",
+      "description": "Pings one or more hosts in parallel and returns RTT and packet loss",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "port-scan",
+      "name": "Port Scanner",
+      "description": "Scans TCP ports on a target host using connect scan",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 120,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "route-table",
+      "name": "Route Table",
+      "description": "Shows the system routing table",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "arp-table",
+      "name": "ARP Table",
+      "description": "Shows the ARP cache (IP to MAC mappings)",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "mac-resolve",
+      "name": "MAC Resolver",
+      "description": "Resolves a MAC address to its vendor/manufacturer via OUI lookup",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "whois-lookup",
+      "name": "WHOIS Lookup",
+      "description": "Performs a WHOIS query for a domain or IP address",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "traceroute",
+      "name": "Traceroute",
+      "description": "Traces the network path to a host, showing each hop with RTT",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 60,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "http-headers",
+      "name": "HTTP Headers",
+      "description": "Retrieves HTTP response headers for a URL",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "network-stats",
+      "name": "Network Statistics",
+      "description": "Shows bytes in/out and packet counters per network interface",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "wake-on-lan",
+      "name": "Wake-on-LAN",
+      "description": "Sends a WOL magic packet to wake a remote machine by MAC address",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 10,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "bandwidth-test",
+      "name": "Bandwidth Test",
+      "description": "Measures download speed by timing an HTTPS download",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 60,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "connection-log",
+      "name": "Connection Log",
+      "description": "Shows historical network connection log",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "ssl-checker",
+      "name": "SSL Certificate Checker",
+      "description": "Checks SSL certificate details for a host (expiry, issuer, subject)",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "bluetooth-scan",
+      "name": "Bluetooth Scanner",
+      "description": "Lists paired and nearby Bluetooth devices",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 30,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "network-shares",
+      "name": "Network Shares",
+      "description": "Lists SMB/NFS network shares on the local machine",
+      "category": "network",
+      "adminRequired": false,
+      "timeout": 15,
+      "native": true,
       "platforms": [
         "win32",
         "linux",

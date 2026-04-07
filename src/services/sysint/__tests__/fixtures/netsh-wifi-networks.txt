@@ -1,0 +1,21 @@
+SSID 1 : HomeNetwork
+Network type            : Infrastructure
+Authentication          : WPA2-Personal
+Encryption              : CCMP
+BSSID 1                 : aa:bb:cc:dd:ee:ff
+     Signal             : 85%
+     Radio type         : 802.11n
+     Channel            : 6
+     Basic rates (Mbps) : 1 2 5.5 11
+     Other rates (Mbps) : 6 9 12 18 24 36 48 54
+
+SSID 2 : WorkWifi
+Network type            : Infrastructure
+Authentication          : WPA2-Enterprise
+Encryption              : CCMP
+BSSID 1                 : 11:22:33:44:55:66
+     Signal             : 72%
+     Radio type         : 802.11ac
+     Channel            : 36
+     Basic rates (Mbps) : 6 12 24
+     Other rates (Mbps) : 9 18 36 48 54

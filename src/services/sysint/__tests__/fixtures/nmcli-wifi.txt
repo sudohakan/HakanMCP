@@ -1,0 +1,4 @@
+IN-USE  BSSID              SSID           MODE   CHAN  RATE        SIGNAL  BARS  SECURITY
+        AA:BB:CC:DD:EE:FF  HomeNetwork    Infra  6     130 Mbit/s  85      ▂▄▆█  WPA2
+*       11:22:33:44:55:66  WorkWifi       Infra  36    270 Mbit/s  92      ▂▄▆█  WPA2 WPA3
+        FF:EE:DD:CC:BB:AA  NeighborNet    Infra  11    54 Mbit/s   45      ▂▄__  WPA1

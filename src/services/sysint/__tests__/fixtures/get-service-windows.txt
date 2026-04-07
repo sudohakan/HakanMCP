@@ -1,0 +1,1 @@
+[{"Name":"Spooler","DisplayName":"Print Spooler","Status":4,"StartType":2},{"Name":"WinRM","DisplayName":"Windows Remote Management (WS-Management)","Status":1,"StartType":3},{"Name":"wuauserv","DisplayName":"Windows Update","Status":4,"StartType":2},{"Name":"Themes","DisplayName":"Themes","Status":4,"StartType":2}]

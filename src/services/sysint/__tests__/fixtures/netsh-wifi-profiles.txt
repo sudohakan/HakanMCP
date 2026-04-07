@@ -1,0 +1,11 @@
+Profiles on interface Wi-Fi:
+
+Group policy profiles (read only)
+---------------------------------
+    <None>
+
+User profiles
+-------------
+    All User Profile     : HomeNetwork
+    All User Profile     : WorkWifi
+    All User Profile     : OldCoffeeShop

@@ -1,4 +1,4 @@
-import { buildSuccess, buildError, toCSV } from '../outputFormatter.js';
+import { buildSuccess, buildError, toCSV, isError } from '../outputFormatter.js';
 import type { SysIntErrorCode } from '../outputFormatter.js';
 
 describe('Output Formatter', () => {
@@ -89,6 +89,35 @@ describe('Output Formatter', () => {
     it('normalizes CRLF to LF in values', () => {
       const result = toCSV([{ desc: 'line1\r\nline2' }]);
       expect(result).not.toContain('\r\n');
+    });
+
+    it('handles inconsistent keys across rows — uses first row keys as headers', () => {
+      const result = toCSV([
+        { name: 'foo', pid: 1 },
+        { name: 'bar' } as Record<string, unknown>,
+      ]);
+      const lines = result.split('\n');
+      expect(lines[0]).toBe('name,pid');
+      expect(lines[1]).toBe('foo,1');
+      // second row missing pid key → empty
+      expect(lines[2]).toBe('bar,');
+    });
+
+    it('handles newline-only values by quoting them', () => {
+      const result = toCSV([{ desc: '\n' }]);
+      expect(result).toContain('"');
+    });
+  });
+
+  describe('isError', () => {
+    it('returns true for error result', () => {
+      const err = buildError('failed', 'EXEC_FAILED', 'tool');
+      expect(isError(err)).toBe(true);
+    });
+
+    it('returns false for success result', () => {
+      const ok = buildSuccess([], 'tool', 'linux');
+      expect(isError(ok)).toBe(false);
     });
   });
 });

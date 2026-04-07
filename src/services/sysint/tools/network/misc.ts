@@ -6,9 +6,9 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import net from 'node:net';
-import { buildSuccess, buildError } from '../../outputFormatter.js';
-import { getPlatformName } from '../../platforms/index.js';
-import type { SysIntResult } from '../../outputFormatter.js';
+import { buildSuccess, buildError } from './shared.js';
+import { getPlatformName } from './shared.js';
+import type { SysIntResult } from './shared.js';
 
 const execAsync = promisify(exec);
 
@@ -307,7 +307,7 @@ async function runConnectionLog(): Promise<SysIntResult> {
       // Event log query for network connections (limited)
       const cmd = platform === 'wsl'
         ? 'powershell.exe -NoProfile -Command "Get-WinEvent -LogName Security -MaxEvents 20 -FilterHashtable @{Id=5156} -ErrorAction SilentlyContinue | Select-Object -Property TimeCreated,Message | ConvertTo-Json -Compress"'
-        : 'powershell.exe -NoProfile -Command "Get-WinEvent -LogName Security -MaxEvents 20 -FilterHashtable @{Id=5156} -ErrorAction SilentlyContinue | Select-Object -Property TimeCreated,Message | ConvertTo-Json -Compress"';
+        : 'powershell -NoProfile -Command "Get-WinEvent -LogName Security -MaxEvents 20 -FilterHashtable @{Id=5156} -ErrorAction SilentlyContinue | Select-Object -Property TimeCreated,Message | ConvertTo-Json -Compress"';
       const { stdout } = await execAsync(cmd, { timeout: 15_000 }).catch(() => ({ stdout: '[]' }));
       let events: unknown[] = [];
       try { events = JSON.parse(stdout || '[]'); } catch { events = []; }
@@ -381,7 +381,7 @@ async function runNetworkShares(): Promise<SysIntResult> {
     if (platform === 'win32' || platform === 'wsl') {
       const cmd = platform === 'wsl'
         ? 'powershell.exe -NoProfile -Command "Get-SmbShare | Select-Object Name,Path,ShareType,Description | ConvertTo-Json -Compress"'
-        : 'powershell.exe -NoProfile -Command "Get-SmbShare | Select-Object Name,Path,ShareType,Description | ConvertTo-Json -Compress"';
+        : 'powershell -NoProfile -Command "Get-SmbShare | Select-Object Name,Path,ShareType,Description | ConvertTo-Json -Compress"';
       const { stdout } = await execAsync(cmd, { timeout: 15_000 });
       let shares: unknown[] = [];
       try { shares = JSON.parse(stdout); } catch { shares = []; }

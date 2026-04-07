@@ -19,15 +19,15 @@ export async function runProcessIO(args: string[]): Promise<SysIntResult> {
   if (!/^\d+$/.test(pid)) return buildError('Invalid PID: must be a positive integer', 'EXEC_FAILED', 'process-io');
   try {
     if (platform === 'win32' || platform === 'wsl') {
-      const ps = `Get-Process -Id ${pid} -ErrorAction Stop | Select-Object -Property Id,Name,WorkingSet64,PagedMemorySize64 | ConvertTo-Json -Compress`;
+      const ps = `(Get-Process -Id ${pid} -ErrorAction Stop).SI | Select-Object -Property @{N='Name';E={$_.Process.Name}},ReadTransferCount,WriteTransferCount | ConvertTo-Json -Compress`;
       const cmd = platform === 'wsl' ? `powershell.exe -NoProfile -Command "${ps.replace(/"/g, '\\"')}"` : `powershell -NoProfile -Command "${ps}"`;
       const { stdout } = await execAsync(cmd, { timeout: 30_000 });
       const data = JSON.parse(stdout.replace(/\r\n/g, '\n').trim() || '{}');
       const row: IORow = {
         pid: parseInt(pid, 10),
         name: String(data['Name'] ?? ''),
-        readBytes: Number(data['WorkingSet64'] ?? 0),
-        writeBytes: Number(data['PagedMemorySize64'] ?? 0),
+        readBytes: Number(data['ReadTransferCount'] ?? 0),
+        writeBytes: Number(data['WriteTransferCount'] ?? 0),
       };
       return buildSuccess([row], 'process-io', platform);
     } else {

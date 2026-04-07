@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { buildSuccess, buildError, getPlatformName } from './shared.js';
+import { computeFileHash } from './hash.js';
 import type { SysIntResult } from '../../outputFormatter.js';
 
 const readdirAsync = promisify(readdir);
@@ -119,16 +120,6 @@ async function hashFile(filePath: string, bytesToRead = 65536): Promise<string> 
   return new Promise((resolve, reject) => {
     const hash = createHash('sha256');
     const stream = createReadStream(filePath, { end: bytesToRead - 1 });
-    stream.on('data', (chunk) => hash.update(chunk));
-    stream.on('end', () => resolve(hash.digest('hex')));
-    stream.on('error', reject);
-  });
-}
-
-async function computeFileHash(filePath: string, algorithm = 'sha256'): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const hash = createHash(algorithm);
-    const stream = createReadStream(filePath);
     stream.on('data', (chunk) => hash.update(chunk));
     stream.on('end', () => resolve(hash.digest('hex')));
     stream.on('error', reject);

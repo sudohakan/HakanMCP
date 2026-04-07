@@ -4,9 +4,10 @@
  */
 import { spawn } from 'node:child_process';
 import net from 'node:net';
-import { buildSuccess, buildError } from '../../outputFormatter.js';
-import { getPlatformName } from '../../platforms/index.js';
-import type { SysIntResult, SysIntPlatform } from '../../outputFormatter.js';
+import { buildSuccess, buildError } from './shared.js';
+import { getPlatformName } from './shared.js';
+import type { SysIntResult } from './shared.js';
+import type { SysIntPlatform } from '../../outputFormatter.js';
 
 export interface PingRow {
   host: string;

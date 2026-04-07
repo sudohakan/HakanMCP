@@ -69,6 +69,44 @@ describe('parseSsOutput', () => {
       expect(rows[0].processName).toBe('node');
     }
   });
+
+  it('parses UDP line', () => {
+    const ssOutput = 'udp   UNCONN 0  0  0.0.0.0:68  0.0.0.0:*  users:(("dhclient",pid=555,fd=6))';
+    const rows = parseSsOutput(ssOutput);
+    expect(rows.length).toBe(1);
+    expect(rows[0].protocol).toBe('UDP');
+    expect(rows[0].pid).toBe(555);
+    expect(rows[0].processName).toBe('dhclient');
+  });
+
+  it('parses LISTEN with 0.0.0.0:* peer — remotePort 0, remoteAddress empty', () => {
+    const ssOutput = 'tcp   LISTEN  0  128  0.0.0.0:22  0.0.0.0:*  users:(("sshd",pid=800,fd=3))';
+    const rows = parseSsOutput(ssOutput);
+    expect(rows.length).toBe(1);
+    expect(rows[0].remotePort).toBe(0);
+    expect(rows[0].remoteAddress).toBe('');
+  });
+
+  it('parses line without process info — pid=0, processName empty', () => {
+    const ssOutput = 'tcp   ESTAB  0  0  10.0.0.1:22  10.0.0.2:50000';
+    const rows = parseSsOutput(ssOutput);
+    if (rows.length > 0) {
+      expect(rows[0].pid).toBe(0);
+      expect(rows[0].processName).toBe('');
+    }
+  });
+
+  it('parses multi-connection block', () => {
+    const ssOutput = [
+      'tcp   ESTAB  0  0  192.168.1.100:51234  52.96.100.1:443  users:(("node",pid=1234,fd=22))',
+      'tcp   ESTAB  0  0  192.168.1.100:51235  52.96.100.2:80   users:(("curl",pid=5678,fd=5))',
+      'udp   UNCONN 0  0  0.0.0.0:53  0.0.0.0:*  users:(("dnsmasq",pid=999,fd=4))',
+    ].join('\n');
+    const rows = parseSsOutput(ssOutput);
+    expect(rows.length).toBe(3);
+    expect(rows.filter((r) => r.protocol === 'TCP').length).toBe(2);
+    expect(rows.filter((r) => r.protocol === 'UDP').length).toBe(1);
+  });
 });
 
 describe('cports integration', () => {

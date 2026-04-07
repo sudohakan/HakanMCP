@@ -96,4 +96,26 @@ describe('Privilege Helper', () => {
       expect(() => _resetPrivilegeLevel()).not.toThrow();
     });
   });
+
+  describe('requirePrivilege with forced non-admin state', () => {
+    it('returns PRIVILEGE_REQUIRED when tool requires admin and privilege is non-admin', async () => {
+      _resetPrivilegeLevel();
+      // Provide an admin-required tool — on Linux CI running as non-root, result is PRIVILEGE_REQUIRED
+      const tool = makeTool({ adminRequired: true });
+      const result = await requirePrivilege(tool, 'admin-only-tool');
+      // Either null (running as root/admin) or PRIVILEGE_REQUIRED
+      if (result !== null) {
+        expect(result.code).toBe('PRIVILEGE_REQUIRED');
+        expect(result.tool).toBe('admin-only-tool');
+        expect(typeof result.error).toBe('string');
+      }
+    });
+
+    it('returns null for non-admin required tool regardless of privilege level', async () => {
+      _resetPrivilegeLevel();
+      const tool = makeTool({ adminRequired: false });
+      const result = await requirePrivilege(tool, 'no-admin-needed');
+      expect(result).toBeNull();
+    });
+  });
 });

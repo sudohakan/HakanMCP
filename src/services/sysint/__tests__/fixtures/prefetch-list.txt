@@ -1,0 +1,5 @@
+[
+  {"Name":"CHROME.EXE-3A4F8B2C.pf","LastAccessTime":"2024-01-15T10:25:00Z","LastWriteTime":"2024-01-15T10:25:00Z","Length":85432,"FullName":"C:\\Windows\\Prefetch\\CHROME.EXE-3A4F8B2C.pf"},
+  {"Name":"NOTEPAD.EXE-7C34A21F.pf","LastAccessTime":"2024-01-14T15:00:00Z","LastWriteTime":"2024-01-14T15:00:00Z","Length":12344,"FullName":"C:\\Windows\\Prefetch\\NOTEPAD.EXE-7C34A21F.pf"},
+  {"Name":"POWERSHELL.EXE-B12E934F.pf","LastAccessTime":"2024-01-15T09:00:00Z","LastWriteTime":"2024-01-15T09:00:00Z","Length":32768,"FullName":"C:\\Windows\\Prefetch\\POWERSHELL.EXE-B12E934F.pf"}
+]

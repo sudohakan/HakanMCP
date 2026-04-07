@@ -1,0 +1,8 @@
+Module                  Size  Used by
+nvidia_uvm           1310720  0
+nvidia_drm             73728  4
+nvidia_modeset       1224704  2 nvidia_drm
+nvidia              56623104  107 nvidia_uvm,nvidia_modeset
+drm_kms_helper        311296  1 nvidia_drm
+drm                   622592  6 drm_kms_helper,nvidia_drm
+i2c_core               98304  5 drm_kms_helper,nvidia,nvidia_modeset

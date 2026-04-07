@@ -1,0 +1,5 @@
+[
+  {"fs":"/dev/sda1","type":"ext4","size":498536448000,"used":125000000000,"use":25.1,"mount":"/"},
+  {"fs":"/dev/sdb1","type":"vfat","size":1024000000,"used":512000000,"use":50.0,"mount":"/boot/efi"},
+  {"fs":"tmpfs","type":"tmpfs","size":8589934592,"used":1024000,"use":0.1,"mount":"/tmp"}
+]

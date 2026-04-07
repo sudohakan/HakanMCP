@@ -1,0 +1,6 @@
+[
+  {"DisplayName":"Google Chrome","Publisher":"Google LLC","DisplayVersion":"120.0.6099.217","InstallDate":"20240115","EstimatedSize":280000},
+  {"DisplayName":"Microsoft Visual Studio Code","Publisher":"Microsoft Corporation","DisplayVersion":"1.85.2","InstallDate":"20240101","EstimatedSize":350000},
+  {"DisplayName":"Node.js","Publisher":"Node.js Foundation","DisplayVersion":"20.11.0","InstallDate":"20240110","EstimatedSize":65000},
+  {"DisplayName":"Git","Publisher":"The Git Development Community","DisplayVersion":"2.43.0","InstallDate":"20240105","EstimatedSize":74000}
+]

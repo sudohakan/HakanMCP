@@ -3788,6 +3788,548 @@
         "linux",
         "wsl"
       ]
+    },
+    {
+      "id": "disk-smart",
+      "name": "Disk SMART Data Reader",
+      "description": "Read SMART health data and attributes from physical disks",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "disk-partitions",
+      "name": "Partition Listing",
+      "description": "List all partitions and block devices with filesystem info",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "disk-space",
+      "name": "Drive Space Summary",
+      "description": "Show used, free, and total space per mounted filesystem",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "file-search",
+      "name": "File Search",
+      "description": "Recursive file search with name pattern, size, and date filters",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "duplicate-finder",
+      "name": "Duplicate File Finder",
+      "description": "Find duplicate files using SHA256 hash comparison grouped by hash",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 120000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "large-files",
+      "name": "Large File Finder",
+      "description": "Find files above a size threshold, sorted by size descending",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "recent-files",
+      "name": "Recently Modified Files",
+      "description": "List files modified within a time window, sorted by mtime",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "disk-ads",
+      "name": "Alternate Data Stream Viewer",
+      "description": "List NTFS Alternate Data Streams on a file or directory (Windows-only)",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "drive-map",
+      "name": "Drive Letter/Mount Point Mapping",
+      "description": "Show drive letters or mount points with free and used space",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "disk-io",
+      "name": "Disk IO Counters",
+      "description": "Read/write IOPS and throughput per disk device",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "disk-freespace-log",
+      "name": "Free Space Log",
+      "description": "Snapshot current free space or list historical snapshots",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "disk-links",
+      "name": "Symlink/Junction Listing",
+      "description": "Recursively find symbolic links and NTFS junctions",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "file-hash",
+      "name": "File Hash Calculator",
+      "description": "Compute MD5, SHA1, SHA256, or SHA512 hash of a file",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "disk-recovery",
+      "name": "Deleted File Recovery Metadata",
+      "description": "Windows VSS shadow copies or Linux journal recovery tool info",
+      "category": "disk",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "cpu-info",
+      "name": "CPU Info",
+      "description": "CPU model, core count, frequency, temperature",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 15000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "memory-info",
+      "name": "Memory Info",
+      "description": "RAM total, used, free, and swap statistics",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 15000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "os-info",
+      "name": "OS Info",
+      "description": "OS version, build, architecture, hostname, uptime",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 15000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "installed-apps",
+      "name": "Installed Applications",
+      "description": "List installed applications from registry or package manager",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "update-history",
+      "name": "Update History",
+      "description": "Windows hotfix history or Linux dpkg/dnf update log",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "driver-list",
+      "name": "Driver List",
+      "description": "Installed kernel drivers (Windows driverquery, Linux lsmod)",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "startup-programs",
+      "name": "Startup Programs",
+      "description": "Programs configured to run at startup",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "scheduled-tasks",
+      "name": "Scheduled Tasks",
+      "description": "Scheduled tasks (Windows schtasks, Linux cron/systemd timers)",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "event-log",
+      "name": "Event Log Reader",
+      "description": "Windows Event Log or Linux journald, filterable by level/source/time",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "crash-analysis",
+      "name": "Crash Analysis",
+      "description": "Windows minidump list and WER events, Linux dmesg panic lines",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "usb-history",
+      "name": "USB Device History",
+      "description": "USB devices seen by the system (Windows PnP, Linux lsusb)",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "battery-info",
+      "name": "Battery Info",
+      "description": "Battery capacity, health, charge level, and charging state",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 15000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "monitor-info",
+      "name": "Monitor Info",
+      "description": "Display resolution, refresh rate, and connection type per monitor",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 15000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "login-history",
+      "name": "Login History",
+      "description": "User login and logoff events with source address",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "boot-history",
+      "name": "Boot/Shutdown History",
+      "description": "System startup and shutdown event history",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "prefetch-info",
+      "name": "Prefetch Analysis",
+      "description": "Windows Prefetch file metadata showing recently executed applications",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "shell-extensions",
+      "name": "Shell Extensions",
+      "description": "Registered Windows shell extension handlers from registry",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
+    },
+    {
+      "id": "running-services",
+      "name": "Running Services",
+      "description": "Currently running system services only",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "security-software",
+      "name": "Security Software Detection",
+      "description": "Detect installed antivirus and security products",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "installed-packages",
+      "name": "Installed Packages",
+      "description": "Package manager listing (winget/choco on Windows, dpkg/rpm on Linux)",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 60000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "environment-vars",
+      "name": "Environment Variables",
+      "description": "List current process environment variables with optional filter",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 5000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "timezone-info",
+      "name": "Timezone and Locale Info",
+      "description": "Current timezone, UTC offset, and locale settings",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 5000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "hardware-info",
+      "name": "Hardware Info",
+      "description": "Motherboard, BIOS, and system serial from systeminformation",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "last-activity",
+      "name": "Last Activity Viewer",
+      "description": "Aggregated activity timeline from logins, file access, and app launches",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 30000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "linux",
+        "wsl"
+      ]
+    },
+    {
+      "id": "jump-lists",
+      "name": "Jump List Viewer",
+      "description": "Windows Jump List metadata from AutomaticDestinations (Windows-only)",
+      "category": "system",
+      "adminRequired": false,
+      "timeout": 15000,
+      "native": true,
+      "platforms": [
+        "win32",
+        "wsl"
+      ]
     }
   ]
 }

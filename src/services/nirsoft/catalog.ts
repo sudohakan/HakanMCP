@@ -11,6 +11,7 @@ export interface NirsoftTool {
   specialDeps: string | null;
   timeout: number;
   outputColumns: string[] | null;
+  requirements: string[] | null;
 }
 
 export interface NirsoftCatalog {

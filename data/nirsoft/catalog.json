@@ -23,7 +23,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "bluetoothleview",
@@ -35,7 +36,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "browserdownloadsview",
@@ -47,7 +49,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "chromepass",
@@ -59,7 +62,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "credhistview",
@@ -71,7 +77,11 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "credentialsfileview",
@@ -83,7 +93,11 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "customexplorertoolbar",
@@ -95,7 +109,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "dhcplogview",
@@ -107,7 +122,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "dnslookupview",
@@ -119,7 +135,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "domainhostingview",
@@ -131,7 +148,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "downtester",
@@ -143,7 +161,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "esedatabaseview",
@@ -155,7 +174,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "edgecookiesview",
@@ -167,7 +187,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "extpassword",
@@ -179,7 +200,11 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "fastresolver",
@@ -191,7 +216,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "firefoxdownloadsview",
@@ -203,7 +229,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "flashcookiesview",
@@ -215,7 +242,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "freespacelogview",
@@ -227,7 +255,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "fullupdateshistoryview",
@@ -239,7 +268,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "getnir",
@@ -251,7 +281,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "hostednetworkstarter",
@@ -263,7 +294,10 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation"
+      ]
     },
     {
       "id": "htmlastext",
@@ -275,7 +309,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "ipneighborsview",
@@ -287,7 +322,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "ippathtableview",
@@ -299,7 +335,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "installedappview",
@@ -311,7 +348,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "lanipscanner",
@@ -323,7 +361,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "lostmypassword",
@@ -335,7 +374,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "madpassext",
@@ -347,7 +389,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "managewirelessnetworks",
@@ -359,7 +404,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "outlookaccountsview",
@@ -371,7 +417,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "productkeyscanner",
@@ -383,7 +430,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "propertysystemview",
@@ -395,7 +443,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "pstpassword",
@@ -407,7 +456,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "runtimeclassesview",
@@ -419,7 +469,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "securityquestionsview",
@@ -431,7 +482,11 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "sniffpass",
@@ -443,7 +498,12 @@
       "adminRequired": true,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "npcap-driver",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "tcpconnectproblemview",
@@ -455,7 +515,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "usbdrivelog",
@@ -467,7 +528,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "vncpassview",
@@ -479,7 +541,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "webbrowserbookmarksview",
@@ -491,7 +556,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "webbrowserpassview",
@@ -503,7 +569,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "wifidiagnosticsview",
@@ -515,7 +584,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "wifihistoryview",
@@ -527,7 +597,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "winmailpassrec",
@@ -539,7 +610,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "winupdatesview",
@@ -551,7 +625,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "advancedrun",
@@ -563,7 +638,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "allthreadsview",
@@ -575,7 +651,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "alternatestreamview",
@@ -587,7 +664,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "altstreamdump",
@@ -599,7 +677,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "appaudioconfig",
@@ -611,7 +690,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "appcompatibilityview",
@@ -623,7 +703,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "appcrashview",
@@ -635,7 +716,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "appnetworkcounter",
@@ -647,7 +729,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "appreadwritecounter",
@@ -659,7 +742,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "asterie",
@@ -671,7 +755,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "awatch",
@@ -683,7 +770,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "axhelper",
@@ -695,7 +783,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "batteryinfoview",
@@ -707,7 +796,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "bluescreenview",
@@ -747,7 +837,8 @@
         "Minor Version",
         "Dump File Size",
         "Dump File Time"
-      ]
+      ],
+      "requirements": null
     },
     {
       "id": "bluetoothcl",
@@ -759,7 +850,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "bluetoothlogview",
@@ -771,7 +863,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "bluetoothview",
@@ -783,7 +876,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "browseraddonsview",
@@ -795,7 +889,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "browsinghistoryview",
@@ -820,7 +915,8 @@
         "Browser Profile",
         "History File",
         "URL Length"
-      ]
+      ],
+      "requirements": null
     },
     {
       "id": "bulkfilechanger",
@@ -832,7 +928,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "chromecacheview",
@@ -844,7 +941,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "chromecookiesview",
@@ -856,7 +954,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "chromehistoryview",
@@ -868,7 +969,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "cleanafterme",
@@ -880,7 +982,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "clipboardic",
@@ -892,7 +995,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "controlmymonitor",
@@ -904,7 +1008,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "countrytraceroute",
@@ -916,7 +1021,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "cports",
@@ -958,7 +1064,8 @@
         "Incoming Bytes",
         "Outgoing Bytes",
         "Incoming Packets"
-      ]
+      ],
+      "requirements": null
     },
     {
       "id": "cprocess",
@@ -970,7 +1077,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "csvfileview",
@@ -982,7 +1090,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "ctie",
@@ -994,7 +1103,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "dataprotectiondecryptor",
@@ -1006,7 +1116,11 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "deviceioview",
@@ -1018,7 +1132,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "devmanview",
@@ -1030,7 +1145,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "diskcountersview",
@@ -1042,7 +1158,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "disksmartview",
@@ -1054,7 +1171,10 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation"
+      ]
     },
     {
       "id": "dllexp",
@@ -1066,7 +1186,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "dnsdataview",
@@ -1078,7 +1199,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "dnsquerysniffer",
@@ -1090,7 +1212,11 @@
       "adminRequired": true,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "npcap-driver"
+      ]
     },
     {
       "id": "dotnetresourcesextract",
@@ -1102,7 +1228,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "driveletterview",
@@ -1114,7 +1241,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "driverview",
@@ -1126,7 +1254,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "encryptedregview",
@@ -1138,7 +1267,10 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation"
+      ]
     },
     {
       "id": "eventlogchannelsview",
@@ -1150,7 +1282,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "eventlogsourcesview",
@@ -1162,7 +1295,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "faview",
@@ -1174,7 +1308,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "fbcacheview",
@@ -1186,7 +1321,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "fileaccesserrorview",
@@ -1198,7 +1334,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "fileactivitywatch",
@@ -1210,7 +1347,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "filetypesman",
@@ -1222,7 +1360,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "firmwaretablesview",
@@ -1234,7 +1373,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "foldertimeupdate",
@@ -1246,7 +1386,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "fulleventlogview",
@@ -1258,7 +1399,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "gacview",
@@ -1270,7 +1412,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "gdiview",
@@ -1282,7 +1425,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "guipropview",
@@ -1294,7 +1438,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "handlecountersview",
@@ -1306,7 +1451,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "hashmyfiles",
@@ -1318,7 +1464,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "heapmemview",
@@ -1330,7 +1477,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "htmldocedit",
@@ -1342,7 +1490,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "httpnetworksniffer",
@@ -1354,7 +1503,11 @@
       "adminRequired": true,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "npcap-driver"
+      ]
     },
     {
       "id": "iconsext",
@@ -1366,7 +1519,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "iecacheview",
@@ -1378,7 +1532,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "iecv",
@@ -1390,7 +1545,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "iehv",
@@ -1402,7 +1558,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "iepv",
@@ -1414,7 +1571,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "imagecacheviewer",
@@ -1426,7 +1586,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "insideclipboard",
@@ -1438,7 +1599,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "installedcodec",
@@ -1450,7 +1612,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "installeddriverslist",
@@ -1483,7 +1646,8 @@
         "End Address",
         "Memory Size",
         "Load Count"
-      ]
+      ],
+      "requirements": null
     },
     {
       "id": "installedpackagesview",
@@ -1495,7 +1659,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "ipinfooffline",
@@ -1507,7 +1672,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "ipnetinfo",
@@ -1519,7 +1685,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "jumplistsview",
@@ -1531,7 +1698,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "keyboardstateview",
@@ -1543,7 +1711,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "lastactivityview",
@@ -1562,7 +1731,8 @@
         "Full Path",
         "More Information",
         "File Extension"
-      ]
+      ],
+      "requirements": null
     },
     {
       "id": "livecontactsview",
@@ -1574,7 +1744,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "livetcpudpwatch",
@@ -1586,7 +1757,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "loadeddllsview",
@@ -1598,7 +1770,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "macaddressview",
@@ -1610,7 +1783,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "mailpv",
@@ -1622,7 +1796,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "mmcsnapinsview",
@@ -1634,7 +1811,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "monitorinfoview",
@@ -1646,7 +1824,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "mozillacacheview",
@@ -1658,7 +1837,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "mozillahistoryview",
@@ -1670,7 +1850,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "mspass",
@@ -1682,7 +1863,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "muicacheview",
@@ -1694,7 +1878,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "multimonitortool",
@@ -1706,7 +1891,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "mweather",
@@ -1718,7 +1904,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "myeventviewer",
@@ -1730,7 +1917,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "mylastsearch",
@@ -1742,7 +1930,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "myuninst",
@@ -1754,7 +1943,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "mzcv",
@@ -1766,7 +1956,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "netbscanner",
@@ -1778,7 +1969,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "netconnectchoose",
@@ -1790,7 +1982,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "netpass",
@@ -1802,7 +1995,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "netresview",
@@ -1814,7 +2010,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "netrouteview",
@@ -1826,7 +2023,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "networkconnectlog",
@@ -1838,7 +2036,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "networkcounterswatch",
@@ -1850,7 +2049,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "networkinterfacesview",
@@ -1862,7 +2062,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "networklatencyview",
@@ -1874,7 +2075,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "networkopenedfiles",
@@ -1886,7 +2088,10 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation"
+      ]
     },
     {
       "id": "networktrafficview",
@@ -1898,7 +2103,11 @@
       "adminRequired": true,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "npcap-driver"
+      ]
     },
     {
       "id": "networkusageview",
@@ -1910,7 +2119,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "nircmd",
@@ -1922,7 +2132,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "nk2edit",
@@ -1934,7 +2145,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "ntfslinksview",
@@ -1946,7 +2158,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "officeins",
@@ -1958,7 +2171,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "offlineregistryfinder",
@@ -1970,7 +2184,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "offlineregistryview",
@@ -1982,7 +2197,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "openedfilesview",
@@ -1994,7 +2210,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "opensavefilesview",
@@ -2006,7 +2223,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "openwithview",
@@ -2018,7 +2236,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "operacacheview",
@@ -2030,7 +2249,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "outlookaddressbookview",
@@ -2042,7 +2262,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "outlookattachview",
@@ -2054,7 +2275,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "outlookstatview",
@@ -2066,7 +2288,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "passwordfox",
@@ -2078,7 +2301,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "passwordscan",
@@ -2090,7 +2316,11 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "pinginfoview",
@@ -2102,7 +2332,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "previousfilesrecovery",
@@ -2114,7 +2345,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "processactivityview",
@@ -2126,7 +2358,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "processtcpsummary",
@@ -2138,7 +2371,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "processthreadsview",
@@ -2169,7 +2403,8 @@
         "Stack Limit",
         "Stack Size",
         "TEB Address"
-      ]
+      ],
+      "requirements": null
     },
     {
       "id": "quicksetdns",
@@ -2181,7 +2416,10 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation"
+      ]
     },
     {
       "id": "rdpv",
@@ -2193,7 +2431,10 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "defender-exclusion"
+      ]
     },
     {
       "id": "recentfilesview",
@@ -2205,7 +2446,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "regdllview",
@@ -2217,7 +2459,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "regfileexport",
@@ -2229,7 +2472,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "regfromapp",
@@ -2241,7 +2485,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "registrychangesview",
@@ -2253,7 +2498,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "regscanner",
@@ -2265,7 +2511,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "resourcesextract",
@@ -2277,7 +2524,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "rtmpdumphelper",
@@ -2289,7 +2537,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "runasdate",
@@ -2301,7 +2550,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "runfromprocess",
@@ -2313,7 +2563,10 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation"
+      ]
     },
     {
       "id": "safaricacheview",
@@ -2325,7 +2578,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "safarihistoryview",
@@ -2337,7 +2591,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "searchfilterview",
@@ -2349,7 +2604,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "searchmyfiles",
@@ -2361,7 +2617,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "securitysoftview",
@@ -2373,7 +2630,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "seqdownload",
@@ -2385,7 +2643,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "serviwin",
@@ -2397,7 +2656,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "shadowcopyview",
@@ -2409,7 +2669,10 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation"
+      ]
     },
     {
       "id": "shellbagsview",
@@ -2421,7 +2684,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "shellmenunew",
@@ -2433,7 +2697,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "shexview",
@@ -2445,7 +2710,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "shman",
@@ -2457,7 +2723,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "shmnview",
@@ -2469,7 +2736,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "simpleprogramdebugger",
@@ -2481,7 +2749,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "simplewmiview",
@@ -2493,7 +2762,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "siteshoter",
@@ -2505,7 +2775,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "skypecontactsview",
@@ -2517,7 +2788,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "skypelogview",
@@ -2529,7 +2801,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "smsniff",
@@ -2541,7 +2814,12 @@
       "adminRequired": true,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "npcap-driver",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "socketsniff",
@@ -2553,7 +2831,10 @@
       "adminRequired": false,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "npcap-driver"
+      ]
     },
     {
       "id": "soundvolumeview",
@@ -2565,7 +2846,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "specialfoldersview",
@@ -2577,7 +2859,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "sysexp",
@@ -2589,7 +2872,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "tabletextcompare",
@@ -2601,7 +2885,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "taskschedulerview",
@@ -2613,7 +2898,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "tcplogview",
@@ -2625,7 +2911,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "timezonesview",
@@ -2637,7 +2924,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "turnedontimesview",
@@ -2649,7 +2937,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "uninstallview",
@@ -2661,7 +2950,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "urlprotocolview",
@@ -2673,7 +2963,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "urlstringgrabber",
@@ -2685,7 +2976,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "usbdeview",
@@ -2737,7 +3029,8 @@
         "UIID",
         "Last Plug Date",
         "Last Unplug Date"
-      ]
+      ],
+      "requirements": null
     },
     {
       "id": "usblogview",
@@ -2749,7 +3042,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "userassistview",
@@ -2761,7 +3055,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "userprofilesview",
@@ -2773,7 +3068,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "vaultpasswordview",
@@ -2785,7 +3081,11 @@
       "adminRequired": true,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "videocacheview",
@@ -2797,7 +3097,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "volumouse",
@@ -2809,7 +3110,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "wakemeonlan",
@@ -2821,7 +3123,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "webcacheimageinfo",
@@ -2833,7 +3136,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "webcamimagesave",
@@ -2845,7 +3149,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "webcookiessniffer",
@@ -2857,7 +3162,12 @@
       "adminRequired": true,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "npcap-driver",
+        "defender-exclusion"
+      ]
     },
     {
       "id": "websitesniffer",
@@ -2869,7 +3179,11 @@
       "adminRequired": true,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "npcap-driver"
+      ]
     },
     {
       "id": "webvideocap",
@@ -2881,7 +3195,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "whatinstartup",
@@ -2893,7 +3208,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "whatishang",
@@ -2905,7 +3221,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "whoiscl",
@@ -2917,7 +3234,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "whoisconnectedsniffer",
@@ -2929,7 +3247,11 @@
       "adminRequired": true,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "npcap-driver"
+      ]
     },
     {
       "id": "whoistd",
@@ -2941,7 +3263,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "whosip",
@@ -2953,7 +3276,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "wifichannelmonitor",
@@ -2965,7 +3289,11 @@
       "adminRequired": true,
       "specialDeps": "npcap",
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": [
+        "admin-elevation",
+        "npcap-driver"
+      ]
     },
     {
       "id": "wifiinfoview",
@@ -3010,7 +3338,8 @@
         "Channel Utilization",
         "Country Code",
         "Description"
-      ]
+      ],
+      "requirements": null
     },
     {
       "id": "wincrashreport",
@@ -3022,7 +3351,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "winfontsview",
@@ -3034,7 +3364,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "winlister",
@@ -3046,7 +3377,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "winlogonview",
@@ -3058,7 +3390,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "winprefetchview",
@@ -3070,7 +3403,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "winsockservicesview",
@@ -3082,7 +3416,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "wirelessconnectioninfo",
@@ -3094,7 +3429,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 5,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "wirelessnetconsole",
@@ -3106,7 +3442,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "wirelessnetview",
@@ -3118,7 +3455,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 10,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "wnetwatcher",
@@ -3130,7 +3468,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     },
     {
       "id": "wul",
@@ -3142,7 +3481,8 @@
       "adminRequired": false,
       "specialDeps": null,
       "timeout": 15,
-      "outputColumns": null
+      "outputColumns": null,
+      "requirements": null
     }
   ]
 }

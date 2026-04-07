@@ -111,13 +111,13 @@ async function handleRun(parsed: NirsoftArgs): Promise<unknown> {
         '-Command',
         `Start-Process -FilePath '${exePath}' -ArgumentList '${runArgs.map((a) => a.replace(/'/g, "''")).join("','")}' -Verb RunAs -Wait`,
       ];
-      await execFileAsync('powershell.exe', psArgs, { timeout: tool.timeout });
+      await execFileAsync('powershell.exe', psArgs, { timeout: tool.timeout * 1000 });
     } else if (isWSL()) {
       const winExePath = await toWindowsPath(exePath);
       const cmdLine = [winExePath, ...runArgs].map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ');
-      await execAsync(`cmd.exe /C ${cmdLine}`, { timeout: tool.timeout });
+      await execAsync(`cmd.exe /C ${cmdLine}`, { timeout: tool.timeout * 1000 });
     } else {
-      await execFileAsync(exePath, runArgs, { timeout: tool.timeout });
+      await execFileAsync(exePath, runArgs, { timeout: tool.timeout * 1000 });
     }
 
     let csvContent = '';

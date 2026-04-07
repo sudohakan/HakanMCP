@@ -74,7 +74,7 @@ Output: Three tested utility modules with zero coupling to each other.
       6. Export Zod schemas: SysIntSuccessSchema, SysIntErrorSchema for runtime validation
     </implementation>
   </feature>
-  <verification>npx vitest run src/services/sysint/__tests__/outputFormatter.test.ts --reporter=verbose</verification>
+  <verification>npm test -- --testPathPattern=outputFormatter --verbose</verification>
   <success_criteria>
     - All buildSuccess, buildError, toCSV cases pass
     - CSV edge cases (commas, quotes, CRLF) covered
@@ -122,7 +122,7 @@ Output: Three tested utility modules with zero coupling to each other.
       6. Tests mock getPrivilegeLevel() to avoid real system calls
     </implementation>
   </feature>
-  <verification>npx vitest run src/services/sysint/__tests__/privilegeHelper.test.ts --reporter=verbose</verification>
+  <verification>npm test -- --testPathPattern=privilegeHelper --verbose</verification>
   <success_criteria>
     - requirePrivilege cases all pass with mocked privilege level
     - requirePlatform WSL special case verified (WSL can use Windows tools)
@@ -170,7 +170,7 @@ Output: Three tested utility modules with zero coupling to each other.
       5. Re-export toWindowsPath from nirsoft/platform.ts
     </implementation>
   </feature>
-  <verification>npx vitest run src/services/sysint/__tests__/pathHelper.test.ts --reporter=verbose</verification>
+  <verification>npm test -- --testPathPattern=pathHelper --verbose</verification>
   <success_criteria>
     - All toWSLPath conversion cases pass
     - toWindowsPath is a re-export (not re-implementation) — verify by checking import source
@@ -182,7 +182,7 @@ Output: Three tested utility modules with zero coupling to each other.
 </tasks>
 
 <verification>
-npx vitest run src/services/sysint/__tests__/outputFormatter.test.ts src/services/sysint/__tests__/privilegeHelper.test.ts src/services/sysint/__tests__/pathHelper.test.ts --reporter=verbose
+npm test -- --testPathPattern="outputFormatter|privilegeHelper|pathHelper" --verbose
 </verification>
 
 <must_haves>

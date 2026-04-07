@@ -111,7 +111,7 @@ Output: Working platform detection, singleton factory with test reset, and catal
       4. Module-level _catalog singleton + getCatalog() factory + resetCatalog() for tests
     </implementation>
   </feature>
-  <verification>npx vitest run src/services/sysint/__tests__/catalog.test.ts --reporter=verbose</verification>
+  <verification>npm test -- --testPathPattern=catalog --verbose</verification>
   <success_criteria>
     - Failing test written and committed
     - Implementation passes all test cases
@@ -159,7 +159,7 @@ Output: Working platform detection, singleton factory with test reset, and catal
       6. getPlatformName() helper that returns the name string
     </implementation>
   </feature>
-  <verification>npx vitest run src/services/sysint/__tests__/platforms.test.ts --reporter=verbose</verification>
+  <verification>npm test -- --testPathPattern=platforms --verbose</verification>
   <success_criteria>
     - Failing test written and committed
     - Platform detection logic passes all cases
@@ -172,7 +172,7 @@ Output: Working platform detection, singleton factory with test reset, and catal
 </tasks>
 
 <verification>
-npx vitest run src/services/sysint/__tests__/ --reporter=verbose
+npm test -- --testPathPattern=sysint --verbose
 </verification>
 
 <must_haves>

@@ -4,8 +4,8 @@ plan: 03
 wave: 2
 type: tdd
 depends_on:
-  - "00-PLAN-01-platform-catalog"
-  - "00-PLAN-02-helpers"
+  - "01"
+  - "02"
 files_modified:
   - src/services/sysint/dispatcher.ts
   - src/tools/sysint.ts
@@ -85,7 +85,7 @@ Output: Working sysint MCP tool callable via Claude, with list/info/run actions.
       9. resetDispatcher() export
     </implementation>
   </feature>
-  <verification>npx vitest run src/services/sysint/__tests__/dispatcher.test.ts --reporter=verbose</verification>
+  <verification>npm test -- --testPathPattern=dispatcher --verbose</verification>
   <success_criteria>
     - Guard sequence order verified (NOT_FOUND before PLATFORM_UNSUPPORTED before PRIVILEGE_REQUIRED)
     - Native module caching: import called once for parallel requests (spy on import)
@@ -135,7 +135,7 @@ Output: Working sysint MCP tool callable via Claude, with list/info/run actions.
       6. Handler wraps all with withErrorHandling() from utils/common.ts
     </implementation>
   </feature>
-  <verification>npx vitest run src/tools/__tests__/sysint.test.ts --reporter=verbose</verification>
+  <verification>npm test -- --testPathPattern="tools.*sysint" --verbose</verification>
   <success_criteria>
     - list action returns native field (not in nirsoft list)
     - tool alias for id works
@@ -203,7 +203,7 @@ Output: Working sysint MCP tool callable via Claude, with list/info/run actions.
   <action>
     1. Run the full sysint test suite:
     ```bash
-    cd /mnt/c/dev/HakanMCP && npx vitest run src/services/sysint/ src/tools/__tests__/sysint.test.ts --reporter=verbose
+    cd /mnt/c/dev/HakanMCP && npm test -- --testPathPattern=sysint --verbose
     ```
 
     2. Verify Phase 0 success criteria:
@@ -232,7 +232,7 @@ Output: Working sysint MCP tool callable via Claude, with list/info/run actions.
     If any test fails or TypeScript has errors, fix before reporting done.
   </action>
   <verify>
-    All vitest tests pass (0 failures)
+    All jest tests pass (0 failures)
     npx tsc --noEmit exits with code 0
   </verify>
   <done>All Phase 0 tests passing, TypeScript compiles clean, 5 success criteria verified</done>
@@ -241,7 +241,7 @@ Output: Working sysint MCP tool callable via Claude, with list/info/run actions.
 </tasks>
 
 <verification>
-npx vitest run src/services/sysint/ src/tools/__tests__/sysint.test.ts --reporter=verbose && npx tsc --noEmit
+npm test -- --testPathPattern=sysint --verbose && npx tsc --noEmit
 </verification>
 
 <must_haves>

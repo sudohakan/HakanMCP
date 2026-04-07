@@ -17,20 +17,20 @@ created: 2026-04-07
 
 | Property | Value |
 |----------|-------|
-| **Framework** | Vitest |
-| **Config file** | `vitest.config.ts` (existing or Wave 0 creates) |
-| **Quick run command** | `npx vitest run src/services/sysint/ --reporter=verbose` |
-| **Full suite command** | `npx vitest run --reporter=verbose` |
-| **Estimated runtime** | ~15 seconds |
+| **Framework** | Jest (ts-jest/presets/default-esm) |
+| **Config file** | `jest.config.cjs` (existing) |
+| **Quick run command** | `npm test -- --testPathPattern=sysint --verbose` |
+| **Full suite command** | `npm test` |
+| **Estimated runtime** | ~20 seconds |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `npx vitest run src/services/sysint/ --reporter=verbose`
-- **After every plan wave:** Run `npx vitest run --reporter=verbose`
+- **After every task commit:** Run `npm test -- --testPathPattern=sysint --verbose`
+- **After every plan wave:** Run `npm test`
 - **Before `/gsd:verify-work`:** Full suite must be green
-- **Max feedback latency:** 15 seconds
+- **Max feedback latency:** 20 seconds
 
 ---
 

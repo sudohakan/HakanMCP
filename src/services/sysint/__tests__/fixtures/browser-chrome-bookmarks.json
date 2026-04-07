@@ -1,0 +1,62 @@
+{
+  "checksum": "abc123",
+  "roots": {
+    "bookmark_bar": {
+      "children": [
+        {
+          "date_added": "13300000000000000",
+          "id": "1",
+          "name": "Google",
+          "type": "url",
+          "url": "https://www.google.com"
+        },
+        {
+          "children": [
+            {
+              "date_added": "13300000000100000",
+              "id": "3",
+              "name": "GitHub",
+              "type": "url",
+              "url": "https://github.com"
+            }
+          ],
+          "date_added": "13300000000050000",
+          "date_modified": "0",
+          "id": "2",
+          "name": "Dev",
+          "type": "folder"
+        }
+      ],
+      "date_added": "13299000000000000",
+      "date_modified": "0",
+      "id": "1",
+      "name": "Bookmarks bar",
+      "type": "folder"
+    },
+    "other": {
+      "children": [
+        {
+          "date_added": "13300000000200000",
+          "id": "4",
+          "name": "Stack Overflow",
+          "type": "url",
+          "url": "https://stackoverflow.com"
+        }
+      ],
+      "date_added": "13299000000000000",
+      "date_modified": "0",
+      "id": "2",
+      "name": "Other bookmarks",
+      "type": "folder"
+    },
+    "synced": {
+      "children": [],
+      "date_added": "13299000000000000",
+      "date_modified": "0",
+      "id": "3",
+      "name": "Mobile bookmarks",
+      "type": "folder"
+    }
+  },
+  "version": 1
+}

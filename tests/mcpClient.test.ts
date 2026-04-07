@@ -467,3 +467,33 @@ describe('mcp browser wrapper tools', () => {
     expect(parsed.disconnected).toEqual(['browser-4']);
   });
 });
+
+describe('MCPConnectionManager env support', () => {
+  it('passes env variables to spawn options', async () => {
+    const harness = await createManagerHarness();
+    const customEnv = { INFOSET_API_KEY: 'test-key-123' };
+    const connectPromise = harness.manager.connect('node', ['server.js'], customEnv);
+    const proc = harness.processes[0];
+    emitJsonLine(proc, { jsonrpc: '2.0', id: 0, result: { ready: true } });
+    await connectPromise;
+
+    expect(harness.spawnMock).toHaveBeenCalledWith(
+      'node',
+      ['server.js'],
+      expect.objectContaining({
+        env: expect.objectContaining({ INFOSET_API_KEY: 'test-key-123' }),
+      }),
+    );
+  });
+
+  it('does not set env when no env provided', async () => {
+    const harness = await createManagerHarness();
+    const connectPromise = harness.manager.connect('node', ['server.js']);
+    const proc = harness.processes[0];
+    emitJsonLine(proc, { jsonrpc: '2.0', id: 0, result: { ready: true } });
+    await connectPromise;
+
+    const callOptions = harness.spawnMock.mock.calls[0][2];
+    expect(callOptions.env).toBeUndefined();
+  });
+});

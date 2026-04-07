@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 31,
+  "addons": [
+    {
+      "id": "uBlock0@raymondhill.net",
+      "version": "1.55.0",
+      "active": true,
+      "defaultLocale": {
+        "name": "uBlock Origin",
+        "description": "Finally, an efficient blocker. Easy on CPU and memory."
+      },
+      "userPermissions": {
+        "permissions": ["tabs", "webRequest", "webRequestBlocking", "storage"]
+      },
+      "optionalPermissions": {
+        "permissions": []
+      }
+    },
+    {
+      "id": "{d10d0bf8-f5b5-c8b4-a8b2-2b9879e08c5d}",
+      "version": "3.16.3",
+      "active": false,
+      "defaultLocale": {
+        "name": "Adblock Plus",
+        "description": "The world's #1 free ad blocker"
+      },
+      "userPermissions": {
+        "permissions": ["tabs", "storage", "webRequest"]
+      },
+      "optionalPermissions": {
+        "permissions": []
+      }
+    }
+  ]
+}

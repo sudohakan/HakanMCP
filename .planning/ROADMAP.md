@@ -11,7 +11,7 @@ Six phases that build from nothing to a complete cross-platform system intellige
 - [ ] **Phase 2: Disk + System** - Disk intelligence and system telemetry (39 tools)
 - [ ] **Phase 3: Browser** - Multi-browser history, bookmarks, cookies, downloads (10 tools)
 - [ ] **Phase 4: Registry + Password** - Windows registry tools and credential extraction (18 tools)
-- [ ] **Phase 5: Polish + Stragglers** - Programmer tools, Outlook, Audio, E2E tests, perf benchmarks (12 tools)
+- [x] **Phase 5: Polish + Stragglers** - Programmer tools, Outlook, Audio, E2E tests, perf benchmarks (12 tools)
 
 ## Phase Details
 
@@ -97,5 +97,5 @@ Six phases that build from nothing to a complete cross-platform system intellige
 | 1. Process + Network | 0/TBD | Not started | - |
 | 2. Disk + System | 0/TBD | Not started | - |
 | 3. Browser | 0/TBD | Not started | - |
-| 4. Registry + Password | 0/TBD | Not started | - |
-| 5. Polish + Stragglers | 0/TBD | Not started | - |
+| 4. Registry + Password | 3/3 | Complete | 2026-04-07 |
+| 5. Polish + Stragglers | 3/3 | Complete | 2026-04-07 |

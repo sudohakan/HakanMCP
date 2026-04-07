@@ -70,11 +70,11 @@ describe('Platform Factory', () => {
       expect(wp.name).toBe('wsl');
     });
 
-    it('WSLPlatform is an instance of LinuxPlatform', async () => {
-      const { LinuxPlatform } = await import('../platforms/linux.js');
+    it('WSLPlatform is an instance of AbstractSysIntPlatform', async () => {
+      const { AbstractSysIntPlatform } = await import('../platforms/abstract.js');
       const { WSLPlatform } = await import('../platforms/wsl.js');
       const wp = new WSLPlatform();
-      expect(wp).toBeInstanceOf(LinuxPlatform);
+      expect(wp).toBeInstanceOf(AbstractSysIntPlatform);
     });
   });
 });

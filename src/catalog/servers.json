@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "description": "On-demand MCP server catalog. No API key or authentication required.",
+  "description": "On-demand MCP server catalog. Servers with envKeys load credentials from ~/.credentials.env automatically.",
   "servers": {
     "fetch": {
       "name": "Fetch",
@@ -113,6 +113,40 @@
         "A browser-only flow must be automated through MCP",
         "JavaScript-heavy pages require focused browser evidence",
         "You want low-token browser wrappers on top of a Playwright MCP server"
+      ]
+    },
+    "infoset": {
+      "name": "Infoset",
+      "description": "Customer support ticket, contact, and company management",
+      "command": "node",
+      "args": ["/mnt/c/dev/infoset-mcp/src/mcp-server.mjs"],
+      "envKeys": ["INFOSET_API_KEY", "INFOSET_BASE_URL"],
+      "conditions": [
+        "Infoset ticket, contact, or company lookup",
+        "Customer support operations",
+        "SLA breach monitoring"
+      ]
+    },
+    "kali": {
+      "name": "Kali MCP",
+      "description": "Offensive security tools — recon, scanning, exploitation",
+      "command": "python3",
+      "args": ["/mnt/c/dev/kali-mcp/main.py", "--transport", "stdio"],
+      "conditions": [
+        "Pentest, recon, or vulnerability scanning requested",
+        "Network discovery or port scanning needed",
+        "Security assessment or exploitation"
+      ]
+    },
+    "chroma": {
+      "name": "Chroma",
+      "description": "Vector database for document embedding and similarity search",
+      "command": "chroma-mcp",
+      "args": ["--client-type", "persistent", "--data-dir", "/home/hakan/.chroma-data"],
+      "conditions": [
+        "Vector database or embedding operations",
+        "Document similarity search",
+        "RAG pipeline or knowledge base queries"
       ]
     }
   }

@@ -1,0 +1,12 @@
+services:
+  hakan-mcp:
+    build: .
+    container_name: hakan-mcp
+    restart: unless-stopped
+    stdin_open: true
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+    env_file:
+      - .env

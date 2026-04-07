@@ -22,7 +22,7 @@ async function loadMysql() {
   return _mysql;
 }
 async function loadMssql() {
-  if (!_mssql) { try { _mssql = await import('mssql'); } catch { throw new Error('mssql is not installed. Run: npm install mssql'); } }
+  if (!_mssql) { try { _mssql = (await import('mssql')).default as unknown as typeof import('mssql'); } catch { throw new Error('mssql is not installed. Run: npm install mssql'); } }
   return _mssql;
 }
 

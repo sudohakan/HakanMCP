@@ -1,6 +1,6 @@
-import { LinuxPlatform } from './linux.js';
+import { AbstractSysIntPlatform } from './abstract.js';
 
-/** WSL environment — extends LinuxPlatform since WSL runs as Linux. */
-export class WSLPlatform extends LinuxPlatform {
-  override readonly name = 'wsl' as const;
+/** WSL environment — Linux subsystem with access to Windows-side tools via PowerShell. */
+export class WSLPlatform extends AbstractSysIntPlatform {
+  readonly name = 'wsl' as const;
 }

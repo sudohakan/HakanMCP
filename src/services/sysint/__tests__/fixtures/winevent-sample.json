@@ -1,0 +1,5 @@
+[
+  {"TimeCreated":"2024-01-15T10:30:00Z","Id":7036,"LevelDisplayName":"Information","ProviderName":"Service Control Manager","Message":"The Windows Update service entered the running state."},
+  {"TimeCreated":"2024-01-15T09:15:00Z","Id":7040,"LevelDisplayName":"Information","ProviderName":"Service Control Manager","Message":"The start type of the Background Intelligent Transfer Service service was changed from auto start to demand start."},
+  {"TimeCreated":"2024-01-15T08:00:00Z","Id":1001,"LevelDisplayName":"Error","ProviderName":"Application Error","Message":"Faulting application name: chrome.exe, version: 120.0.6099.217"}
+]

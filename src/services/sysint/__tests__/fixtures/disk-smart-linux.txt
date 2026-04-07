@@ -1,0 +1,20 @@
+{
+  "blockdevices": [
+    {
+      "name": "sda",
+      "size": "500107862016",
+      "type": "disk",
+      "model": "Samsung SSD 860 EVO 500GB",
+      "rota": "0",
+      "serial": "S3Z2NX0K123456"
+    },
+    {
+      "name": "sdb",
+      "size": "1000204886016",
+      "type": "disk",
+      "model": "WDC WD10EZEX",
+      "rota": "1",
+      "serial": "WD-WCC4M1234567"
+    }
+  ]
+}

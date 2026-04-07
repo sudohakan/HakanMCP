@@ -2,9 +2,9 @@
  * Network interfaces and statistics tools — NET-02, NET-14
  */
 import si from 'systeminformation';
-import { buildSuccess, buildError } from '../../outputFormatter.js';
-import { getPlatformName } from '../../platforms/index.js';
-import type { SysIntResult } from '../../outputFormatter.js';
+import { buildSuccess, buildError } from './shared.js';
+import { getPlatformName } from './shared.js';
+import type { SysIntResult } from './shared.js';
 
 export interface InterfaceRow {
   name: string;

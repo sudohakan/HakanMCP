@@ -151,6 +151,36 @@ describe('parseWindowsServices', () => {
     const spooler = rows.find((r) => r.name === 'Spooler');
     expect(spooler?.displayName).toBe('Print Spooler');
   });
+
+  it('maps Status=2 → pending', () => {
+    const json = JSON.stringify([{ Name: 'Svc', DisplayName: 'Svc', Status: 2, StartType: 2 }]);
+    const rows = parseWindowsServices(json);
+    expect(rows[0].status).toBe('pending');
+  });
+
+  it('maps Status=3 → pending', () => {
+    const json = JSON.stringify([{ Name: 'Svc', DisplayName: 'Svc', Status: 3, StartType: 2 }]);
+    const rows = parseWindowsServices(json);
+    expect(rows[0].status).toBe('pending');
+  });
+
+  it('maps StartType=4 → disabled', () => {
+    const json = JSON.stringify([{ Name: 'Svc', DisplayName: 'Svc', Status: 1, StartType: 4 }]);
+    const rows = parseWindowsServices(json);
+    expect(rows[0].startType).toBe('disabled');
+  });
+
+  it('maps unknown Status → unknown', () => {
+    const json = JSON.stringify([{ Name: 'Svc', DisplayName: 'Svc', Status: 99, StartType: 2 }]);
+    const rows = parseWindowsServices(json);
+    expect(rows[0].status).toBe('unknown');
+  });
+
+  it('maps unknown StartType → unknown', () => {
+    const json = JSON.stringify([{ Name: 'Svc', DisplayName: 'Svc', Status: 1, StartType: 99 }]);
+    const rows = parseWindowsServices(json);
+    expect(rows[0].startType).toBe('unknown');
+  });
 });
 
 // ── parseLinuxServices (pure parser) ─────────────────────────────────────────
@@ -172,6 +202,33 @@ describe('parseLinuxServices', () => {
   it('strips .service suffix from unit name', () => {
     const rows = parseLinuxServices(linuxServiceFixture);
     rows.forEach((r) => expect(r.name).not.toContain('.service'));
+  });
+});
+
+// ── parseSsOutput processName regression ─────────────────────────────────────
+
+describe('parseSsOutput processName regression', () => {
+  let parseSsOutput: (output: string) => Array<{ pid: number; processName: string; protocol: string; localPort: number; remotePort: number; state: string }>;
+
+  beforeAll(async () => {
+    const mod = await import('../tools/network/connections.js');
+    parseSsOutput = mod.parseSsOutput as typeof parseSsOutput;
+  });
+
+  it('populates processName from ss users field', () => {
+    const line = 'tcp   ESTAB  0  0  192.168.1.100:51234  52.96.100.1:443  users:(("node",pid=1234,fd=22))';
+    const rows = parseSsOutput(line);
+    expect(rows.length).toBe(1);
+    expect(rows[0].processName).toBe('node');
+    expect(rows[0].pid).toBe(1234);
+  });
+
+  it('processName is empty string when no users field present', () => {
+    const line = 'tcp   ESTAB  0  0  127.0.0.1:8080  127.0.0.1:50000';
+    const rows = parseSsOutput(line);
+    if (rows.length > 0) {
+      expect(rows[0].processName).toBe('');
+    }
   });
 });
 

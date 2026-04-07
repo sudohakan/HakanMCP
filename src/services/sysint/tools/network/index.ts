@@ -7,8 +7,8 @@ import { run as interfacesRun } from './interfaces.js';
 import { run as dnsRun } from './dns.js';
 import { run as wifiRun } from './wifi.js';
 import { run as scannerRun } from './scanner.js';
-import { buildError } from '../../outputFormatter.js';
-import type { SysIntResult } from '../../outputFormatter.js';
+import { buildError } from './shared.js';
+import type { SysIntResult } from './shared.js';
 
 /** Populated in Plan 03; extended by Plan 04 misc.ts */
 const MODULE_MAP: Record<string, (toolId: string, args: string[]) => Promise<SysIntResult>> = {

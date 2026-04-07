@@ -15,6 +15,8 @@ import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir, userInfo } from 'node:os';
 import { buildSuccess, buildError, getPlatformName } from './shared.js';
+import { run as processRun } from '../process.js';
+import { isError } from '../../outputFormatter.js';
 import type { SysIntResult } from '../../outputFormatter.js';
 
 const execAsync = promisify(exec);
@@ -208,16 +210,14 @@ async function runShellExtensions(_args: string[]): Promise<SysIntResult> {
 async function runRunningServices(_args: string[]): Promise<SysIntResult> {
   const platform = getPlatformName();
   try {
-    const { run: processRun } = await import('../process.js');
     const result = await processRun('service-list', []);
-    const resultObj = result as unknown as Record<string, unknown>;
-    if ('rows' in resultObj) {
-      const running = (resultObj['rows'] as Array<Record<string, unknown>>).filter(
-        (r) => r['status'] === 'running',
-      );
-      return buildSuccess(running, 'running-services', platform);
+    if (isError(result)) {
+      return buildSuccess([], 'running-services', platform);
     }
-    return buildSuccess([], 'running-services', platform);
+    const running = result.rows.filter(
+      (r) => (r as Record<string, unknown>)['status'] === 'running',
+    );
+    return buildSuccess(running, 'running-services', platform);
   } catch (err) {
     return buildError(`running-services failed: ${String(err)}`, 'EXEC_FAILED', 'running-services');
   }

@@ -31,6 +31,18 @@ export function loadSysIntCatalog(catalogPath: string): SysIntCatalog {
     if (!tool.id || !tool.name || !tool.category) {
       throw new Error(`Invalid catalog entry: ${tool.id ?? '(no id)'}`);
     }
+    if (typeof tool.adminRequired !== 'boolean') {
+      throw new Error(`Invalid catalog entry '${tool.id}': adminRequired must be boolean`);
+    }
+    if (typeof tool.native !== 'boolean') {
+      throw new Error(`Invalid catalog entry '${tool.id}': native must be boolean`);
+    }
+    if (!Array.isArray(tool.platforms) || tool.platforms.length === 0) {
+      throw new Error(`Invalid catalog entry '${tool.id}': platforms must be a non-empty array`);
+    }
+    if (typeof tool.timeout !== 'number' || tool.timeout <= 0) {
+      throw new Error(`Invalid catalog entry '${tool.id}': timeout must be a positive number`);
+    }
   }
 
   return {

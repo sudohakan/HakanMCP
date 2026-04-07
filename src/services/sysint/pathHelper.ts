@@ -19,11 +19,6 @@ export function toWSLPath(windowsPath: string): string {
     const rest = match[2] ? match[2].replace(/\\/g, '/') : '';
     return rest ? `/mnt/${drive}/${rest}` : `/mnt/${drive}/`;
   }
-  // Handle bare drive letter: C:\
-  const bareMatch = windowsPath.match(/^([A-Za-z]):\\$/);
-  if (bareMatch) {
-    return `/mnt/${bareMatch[1].toLowerCase()}/`;
-  }
   // Not a Windows path — return as-is
   return windowsPath;
 }

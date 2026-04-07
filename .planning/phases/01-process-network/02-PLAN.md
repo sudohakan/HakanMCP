@@ -1,5 +1,7 @@
 ---
-plan: "02"
+phase: 01-process-network
+plan: 02
+type: tdd
 wave: 1
 depends_on: ["01"]
 files_modified:

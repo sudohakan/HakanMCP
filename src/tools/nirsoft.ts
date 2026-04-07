@@ -103,21 +103,26 @@ async function handleRun(parsed: NirsoftArgs): Promise<unknown> {
     const exePath = path.join(BIN_DIR, tool.exe);
     const runArgs = ['/scomma', tempFile.winPath, ...extraArgs];
 
-    if (tool.adminRequired) {
-      // Check if we have an interactive session by attempting runas
-      const psArgs = [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        `Start-Process -FilePath '${exePath}' -ArgumentList '${runArgs.map((a) => a.replace(/'/g, "''")).join("','")}' -Verb RunAs -Wait`,
-      ];
-      await execFileAsync('powershell.exe', psArgs, { timeout: tool.timeout * 1000 });
-    } else if (isWSL()) {
-      const winExePath = await toWindowsPath(exePath);
-      const cmdLine = [winExePath, ...runArgs].map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ');
-      await execAsync(`cmd.exe /C ${cmdLine}`, { timeout: tool.timeout * 1000 });
-    } else {
-      await execFileAsync(exePath, runArgs, { timeout: tool.timeout * 1000 });
+    // NirSoft tools may return non-zero exit codes but still produce output.
+    // Catch exec errors and continue to read the temp file.
+    try {
+      if (tool.adminRequired) {
+        const psArgs = [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          `Start-Process -FilePath '${exePath}' -ArgumentList '${runArgs.map((a) => a.replace(/'/g, "''")).join("','")}' -Verb RunAs -Wait`,
+        ];
+        await execFileAsync('powershell.exe', psArgs, { timeout: tool.timeout * 1000 });
+      } else if (isWSL()) {
+        const winExePath = await toWindowsPath(exePath);
+        const cmdLine = [winExePath, ...runArgs].map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ');
+        await execAsync(`cmd.exe /C ${cmdLine}`, { timeout: tool.timeout * 1000 });
+      } else {
+        await execFileAsync(exePath, runArgs, { timeout: tool.timeout * 1000 });
+      }
+    } catch {
+      // Swallow exec error — check temp file below
     }
 
     let csvContent = '';

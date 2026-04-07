@@ -11,8 +11,6 @@ requirements:
   - NET-08
   - NET-09
   - NET-10
-  - NET-11
-  - NET-12
   - NET-13
   - NET-15
   - NET-16

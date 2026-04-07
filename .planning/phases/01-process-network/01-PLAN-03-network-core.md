@@ -23,10 +23,12 @@ requirements:
   - NET-05
   - NET-06
   - NET-07
+  - NET-11
+  - NET-12
   - NET-14
 ---
 
-# Plan 03: Network Core Tools (NET-01..07, NET-14)
+# Plan 03: Network Core Tools (NET-01..07, NET-11, NET-12, NET-14)
 
 **Goal:** Core network tools — connections with process correlation, interfaces, DNS, Wi-Fi scan/history, ping (parallel), port scanner (parallel), network stats.
 

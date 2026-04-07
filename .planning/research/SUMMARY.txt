@@ -1,0 +1,72 @@
+SYSINT STACK RESEARCH — SUMMARY
+================================
+
+RESEARCH COMPLETE: 2026-04-07
+Location: /mnt/c/dev/HakanMCP/.planning/research/STACK.md
+
+KEY RECOMMENDATION
+==================
+
+Use this stack:
+- Node.js 20+ (already in HakanMCP)
+- TypeScript 5.9 (already in project)
+- systeminformation 5.31.5+ (proven library)
+- better-sqlite3 11.0.0+ (browser data)
+- winreg 1.2.4+ (Windows registry)
+- Built-in os, fs, child_process modules (covers 70% of needs)
+
+NO node-ffi-napi, NO gyp builds, NO heavy native deps.
+
+CONFIDENCE BY CATEGORY
+======================
+
+✓ High (90%+)
+  - System (CPU, memory, processes, uptime)
+  - Network (connections, adapters, DNS)
+  - Browser (SQLite extraction)
+  - Registry (Windows)
+
+△ Medium (70-85%)
+  - Disk (SMART, partitions)
+  - Process/DLL (detailed process info)
+  - Files/search (directory traversal)
+
+✗ Low (30-50%)
+  - Outlook/COM (fragile)
+  - Audio (complex APIs, maybe stub)
+  - Password (free version limits, skip most)
+
+IMPLEMENTATION PHASES
+====================
+
+Phase 1 (easiest): System metrics — 15 tools, 1-2 days
+Phase 2: Network — 20 tools, 2-3 days
+Phase 3: Browser — 15 tools, 3-4 days (DPAPI tricky)
+Phase 4: Disk — 15 tools, 2-3 days
+Phase 5: Registry — 10 tools, 2 days (Windows only)
+Phase 6: Process/DLL — 15 tools, 2-3 days
+Phase 7: Outlook — 8 tools, 3-4 days (complex)
+Phase 8: Audio — 5 tools, 2 days (mostly stubs)
+Phase 9: Programmer — 15 tools, 2-3 days (minimal deps)
+Phase 10: Password — 24 tools, 1 day (all stubs + planned extractors)
+
+TOTAL: ~20-30 working days, 180-200 implemented + 40-50 stubs
+
+ARCHITECTURE
+============
+
+Tool template: src/tools/sysint/{category}/{toolname}.ts
+Platform adapters: Windows, Linux, WSL fallbacks
+Lazy-loading: MCP dispatcher pattern (reuse nirsoft.ts)
+Output: JSON (default), CSV (fallback)
+Catalog: Updated catalog.json with SysInt entries
+
+NEXT STEP
+=========
+
+1. Create tool template skeleton
+2. Implement Phase 1 as PoC
+3. Wire into MCP dispatcher
+4. Use `/gsd:plan-phase` for detailed Phase 1 roadmap
+
+See STACK.md for full details, examples, testing strategy, and platform-specific implementation notes.

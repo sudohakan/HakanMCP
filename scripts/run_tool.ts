@@ -39,12 +39,6 @@ async function main(): Promise<void> {
 
   const registries: Tool[][] = [];
   try {
-    const mon = await import('../src/tools/monitoring.js');
-    if (Array.isArray(mon.monitoringTools)) registries.push(mon.monitoringTools);
-  } catch {
-    /* optional import */
-  }
-  try {
     const ai = await import('../src/tools/aiProviders.js');
     if (Array.isArray(ai.aiProviderTools)) registries.push(ai.aiProviderTools);
   } catch {

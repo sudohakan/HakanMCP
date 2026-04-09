@@ -13,29 +13,49 @@ import { run as vncRun } from './vnc.js';
 import { run as mailRun } from './mail.js';
 import { run as lsaRun } from './lsa.js';
 import { run as networkCredsRun } from './network-creds.js';
-import { buildError } from '../../outputFormatter.js';
+import { buildError, buildSuccess } from '../../outputFormatter.js';
+import { getPlatformName } from '../../platforms/index.js';
+import {
+  checkCredentialConsent,
+  logCredentialAccess,
+} from './shared.js';
 import type { SysIntResult } from '../../outputFormatter.js';
 
+async function runAllBrowserPasswords(_id: string, args: string[]): Promise<SysIntResult> {
+  const consentWarning = checkCredentialConsent(args, 'browser-all-passwords');
+  if (consentWarning) return buildSuccess(consentWarning, 'browser-all-passwords', getPlatformName());
+
+  logCredentialAccess('browser-all-passwords');
+
+  const chromiumResult = await chromeRun('browser-chrome-passwords', args);
+  const firefoxResult = await firefoxRun('browser-firefox-passwords', args);
+
+  const allRows: unknown[] = [];
+  if ('rows' in chromiumResult && Array.isArray(chromiumResult.rows)) {
+    for (const row of chromiumResult.rows) {
+      allRows.push(row);
+    }
+  }
+  if ('rows' in firefoxResult && Array.isArray(firefoxResult.rows)) {
+    for (const row of firefoxResult.rows) {
+      allRows.push({ ...(row as Record<string, unknown>), browser: 'firefox' });
+    }
+  }
+
+  return buildSuccess(allRows, 'browser-all-passwords', getPlatformName());
+}
+
 const MODULE_MAP: Record<string, (toolId: string, args: string[]) => Promise<SysIntResult>> = {
-  // PWD-01: Chrome DPAPI passwords (Windows-only)
   'browser-chrome-passwords': (id, args) => chromeRun(id, args),
-  // PWD-02: Firefox NSS passwords (cross-platform)
   'browser-firefox-passwords': (id, args) => firefoxRun(id, args),
-  // PWD-03: Wi-Fi passwords (cross-platform)
+  'browser-all-passwords': (id, args) => runAllBrowserPasswords(id, args),
   'wifi-passwords': (id, args) => wifiRun(id, args),
-  // PWD-04: Windows Credential Manager (Windows-only)
   'credential-manager': (id, args) => credmanRun(id, args),
-  // PWD-05: Windows Vault (Windows-only)
   'windows-vault': (id, args) => vaultRun(id, args),
-  // PWD-06: RDP credentials (Windows-only)
   'rdp-credentials': (id, args) => rdpRun(id, args),
-  // PWD-07: VNC passwords (cross-platform)
   'vnc-passwords': (id, args) => vncRun(id, args),
-  // PWD-08: Mail passwords (cross-platform: Thunderbird NSS + Outlook Windows)
   'mail-passwords': (id, args) => mailRun(id, args),
-  // PWD-09: LSA secrets (Windows-only, admin required)
   'lsa-secrets': (id, args) => lsaRun(id, args),
-  // PWD-10: Network passwords (Windows-only, admin required)
   'network-passwords': (id, args) => networkCredsRun(id, args),
 };
 

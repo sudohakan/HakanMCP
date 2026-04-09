@@ -19,7 +19,7 @@ describe('Privilege Helper', () => {
     category: 'network',
     adminRequired: false,
     timeout: 30,
-    native: false,
+    native: true,
     platforms: ['win32', 'linux', 'wsl'],
     ...overrides,
   });

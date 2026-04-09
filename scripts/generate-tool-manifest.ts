@@ -30,11 +30,9 @@ interface ToolManifest {
 }
 
 const MODULE_NAMES = [
-  'gitbook', 'postman', 'system', 'db', 'mongodb', 'http', 'env',
-  'parser', 'template', 'aiTools', 'systemOptimization', 'backup', 'mcpClient',
-  'monitoring', 'selfImprovement', 'encryption', 'aiProviders',
-  'scheduler', 'cache', 'dbMonitoring', 'api', 'performance', 'dx', 'flow',
-  'swarm', 'consensus', 'ruvector', 'moeRouter', 'aiDefence', 'guidance',
+  'gitbook', 'postman', 'db', 'mongodb', 'http', 'env',
+  'aiTools', 'backup', 'mcpClient', 'encryption', 'aiProviders',
+  'cache', 'disk', 'sysint',
 ];
 
 async function generateManifest(): Promise<void> {

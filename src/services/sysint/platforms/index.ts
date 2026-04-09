@@ -1,4 +1,4 @@
-import { isWSL } from '../../nirsoft/platform.js';
+import { isWSL } from '../pathHelper.js';
 import { AbstractSysIntPlatform } from './abstract.js';
 import { WindowsPlatform } from './windows.js';
 import { LinuxPlatform } from './linux.js';

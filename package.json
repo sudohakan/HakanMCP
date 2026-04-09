@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.3.0",
-    "@modelcontextprotocol/sdk": "^1.22.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.8.0",
     "boxen": "^8.0.1",

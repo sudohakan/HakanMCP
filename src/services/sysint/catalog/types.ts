@@ -1,6 +1,5 @@
 /**
  * SysInt catalog type definitions.
- * Extends NirSoft catalog schema with sysint-specific fields.
  */
 
 export interface SysIntTool {
@@ -10,7 +9,7 @@ export interface SysIntTool {
   category: string;
   adminRequired: boolean;
   timeout: number;
-  /** true when a native TypeScript implementation is available; false = nirsoft binary fallback */
+  /** true when a native TypeScript implementation is available */
   native: boolean;
   /** Platforms this tool supports. WSL tools that need Windows-side execution use ['win32', 'wsl']. */
   platforms: ('win32' | 'linux' | 'wsl')[];

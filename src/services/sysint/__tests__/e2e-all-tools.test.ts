@@ -6,16 +6,6 @@
 
 import { jest } from '@jest/globals';
 
-// Mock nirsoft to avoid binary dependencies
-jest.unstable_mockModule('../../nirsoft/index.js', () => ({
-  default: {},
-  isWSL: () => false,
-  isSupported: () => false,
-  loadCatalog: () => ({ tools: [] }),
-  parseCsvToJson: () => [],
-  createTempFile: async () => '',
-}));
-
 // All 107 native tool IDs from the catalog (Phase 0–5)
 const ALL_NATIVE_TOOL_IDS = [
   // Phase 1: Process

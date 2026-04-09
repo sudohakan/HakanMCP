@@ -24,38 +24,20 @@ export interface FeatureModule {
 }
 
 export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
-  sys: { modulePath: './tools/system.js', exportName: 'systemTools', nativeDeps: [], core: true, featureName: '' },
   http: { modulePath: './tools/http.js', exportName: 'httpTools', nativeDeps: [], core: true, featureName: '' },
   env: { modulePath: './tools/env.js', exportName: 'envTools', nativeDeps: [], core: true, featureName: '' },
   cache: { modulePath: './tools/cache.js', exportName: 'cacheTools', nativeDeps: [], core: true, featureName: '' },
   gb: { modulePath: './tools/gitbook.js', exportName: 'gitbookTools', nativeDeps: [], core: true, featureName: '' },
   pm: { modulePath: './tools/postman.js', exportName: 'postmanTools', nativeDeps: [], core: true, featureName: '' },
-  parse: { modulePath: './tools/parser.js', exportName: 'parserTools', nativeDeps: [], core: true, featureName: '' },
-  compile: { modulePath: './tools/template.js', exportName: 'templateTools', nativeDeps: [], core: true, featureName: '' },
-  convert: { modulePath: './tools/template.js', exportName: 'templateTools', nativeDeps: [], core: true, featureName: '' },
   ai: { modulePath: './tools/aiTools.js', exportName: 'aiTools', nativeDeps: [], core: true, featureName: '' },
-  sysopt: { modulePath: './tools/systemOptimization.js', exportName: 'systemOptimizationTools', nativeDeps: [], core: true, featureName: '' },
   backup: { modulePath: './tools/backup.js', exportName: 'backupTools', nativeDeps: [], core: true, featureName: '' },
   mcp: { modulePath: './tools/mcpClient.js', exportName: 'mcpClientTools', nativeDeps: [], core: true, featureName: '' },
-  monitor: { modulePath: './tools/monitoring.js', exportName: 'monitoringTools', nativeDeps: [], core: true, featureName: '' },
-  self: { modulePath: './tools/selfImprovement.js', exportName: 'selfImprovementTools', nativeDeps: [], core: true, featureName: '' },
   crypto: { modulePath: './tools/encryption.js', exportName: 'encryptionTools', nativeDeps: [], core: true, featureName: '' },
-  api: { modulePath: './tools/api.js', exportName: 'apiTools', nativeDeps: [], core: true, featureName: '' },
-  perf: { modulePath: './tools/performance.js', exportName: 'performanceTools', nativeDeps: [], core: true, featureName: '' },
-  dx: { modulePath: './tools/dx.js', exportName: 'dxTools', nativeDeps: [], core: true, featureName: '' },
-  flow: { modulePath: './tools/flow.js', exportName: 'flowTools', nativeDeps: [], core: true, featureName: '' },
-  swarm: { modulePath: './tools/swarm.js', exportName: 'swarmTools', nativeDeps: [], core: true, featureName: '' },
-  consensus: { modulePath: './tools/consensus.js', exportName: 'consensusTools', nativeDeps: [], core: true, featureName: '' },
-  ruvector: { modulePath: './tools/ruvector.js', exportName: 'ruvectorTools', nativeDeps: [], core: true, featureName: '' },
-  moe: { modulePath: './tools/moeRouter.js', exportName: 'moeRouterTools', nativeDeps: [], core: true, featureName: '' },
-  aidefence: { modulePath: './tools/aiDefence.js', exportName: 'aiDefenceTools', nativeDeps: [], core: true, featureName: '' },
-  guidance: { modulePath: './tools/guidance.js', exportName: 'guidanceTools', nativeDeps: [], core: true, featureName: '' },
   disk: { modulePath: './tools/disk.js', exportName: 'diskTools', nativeDeps: [], core: true, featureName: '' },
+  sysint: { modulePath: './tools/sysint.js', exportName: 'sysintTools', nativeDeps: [], core: true, featureName: '' },
 
   db: { modulePath: './tools/db.js', exportName: 'dbTools', nativeDeps: ['pg', 'mysql2', 'mssql', 'sqlite3', 'sqlite'], core: false, featureName: 'database' },
   mongo: { modulePath: './tools/mongodb.js', exportName: 'mongoTools', nativeDeps: ['mongodb'], core: false, featureName: 'mongodb' },
-  nirsoft: { modulePath: './tools/nirsoft.js', exportName: 'nirsoftTools', nativeDeps: [], core: false, featureName: 'nirsoft' },
-  sysint: { modulePath: './tools/sysint.js', exportName: 'sysintTools', nativeDeps: [], core: true, featureName: '' },
 };
 
 interface PlaceholderToolMeta {
@@ -70,9 +52,6 @@ export const FEATURE_TOOL_METADATA: Record<string, PlaceholderToolMeta[]> = {
   ],
   mongo: [
     { name: 'mongo', description: 'MongoDB operations (connect, find, insert, update, delete, countDocuments, aggregate, createIndex, listCollections, listDatabases, disconnect). Requires action parameter.', inputSchema: { type: 'object', properties: { action: { type: 'string' } }, required: ['action'] } },
-  ],
-  nirsoft: [
-    { name: 'nirsoft', description: 'NirSoft Windows utilities (247 tools). Actions: list, info, run, setup. Requires Windows or WSL.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['list', 'info', 'run', 'setup'] }, tool: { type: 'string' }, category: { type: 'string' }, args: { type: 'array', items: { type: 'string' } }, format: { type: 'string', enum: ['json', 'csv', 'raw'] }, dependency: { type: 'string' } }, required: ['action'] } },
   ],
 };
 

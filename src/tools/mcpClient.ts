@@ -354,6 +354,9 @@ type BrowserToolSet = {
   screenshot?: RemoteToolDescriptor;
   waitFor?: RemoteToolDescriptor;
   close?: RemoteToolDescriptor;
+  click?: RemoteToolDescriptor;
+  fill?: RemoteToolDescriptor;
+  type?: RemoteToolDescriptor;
 };
 
 const browserToolCandidates = {
@@ -362,6 +365,9 @@ const browserToolCandidates = {
   screenshot: ['browser_take_screenshot'],
   waitFor: ['browser_wait_for'],
   close: ['browser_close'],
+  click: ['browser_click'],
+  fill: ['browser_fill_form'],
+  type: ['browser_type'],
 } as const;
 
 function buildBrowserCacheKey(options: Omit<BrowserConnectOptions, 'connectionId'>): string {
@@ -439,6 +445,9 @@ function getBrowserToolSet(tools: RemoteToolDescriptor[]): BrowserToolSet {
     screenshot: resolveRemoteTool(tools, browserToolCandidates.screenshot),
     waitFor: resolveRemoteTool(tools, browserToolCandidates.waitFor),
     close: resolveRemoteTool(tools, browserToolCandidates.close),
+    click: resolveRemoteTool(tools, browserToolCandidates.click),
+    fill: resolveRemoteTool(tools, browserToolCandidates.fill),
+    type: resolveRemoteTool(tools, browserToolCandidates.type),
   };
 }
 
@@ -858,7 +867,7 @@ const _mcpLegacyTools = [
         serverKey: {
           type: 'string',
           description:
-            'Server key from catalog (e.g., "fetch", "git", "sqlite", "mermaid", "duckdb", "memory", "sequential-thinking", "time", "filesystem")',
+            'Server key from catalog (e.g., "fetch", "git", "sqlite", "mermaid", "duckdb", "graphify", "sequential-thinking", "time", "filesystem")',
         },
         extraArgs: {
           type: 'array',
@@ -1420,6 +1429,219 @@ const _mcpLegacyTools = [
     },
   },
   {
+    name: 'mcp_browserClick',
+    description: 'Click an element on the page by its ref attribute from the snapshot.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionId: { type: 'string', description: 'Browser connection ID.' },
+        ref: { type: 'string', description: 'Element ref from snapshot (e.g. "e29").' },
+        element: { type: 'string', description: 'Human-readable element description for logging.' },
+      },
+      required: ['ref'],
+    },
+    handler: async (args: unknown) => {
+      const parsed = z
+        .object({
+          connectionId: z.string().optional(),
+          ref: z.string(),
+          element: z.string().optional(),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      const result = await callRemoteTool(connectionId, browserTools.click, {
+        ref: parsed.ref,
+        element: parsed.element ?? `element ref=${parsed.ref}`,
+      });
+      const resultText = extractTextChunks(result).join('\n');
+
+      let snapshotText = '';
+      if (browserTools.snapshot) {
+        const snapshotResult = await callRemoteTool(connectionId, browserTools.snapshot);
+        snapshotText = extractTextChunks(snapshotResult).join('\n');
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                action: 'click',
+                ref: parsed.ref,
+                result: compactText(resultText, 800),
+                snapshot: snapshotText ? summarizeSnapshot(snapshotText, 1200) : undefined,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'mcp_browserFill',
+    description: 'Fill a form field with a value by its ref attribute from the snapshot.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionId: { type: 'string', description: 'Browser connection ID.' },
+        ref: { type: 'string', description: 'Element ref from snapshot (e.g. "e29").' },
+        value: { type: 'string', description: 'Value to fill into the field.' },
+        element: { type: 'string', description: 'Human-readable element description for logging.' },
+      },
+      required: ['ref', 'value'],
+    },
+    handler: async (args: unknown) => {
+      const parsed = z
+        .object({
+          connectionId: z.string().optional(),
+          ref: z.string(),
+          value: z.string(),
+          element: z.string().optional(),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      const fillArgs: Record<string, unknown> = {
+        ref: parsed.ref,
+        value: parsed.value,
+        element: parsed.element ?? `element ref=${parsed.ref}`,
+        fields: [{ ref: parsed.ref, value: parsed.value, name: parsed.element ?? `field ref=${parsed.ref}`, type: 'textbox' }],
+      };
+      const result = await callRemoteTool(connectionId, browserTools.fill, fillArgs);
+      const resultText = extractTextChunks(result).join('\n');
+
+      let snapshotText = '';
+      if (browserTools.snapshot) {
+        const snapshotResult = await callRemoteTool(connectionId, browserTools.snapshot);
+        snapshotText = extractTextChunks(snapshotResult).join('\n');
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                action: 'fill',
+                ref: parsed.ref,
+                result: compactText(resultText, 800),
+                snapshot: snapshotText ? summarizeSnapshot(snapshotText, 1200) : undefined,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'mcp_browserType',
+    description: 'Type text into a focused element, optionally pressing keys like Enter or Tab.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionId: { type: 'string', description: 'Browser connection ID.' },
+        text: { type: 'string', description: 'Text to type.' },
+        ref: { type: 'string', description: 'Element ref to type into (optional, types into focused element if omitted).' },
+        submit: { type: 'boolean', description: 'Press Enter after typing.' },
+      },
+      required: ['text'],
+    },
+    handler: async (args: unknown) => {
+      const parsed = z
+        .object({
+          connectionId: z.string().optional(),
+          text: z.string(),
+          ref: z.string().optional(),
+          submit: z.boolean().optional(),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      const typeArgs: Record<string, unknown> = { text: parsed.text };
+      if (parsed.ref) {
+        typeArgs.ref = parsed.ref;
+        typeArgs.element = `element ref=${parsed.ref}`;
+      }
+      if (parsed.submit) {
+        typeArgs.submit = true;
+      }
+
+      const result = await callRemoteTool(connectionId, browserTools.type, typeArgs);
+      const resultText = extractTextChunks(result).join('\n');
+
+      let snapshotText = '';
+      if (browserTools.snapshot) {
+        const snapshotResult = await callRemoteTool(connectionId, browserTools.snapshot);
+        snapshotText = extractTextChunks(snapshotResult).join('\n');
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                action: 'type',
+                result: compactText(resultText, 800),
+                snapshot: snapshotText ? summarizeSnapshot(snapshotText, 1200) : undefined,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
     name: 'mcp_browserDisconnect',
     description:
       'Closes one browser MCP connection or all cached Playwright browser connections managed by HakanMCP.',
@@ -1516,13 +1738,13 @@ export const mcpClientTools = [
   {
     name: 'browser',
     description:
-      'Browser automation via Playwright MCP. Actions: connect, navigateExtract, probeLogin, captureProof, disconnect.',
+      'Browser automation. Actions: connect, navigateExtract, click, fill, type, probeLogin, captureProof, disconnect.',
     inputSchema: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['connect', 'navigateExtract', 'probeLogin', 'captureProof', 'disconnect'],
+          enum: ['connect', 'navigateExtract', 'click', 'fill', 'type', 'probeLogin', 'captureProof', 'disconnect'],
           description: 'Operation to perform',
         },
         browser: { type: 'string', enum: ['chrome', 'firefox', 'webkit', 'msedge'], description: 'Browser channel' },
@@ -1540,14 +1762,22 @@ export const mcpClientTools = [
         screenshotPath: { type: 'string', description: 'Path for screenshot (navigateExtract/captureProof)' },
         maxSummaryChars: { type: 'number', description: 'Max chars for summaries (navigateExtract)' },
         waitForText: { type: 'string', description: 'Text to wait for before capturing (captureProof)' },
+        ref: { type: 'string', description: 'Element ref from snapshot (click/fill/type)' },
+        value: { type: 'string', description: 'Value to fill (fill action)' },
+        text: { type: 'string', description: 'Text to type (type action)' },
+        element: { type: 'string', description: 'Human-readable element description (click/fill)' },
+        submit: { type: 'boolean', description: 'Press Enter after typing (type action)' },
       },
       required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { action } = z.object({ action: z.enum(['connect', 'navigateExtract', 'probeLogin', 'captureProof', 'disconnect']) }).parse(args);
+      const { action } = z.object({ action: z.enum(['connect', 'navigateExtract', 'click', 'fill', 'type', 'probeLogin', 'captureProof', 'disconnect']) }).parse(args);
       switch (action) {
         case 'connect': return _findLegacyHandler('mcp_browserConnect')(args);
         case 'navigateExtract': return _findLegacyHandler('mcp_browserNavigateExtract')(args);
+        case 'click': return _findLegacyHandler('mcp_browserClick')(args);
+        case 'fill': return _findLegacyHandler('mcp_browserFill')(args);
+        case 'type': return _findLegacyHandler('mcp_browserType')(args);
         case 'probeLogin': return _findLegacyHandler('mcp_browserProbeLogin')(args);
         case 'captureProof': return _findLegacyHandler('mcp_browserCaptureProof')(args);
         case 'disconnect': return _findLegacyHandler('mcp_browserDisconnect')(args);

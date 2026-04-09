@@ -19,31 +19,14 @@ const registry = new ToolRegistry({
 const TOOL_MODULES = [
   { path: './tools/gitbook.js', export: 'gitbookTools' },
   { path: './tools/postman.js', export: 'postmanTools' },
-  { path: './tools/system.js', export: 'systemTools' },
   { path: './tools/http.js', export: 'httpTools' },
   { path: './tools/env.js', export: 'envTools' },
-  { path: './tools/parser.js', export: 'parserTools' },
-  { path: './tools/template.js', export: 'templateTools' },
   { path: './tools/aiTools.js', export: 'aiTools' },
-  { path: './tools/systemOptimization.js', export: 'systemOptimizationTools' },
   { path: './tools/backup.js', export: 'backupTools' },
   { path: './tools/mcpClient.js', export: 'mcpClientTools' },
-  { path: './tools/monitoring.js', export: 'monitoringTools' },
-  { path: './tools/selfImprovement.js', export: 'selfImprovementTools' },
   { path: './tools/encryption.js', export: 'encryptionTools' },
   { path: './tools/aiProviders.js', export: 'aiProviderTools' },
   { path: './tools/cache.js', export: 'cacheTools' },
-  { path: './tools/dbMonitoring.js', export: 'dbMonitoringTools' },
-  { path: './tools/api.js', export: 'apiTools' },
-  { path: './tools/performance.js', export: 'performanceTools' },
-  { path: './tools/dx.js', export: 'dxTools' },
-  { path: './tools/flow.js', export: 'flowTools' },
-  { path: './tools/swarm.js', export: 'swarmTools' },
-  { path: './tools/consensus.js', export: 'consensusTools' },
-  { path: './tools/ruvector.js', export: 'ruvectorTools' },
-  { path: './tools/moeRouter.js', export: 'moeRouterTools' },
-  { path: './tools/aiDefence.js', export: 'aiDefenceTools' },
-  { path: './tools/guidance.js', export: 'guidanceTools' },
   { path: './tools/disk.js', export: 'diskTools' },
   { path: './tools/sysint.js', export: 'sysintTools' },
 ] as const;
@@ -86,17 +69,6 @@ const featureModules: Array<{
     check: () => isPackageAvailable('mongodb'),
     loader: () => import('./tools/mongodb.js'),
     exportName: 'mongoTools',
-  },
-  {
-    prefix: 'nirsoft',
-    check: () => {
-      try {
-        const { isSupported } = require('./services/nirsoft/platform.js');
-        return isSupported();
-      } catch { return false; }
-    },
-    loader: () => import('./tools/nirsoft.js'),
-    exportName: 'nirsoftTools',
   },
 ];
 

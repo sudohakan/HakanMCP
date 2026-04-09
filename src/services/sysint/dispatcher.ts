@@ -1,7 +1,7 @@
 /**
  * SysInt unified dispatcher.
  * Orchestrates the guard sequence (NOT_FOUND → PLATFORM_UNSUPPORTED → PRIVILEGE_REQUIRED)
- * and native-first execution with NirSoft binary fallback.
+ * and native tool execution.
  */
 import { getCatalog, findTool as _findTool } from './catalog/loader.js';
 import { getPlatformName } from './platforms/index.js';
@@ -33,21 +33,6 @@ async function getCategoryModule(category: string): Promise<CategoryModule | nul
   }
 }
 
-async function nirsoftFallback(toolId: string, _args?: string[]): Promise<SysIntResult> {
-  try {
-    // Dynamic import of nirsoft handler — avoids circular dependency
-    const nirsoft = await import('../nirsoft/index.js').catch(() => null);
-    if (!nirsoft) {
-      return buildError(`Tool '${toolId}' has no native implementation and nirsoft is unavailable`, 'EXEC_FAILED', toolId);
-    }
-    // nirsoft module doesn't export a direct runTool — return EXEC_FAILED for now
-    // Phase 1+ will connect actual nirsoft execution
-    return buildError(`Tool '${toolId}' native implementation not yet available (Phase 1+)`, 'EXEC_FAILED', toolId);
-  } catch {
-    return buildError(`Tool '${toolId}' execution failed`, 'EXEC_FAILED', toolId);
-  }
-}
-
 /**
  * Run a sysint tool by ID.
  * Guard sequence: NOT_FOUND → PLATFORM_UNSUPPORTED → PRIVILEGE_REQUIRED → execute
@@ -74,21 +59,17 @@ export async function runTool(
   const privilegeError = await requirePrivilege(tool, toolId);
   if (privilegeError) return privilegeError;
 
-  // Execute: native first, nirsoft fallback
-  if (tool.native) {
-    try {
-      const categoryMod = await getCategoryModule(tool.category);
-      if (categoryMod) {
-        const result = await categoryMod.run(toolId, args);
-        return result as SysIntResult;
-      }
-    } catch {
-      // Native module failed — fall through to nirsoft
+  // Execute native module
+  try {
+    const categoryMod = await getCategoryModule(tool.category);
+    if (categoryMod) {
+      const result = await categoryMod.run(toolId, args);
+      return result as SysIntResult;
     }
+    return buildError(`No native module found for tool '${toolId}' (category: ${tool.category})`, 'EXEC_FAILED', toolId);
+  } catch (err) {
+    return buildError(`Tool '${toolId}' execution failed: ${String(err)}`, 'EXEC_FAILED', toolId);
   }
-
-  // Nirsoft fallback (all non-native tools, or native failures)
-  return nirsoftFallback(toolId, args);
 }
 
 /** Reset category module cache for test isolation. */

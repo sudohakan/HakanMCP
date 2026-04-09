@@ -3,6 +3,7 @@
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
@@ -60,7 +61,7 @@ class Logger {
       maxSize: '20m',
       maxFiles: 5,
       format: winston.format.printf(({ message }) => String(message)),
-      auditFile: path.join(this.logDir, '.rotate-audit.json'),
+      auditFile: path.join(os.tmpdir(), 'hakanmcp-rotate-audit.json'),
     });
     transport.on('error', (err) => {
       console.error('Logger file transport error:', err);

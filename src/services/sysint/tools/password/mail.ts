@@ -1,13 +1,12 @@
 /**
  * PWD-08: mail-passwords — Extract mail client passwords.
- * Thunderbird: NSS (cross-platform) — reuses Firefox NSS decoder.
+ * Thunderbird: NSS via nss3.dll (cross-platform) — reuses Firefox NSS approach.
  * Outlook: Windows Credential Manager (Windows-only).
  */
-import { existsSync, readFileSync } from 'node:fs';
-import { copyFile, mkdir, readdir, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { homedir, tmpdir } from 'node:os';
-import Database from 'better-sqlite3';
+import { homedir } from 'node:os';
 import {
   buildSuccess,
   buildError,
@@ -16,7 +15,7 @@ import {
   logCredentialAccess,
   execPs,
 } from './shared.js';
-import { deriveKey4Key, decodeFirefoxLogins } from './firefox.js';
+import { extractFirefoxPasswords } from './firefox.js';
 import type { SysIntResult } from '../../outputFormatter.js';
 
 export interface MailPasswordRow {
@@ -28,81 +27,18 @@ export interface MailPasswordRow {
   _sensitive: boolean;
 }
 
-// ── Thunderbird (reuse Firefox NSS decoder) ───────────────────────────────────
-
-function thunderbirdBasePath(): string {
-  if (process.platform === 'win32') {
-    const appData = process.env['APPDATA'] ?? join(homedir(), 'AppData', 'Roaming');
-    return join(appData, 'Thunderbird', 'Profiles');
-  }
-  return join(homedir(), '.thunderbird');
-}
-
-async function findThunderbirdProfiles(): Promise<string[]> {
-  const base = thunderbirdBasePath();
-  if (!existsSync(base)) return [];
-  try {
-    const entries = await readdir(base, { withFileTypes: true });
-    return entries
-      .filter((e) => e.isDirectory() && (e.name.includes('.default') || e.name.includes('-release') || e.name.length > 8))
-      .map((e) => join(base, e.name));
-  } catch {
-    return [];
-  }
-}
+// ── Thunderbird (reuse Firefox NSS nss3.dll approach) ────────────────────────
 
 async function extractThunderbirdPasswords(): Promise<MailPasswordRow[]> {
-  const profiles = await findThunderbirdProfiles();
-  const rows: MailPasswordRow[] = [];
-
-  for (const profilePath of profiles) {
-    const key4DbPath = join(profilePath, 'key4.db');
-    const loginsPath = join(profilePath, 'logins.json');
-    if (!existsSync(key4DbPath) || !existsSync(loginsPath)) continue;
-
-    const tmpDir = join(tmpdir(), `sysint-tb-${Date.now()}`);
-    try {
-      await mkdir(tmpDir, { recursive: true });
-      const tmpKey4 = join(tmpDir, 'key4.db');
-      await copyFile(key4DbPath, tmpKey4);
-      for (const ext of ['-wal', '-shm']) {
-        if (existsSync(key4DbPath + ext)) {
-          await copyFile(key4DbPath + ext, tmpKey4 + ext).catch(() => {});
-        }
-      }
-
-      const db = new Database(tmpKey4, { readonly: true, fileMustExist: true });
-      let key: Buffer | null = null;
-      try {
-        key = deriveKey4Key(db);
-      } finally {
-        db.close();
-      }
-      if (!key) continue;
-
-      const loginsRaw = readFileSync(loginsPath, 'utf8');
-      const loginsJson = JSON.parse(loginsRaw) as { logins: Array<{ hostname: string; encryptedUsername: string; encryptedPassword: string }> };
-      const profileName = profilePath.split('/').pop() ?? profilePath.split('\\').pop() ?? 'unknown';
-      const ffRows = decodeFirefoxLogins(loginsJson.logins ?? [], key, profileName);
-
-      for (const r of ffRows as Array<{ profile: string; url: string; username: string; password: string }>) {
-        rows.push({
-          client: 'thunderbird',
-          profile: r.profile,
-          server: r.url,
-          username: r.username,
-          password: r.password,
-          _sensitive: true,
-        });
-      }
-    } catch {
-      // Skip profile
-    } finally {
-      await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
-    }
-  }
-
-  return rows;
+  const ffRows = await extractFirefoxPasswords('thunderbird');
+  return ffRows.map((r) => ({
+    client: 'thunderbird',
+    profile: r.profile,
+    server: r.url,
+    username: r.username,
+    password: r.password,
+    _sensitive: true,
+  }));
 }
 
 // ── Outlook (Windows Credential Manager) ─────────────────────────────────────

@@ -534,109 +534,23 @@ async function runTools(): Promise<void> {
 }
 
 async function runScheduledDashboard(): Promise<void> {
-  const { schedulerManager } = await import('../src/tools/scheduler.js');
-  const stats = schedulerManager.getStats();
-  const tasks = schedulerManager.listTasks();
-  const cwd = process.cwd();
-
-  let body = '';
-
-  body += `  ${chalk.hex(THEME.primary).bold('Workspace Schedule')}\n`;
-  const wsConfigPath = path.join(cwd, 'hakanmcp.config.yaml');
-  if (fs.existsSync(wsConfigPath)) {
-    try {
-      const yaml = await import('js-yaml');
-      const wsRaw = yaml.default.load(fs.readFileSync(wsConfigPath, 'utf8')) as Record<string, unknown> | null;
-      const sched = (wsRaw as Record<string, unknown>)?.schedule as Record<string, unknown> | undefined;
-      const enabled = sched?.enabled ?? false;
-      const cronVal = sched?.cron ?? '—';
-      const intervalVal = sched?.interval ?? '—';
-      const statusIcon = enabled ? chalk.hex(THEME.success)('●') : chalk.hex(THEME.textDim)('○');
-      const statusText = enabled ? chalk.hex(THEME.success)('enabled') : chalk.hex(THEME.textMuted)('disabled');
-      body += `  ${statusIcon} ${chalk.hex('#F1F2F6')('Status:')} ${statusText}`;
-      body += `  ${chalk.hex('#F1F2F6')('Cron:')} ${chalk.hex(THEME.textMuted)(String(cronVal))}`;
-      body += `  ${chalk.hex('#F1F2F6')('Interval:')} ${chalk.hex(THEME.textMuted)(String(intervalVal))}\n`;
-      body += `  ${chalk.hex(THEME.textDim)(`Workspace: ${cwd}`)}\n`;
-    } catch {
-      body += `  ${chalk.hex(THEME.warning)('⚠')} ${chalk.hex(THEME.error)('Config parse error')}\n`;
-    }
-  } else {
-    body += `  ${chalk.hex(THEME.textDim)('○')} ${chalk.hex(THEME.textMuted)('Not configured — run')} ${chalk.hex('#F1F2F6')('hakanmcp init')} ${chalk.hex(THEME.textMuted)('to create workspace config')}\n`;
-    body += `  ${chalk.hex(THEME.textDim)(`Workspace: ${cwd}`)}\n`;
-  }
-
-  body += `\n  ${chalk.hex(THEME.primary).bold('Scheduler Tasks')}\n`;
-  body += `  ${chalk.hex('#F1F2F6')('Tasks:')} ${chalk.hex(stats.totalTasks > 0 ? THEME.success : THEME.textMuted)(`${stats.enabledTasks} active`)}`;
-  if (stats.disabledTasks > 0) body += ` ${chalk.hex(THEME.textMuted)(`/ ${stats.disabledTasks} paused`)}`;
-  body += `  ${chalk.hex('#F1F2F6')('Runs:')} ${chalk.hex(THEME.success)(String(stats.successfulExecutions))} ok`;
-  if (stats.failedExecutions > 0) body += ` / ${chalk.hex(THEME.error)(String(stats.failedExecutions))} fail`;
-  body += `  ${chalk.hex('#F1F2F6')('Total:')} ${chalk.hex(THEME.textMuted)(String(stats.totalExecutions))}\n`;
-
-  if (tasks.length === 0) {
-    body += `  ${chalk.hex(THEME.textMuted)('No scheduler tasks yet.')}\n`;
-  } else {
-    for (const t of tasks) {
-      const icon = t.enabled ? chalk.hex(THEME.success)('●') : chalk.hex(THEME.textDim)('○');
-      const name = chalk.hex('#F1F2F6')(t.name.padEnd(20));
-      const sched = chalk.hex(THEME.textMuted)(t.schedule.padEnd(18));
-      const runs = chalk.hex(THEME.textMuted)(`${t.runCount} runs`);
-      const lastRun = t.lastRun ? chalk.hex(THEME.textMuted)(new Date(t.lastRun).toLocaleString()) : chalk.hex(THEME.textDim)('never');
-      body += `  ${icon} ${name} ${sched} ${runs}  ${lastRun}\n`;
-      body += `    ${chalk.hex(THEME.textDim)(`ID: ${t.id}`)}\n`;
-    }
-  }
-
-  const hint = [
-    'scheduled start                     Start workspace scheduled mode',
-    'scheduled add <name> <cron> <task>  Add scheduler task',
-    'scheduled remove <id>               Remove a scheduler task',
-    'scheduled pause <id> / resume <id>  Pause or resume a scheduler task',
-  ].join('\n');
-
-  console.log(renderTextMenu('Scheduled', body, hint, 'scheduled'));
+  const body = `  Scheduler removed — use Claude Code CronCreate/CronList instead\n`;
+  console.log(renderTextMenu('Scheduled', body, undefined, 'scheduled'));
 }
 
-async function runScheduledAdd(name: string, cronExpr: string, agentTask: string): Promise<void> {
-  try {
-    const { schedulerManager } = await import('../src/tools/scheduler.js');
-    const task = schedulerManager.createTask({ name, schedule: cronExpr, agentTask, enabled: true });
-    let body = `  ${chalk.hex(THEME.success)('✓')} ${chalk.hex('#F1F2F6')('Task created')}\n`;
-    body += `    ${chalk.hex(THEME.textMuted)(`Name: ${task.name}  Schedule: ${task.schedule}`)}\n`;
-    body += `    ${chalk.hex(THEME.textDim)(`ID: ${task.id}`)}\n`;
-    console.log(renderTextMenu('Scheduled Tasks', body, 'scheduled                           Back to dashboard', 'scheduled'));
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    let body = `  ${chalk.hex(THEME.error)('✗')} ${chalk.hex('#F1F2F6')('Failed to create task')}\n`;
-    body += `    ${chalk.hex(THEME.textMuted)(msg)}\n`;
-    console.log(renderTextMenu('Scheduled Tasks', body, undefined, 'scheduled'));
-  }
-}
-
-async function runScheduledRemove(id: string): Promise<void> {
-  const { schedulerManager } = await import('../src/tools/scheduler.js');
-  const ok = schedulerManager.deleteTask(id);
-  let body: string;
-  if (ok) {
-    body = `  ${chalk.hex(THEME.success)('✓')} ${chalk.hex('#F1F2F6')('Task removed')}  ${chalk.hex(THEME.textDim)(id)}\n`;
-  } else {
-    body = `  ${chalk.hex(THEME.error)('✗')} ${chalk.hex('#F1F2F6')('Task not found')}  ${chalk.hex(THEME.textDim)(id)}\n`;
-  }
+async function runScheduledAdd(_name: string, _cronExpr: string, _agentTask: string): Promise<void> {
+  const body = `  Scheduler removed — use Claude Code CronCreate/CronList instead\n`;
   console.log(renderTextMenu('Scheduled Tasks', body, 'scheduled                           Back to dashboard', 'scheduled'));
 }
 
-async function runScheduledToggle(id: string, enable: boolean): Promise<void> {
-  try {
-    const { schedulerManager } = await import('../src/tools/scheduler.js');
-    const task = schedulerManager.updateTask(id, { enabled: enable });
-    const verb = enable ? 'resumed' : 'paused';
-    const icon = enable ? chalk.hex(THEME.success)('✓') : chalk.hex(THEME.warning)('⏸');
-    let body = `  ${icon} ${chalk.hex('#F1F2F6')(`Task ${verb}:`)} ${chalk.hex(THEME.textMuted)(task.name)}  ${chalk.hex(THEME.textDim)(id)}\n`;
-    console.log(renderTextMenu('Scheduled Tasks', body, 'scheduled                           Back to dashboard', 'scheduled'));
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    let body = `  ${chalk.hex(THEME.error)('✗')} ${chalk.hex('#F1F2F6')(msg)}\n`;
-    console.log(renderTextMenu('Scheduled Tasks', body, undefined, 'scheduled'));
-  }
+async function runScheduledRemove(_id: string): Promise<void> {
+  const body = `  Scheduler removed — use Claude Code CronCreate/CronList instead\n`;
+  console.log(renderTextMenu('Scheduled Tasks', body, 'scheduled                           Back to dashboard', 'scheduled'));
+}
+
+async function runScheduledToggle(_id: string, _enable: boolean): Promise<void> {
+  const body = `  Scheduler removed — use Claude Code CronCreate/CronList instead\n`;
+  console.log(renderTextMenu('Scheduled Tasks', body, 'scheduled                           Back to dashboard', 'scheduled'));
 }
 
 async function runDoctor(fix = false): Promise<void> {

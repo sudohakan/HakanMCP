@@ -89,7 +89,7 @@ export const sysintTools: ToolDefinition[] = [
   {
     name: 'sysint',
     description:
-      'Cross-platform native system intelligence tools. Actions: list (browse catalog), info (tool details), run (execute tool). Supports Windows, Linux, and WSL. Native implementations where available, NirSoft binary fallback on Windows/WSL.',
+      'Cross-platform native system intelligence tools. Actions: list (browse catalog), info (tool details), run (execute tool). Supports Windows, Linux, and WSL.',
     inputSchema: {
       type: 'object',
       properties: {

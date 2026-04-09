@@ -6,12 +6,13 @@ Six phases that build from nothing to a complete cross-platform system intellige
 
 ## Phases
 
-- [ ] **Phase 0: Foundation** - Platform abstraction, catalog loader, MCP dispatcher, output formatter
-- [ ] **Phase 1: Process + Network** - Process listing, TCP/UDP connections, network interfaces and utilities (28 tools)
-- [ ] **Phase 2: Disk + System** - Disk intelligence and system telemetry (39 tools)
-- [ ] **Phase 3: Browser** - Multi-browser history, bookmarks, cookies, downloads (10 tools)
-- [ ] **Phase 4: Registry + Password** - Windows registry tools and credential extraction (18 tools)
+- [x] **Phase 0: Foundation** - Platform abstraction, catalog loader, MCP dispatcher, output formatter
+- [x] **Phase 1: Process + Network** - Process listing, TCP/UDP connections, network interfaces and utilities (28 tools)
+- [x] **Phase 2: Disk + System** - Disk intelligence and system telemetry (39 tools)
+- [x] **Phase 3: Browser** - Multi-browser history, bookmarks, cookies, downloads (10 tools)
+- [x] **Phase 4: Registry + Password** - Windows registry tools and credential extraction (18 tools)
 - [x] **Phase 5: Polish + Stragglers** - Programmer tools, Outlook, Audio, E2E tests, perf benchmarks (12 tools)
+- [ ] **Phase 6: Legacy Native Migration** - 244 eski NirSoft-bagimli tool'un native TypeScript implementasyonu (system 74, network 62, browser 24, password 21, disk 17, programmer 15, process 11, registry 10, outlook 6, audio 4)
 
 ## Phase Details
 
@@ -87,9 +88,22 @@ Six phases that build from nothing to a complete cross-platform system intellige
   5. Cold startup (catalog load) completes in under 200ms; first tool invocation (category lazy-load + execution) completes in under 2s
 **Plans**: TBD
 
+### Phase 6: Legacy Native Migration
+**Goal**: NirSoft exe bagimliligini tamamen ortadan kaldirmak. 244 eski tool'un native TypeScript implementasyonunu yazmak.
+**Depends on**: Phase 5
+**Status**: TODO — oncelik sirasi belirlenmeli
+**Tool Count**: 244 (system 74, network 62, browser 24, password 21, disk 17, programmer 15, process 11, registry 10, outlook 6, audio 4)
+**Success Criteria** (what must be TRUE):
+  1. Tum 244 tool native TypeScript ile implement edilmis, NirSoft exe bagimliligi sifir
+  2. Her tool cross-platform (en az win32 + wsl), JSON output, CLI-only
+  3. Mevcut 108 native tool ile ayni API kontrati (SysIntResult)
+  4. Test coverage %80+
+  5. Katalog toplam 352 native tool
+**Plans**: TBD
+
 ## Progress
 
-**Execution Order:** 0 → 1 → 2 → 3 → 4 → 5
+**Execution Order:** 0 → 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|

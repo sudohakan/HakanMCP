@@ -18,8 +18,8 @@ describe('SysInt Catalog Loader', () => {
       version: 1,
       categories: ['network', 'process'],
       tools: [
-        { id: 'cports', name: 'CurrPorts', description: 'TCP/UDP connections', category: 'network', adminRequired: false, timeout: 30, native: false, platforms: ['win32', 'linux', 'wsl'] },
-        { id: 'processhacker', name: 'Process Hacker', description: 'Process manager', category: 'process', adminRequired: true, timeout: 15, native: false, platforms: ['win32', 'wsl'] },
+        { id: 'cports', name: 'CurrPorts', description: 'TCP/UDP connections', category: 'network', adminRequired: false, timeout: 30, native: true, platforms: ['win32', 'linux', 'wsl'] },
+        { id: 'process-list', name: 'Process List', description: 'Running processes', category: 'process', adminRequired: false, timeout: 15, native: true, platforms: ['win32', 'linux', 'wsl'] },
       ],
     }));
 
@@ -78,7 +78,7 @@ describe('SysInt Catalog Loader', () => {
       // Just verify it doesn't throw (actual catalog must exist)
       const catalog = getCatalog();
       expect(catalog.version).toBe(1);
-      expect(catalog.tools.length).toBeGreaterThan(200);
+      expect(catalog.tools.length).toBeGreaterThan(50);
     });
 
     it('returns same object reference on subsequent calls (memoized)', () => {

@@ -43,12 +43,6 @@ export const FEATURE_DEPENDENCY_MAP: Record<string, FeatureDependency> = {
     installCommand: 'npm install mongodb',
     toolModulePath: './tools/mongodb.js',
   },
-  nirsoft: {
-    packages: [],
-    description: 'NirSoft Windows utilities (platform-dependent, no npm deps)',
-    installCommand: '',
-    toolModulePath: './tools/nirsoft.js',
-  },
 };
 
 /**

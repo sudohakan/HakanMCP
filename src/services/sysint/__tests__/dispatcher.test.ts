@@ -1,15 +1,5 @@
 import { jest } from '@jest/globals';
 
-// Mock nirsoft index to avoid binary calls — path relative to test file location
-jest.unstable_mockModule('../../nirsoft/index.js', () => ({
-  default: {},
-  isWSL: () => false,
-  isSupported: () => false,
-  loadCatalog: () => ({ tools: [] }),
-  parseCsvToJson: () => [],
-  createTempFile: async () => '',
-}));
-
 describe('SysInt Dispatcher', () => {
   let runTool: (toolId: string, args?: string[], options?: Record<string, unknown>) => Promise<unknown>;
   let resetDispatcher: () => void;
@@ -54,8 +44,7 @@ describe('SysInt Dispatcher', () => {
 
   describe('native module execution paths', () => {
     it('falls through to EXEC_FAILED when native module throws during run', async () => {
-      // process-list is a native tool; if its module run() throws, dispatcher falls to nirsoft
-      // nirsoft is mocked to be unavailable, so we get EXEC_FAILED
+      // process-list is a native tool; if its module run() throws, dispatcher returns EXEC_FAILED
       // We can only verify the shape here since real execution depends on OS
       const result = await runTool('process-list') as Record<string, unknown>;
       expect(result).toBeDefined();

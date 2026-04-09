@@ -13,10 +13,6 @@ import { join } from 'node:path';
 let checkCredentialConsent: (args: string[], toolId: string) => unknown[] | null;
 let writeTempSecure: (content: string | Buffer) => { path: string; cleanup: () => void };
 let logCredentialAccess: (toolId: string) => void;
-let derReadOctetString: (data: Buffer, offset: number) => { value: Buffer; next: number };
-let decodeNssPbe: (encrypted: Buffer, key: Buffer) => Buffer;
-let decodeFirefoxLogins: (logins: unknown[], key: Buffer, profile: string) => unknown[];
-let deriveKey4Key: (db: unknown) => Buffer | null;
 let parseNetshProfileList: (output: string) => string[];
 let parseNetshProfileDetail: (output: string) => { password: string; security: string };
 let parseNmConnection: (content: string) => Record<string, Record<string, string>>;
@@ -36,10 +32,6 @@ beforeAll(async () => {
   logCredentialAccess = sharedMod.logCredentialAccess;
 
   const ffMod = await import('../tools/password/firefox.js');
-  derReadOctetString = ffMod.derReadOctetString;
-  decodeNssPbe = ffMod.decodeNssPbe;
-  decodeFirefoxLogins = ffMod.decodeFirefoxLogins as unknown as typeof decodeFirefoxLogins;
-  deriveKey4Key = ffMod.deriveKey4Key as unknown as typeof deriveKey4Key;
   firefoxRun = ffMod.run as unknown as typeof firefoxRun;
 
   const wifiMod = await import('../tools/password/wifi.js');
@@ -137,80 +129,6 @@ describe('writeTempSecure', () => {
 describe('logCredentialAccess', () => {
   it('does not throw on normal call', () => {
     expect(() => logCredentialAccess('test-tool')).not.toThrow();
-  });
-});
-
-// ── derReadOctetString ────────────────────────────────────────────────────────
-
-describe('derReadOctetString', () => {
-  it('reads a simple OCTET STRING', () => {
-    // DER: 0x04 (tag), 0x03 (length=3), 0xAA, 0xBB, 0xCC
-    const buf = Buffer.from([0x04, 0x03, 0xAA, 0xBB, 0xCC]);
-    const { value, next } = derReadOctetString(buf, 0);
-    expect(value).toEqual(Buffer.from([0xAA, 0xBB, 0xCC]));
-    expect(next).toBe(5);
-  });
-
-  it('reads with long-form length encoding', () => {
-    // DER: 0x04, 0x81 (long form: 1 byte follows), 0x04 (length=4), data
-    const data = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF]);
-    const buf = Buffer.concat([Buffer.from([0x04, 0x81, 0x04]), data]);
-    const { value } = derReadOctetString(buf, 0);
-    expect(value).toEqual(data);
-  });
-
-  it('throws if tag is not OCTET STRING', () => {
-    const buf = Buffer.from([0x02, 0x01, 0x42]); // INTEGER
-    expect(() => derReadOctetString(buf, 0)).toThrow();
-  });
-});
-
-// ── Firefox NSS decryption ────────────────────────────────────────────────────
-
-describe('decodeFirefoxLogins', () => {
-  it('returns empty for empty logins array', () => {
-    const key = Buffer.alloc(32);
-    const result = decodeFirefoxLogins([], key, 'test.profile');
-    expect(result).toEqual([]);
-  });
-
-  it('skips login entries that fail to decrypt', () => {
-    // Provide garbage encrypted values — should skip, not throw
-    const key = Buffer.alloc(32, 0xAA);
-    const logins = [
-      {
-        hostname: 'https://example.com',
-        encryptedUsername: Buffer.from('garbage').toString('base64'),
-        encryptedPassword: Buffer.from('garbage').toString('base64'),
-      },
-    ];
-    // Should not throw
-    expect(() => decodeFirefoxLogins(logins, key, 'profile')).not.toThrow();
-  });
-});
-
-// ── deriveKey4Key with mock DB ────────────────────────────────────────────────
-
-describe('deriveKey4Key', () => {
-  it('returns null for DB without password metadata', () => {
-    // Mock a db-like object that returns undefined for metadata query
-    const mockDb = {
-      prepare: () => ({
-        get: () => undefined,
-      }),
-    };
-    const result = deriveKey4Key(mockDb);
-    expect(result).toBeNull();
-  });
-
-  it('returns null for empty item2 (null metadata)', () => {
-    const mockDb = {
-      prepare: () => ({
-        get: () => ({ item1: Buffer.alloc(16), item2: null }),
-      }),
-    };
-    const result = deriveKey4Key(mockDb);
-    expect(result).toBeNull();
   });
 });
 

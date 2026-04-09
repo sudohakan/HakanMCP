@@ -8,15 +8,6 @@
 
 import { jest } from '@jest/globals';
 
-jest.unstable_mockModule('../../nirsoft/index.js', () => ({
-  default: {},
-  isWSL: () => false,
-  isSupported: () => false,
-  loadCatalog: () => ({ tools: [] }),
-  parseCsvToJson: () => [],
-  createTempFile: async () => '',
-}));
-
 describe('Performance: catalog cold load', () => {
   it('catalog cold load completes in under 200ms', async () => {
     jest.resetModules();

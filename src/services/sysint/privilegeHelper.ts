@@ -1,6 +1,6 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { isWSL } from '../nirsoft/platform.js';
+import { isWSL } from './pathHelper.js';
 import { buildError } from './outputFormatter.js';
 import type { SysIntTool } from './catalog/types.js';
 import type { SysIntError, SysIntPlatform } from './outputFormatter.js';

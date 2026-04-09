@@ -36,15 +36,15 @@
         "Bash git commands insufficient for complex operations"
       ]
     },
-    "memory": {
-      "name": "Memory",
-      "description": "Knowledge graph with entities, relations, and observations",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
+    "graphify": {
+      "name": "Graphify",
+      "description": "Codebase knowledge graph - query structure, find god nodes, trace paths between concepts",
+      "command": "/home/hakan/.graphify-venv/bin/python",
+      "args": ["-m", "graphify.serve", "/mnt/c/dev/graphify/graphify-out/graph.json"],
       "conditions": [
-        "Building persistent knowledge graph for multi-topic research",
-        "Entity-relation-observation model needed",
-        "User explicitly asks to build or query a knowledge graph"
+        "Querying codebase structure, architecture, or relationships",
+        "Finding connections between code concepts",
+        "Understanding god nodes and community structure"
       ]
     },
     "sequential-thinking": {

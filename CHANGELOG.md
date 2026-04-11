@@ -5,6 +5,23 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-04-12
+
+### Added
+- GitBook tool: full API v1 integration (listSpaces, listPages, getPage, updatePage, searchContent, ask, getMetadata)
+- GitBook document AST to markdown renderer (leaves, inline links, hints, images, code blocks, tables)
+- GitBook git sync for page writes: export → local edit → push → import
+- getPage local-first mode: automatic pull from persistent local repo before API fallback
+- GITBOOK_TOKEN environment variable support in config
+- `.env.example` template for new installations
+
+### Changed
+- credentials.ts: hardcoded path replaced with `$CREDENTIALS_FILE` env var fallback
+- gitbook tool rewritten from HTML scraping to GitBook API v1
+
+### Fixed
+- graphify-out directory excluded from repository
+
 ## [2.2.0] - 2026-03-23
 
 ### Added

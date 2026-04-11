@@ -1,6 +1,6 @@
 # HakanMCP — Claude Code Configuration
 
-> Unified MCP Server + Mission Agent CLI. v2.2.0, ESM, Node >= 20.
+> Unified MCP Server + Mission Agent CLI. v2.2.1, ESM, Node >= 20.
 
 ## Project Overview
 

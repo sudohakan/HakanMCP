@@ -54,7 +54,7 @@
     "gray-matter": "^4.0.3",
     "handlebars": "^4.7.8",
     "js-yaml": "^4.1.0",
-    "jsdom": "^22.1.0",
+    "jsdom": "^29.0.2",
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
@@ -73,7 +73,7 @@
     "pg": "8.20.0",
     "socks": "2.8.7",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^6.0.1"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

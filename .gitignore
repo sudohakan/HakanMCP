@@ -133,3 +133,4 @@ __pycache__/
 *.bak
 output/
 *.rotate-audit.json
+graphify-out/

@@ -339,6 +339,7 @@ type BrowserConnectOptions = {
   browser?: 'chrome' | 'firefox' | 'webkit' | 'msedge';
   headless?: boolean;
   isolated?: boolean;
+  userDataDir?: string;
   extension?: boolean;
   cdpEndpoint?: string;
   allowedHosts?: string[];
@@ -394,8 +395,12 @@ function buildPlaywrightArgs(options: Omit<BrowserConnectOptions, 'connectionId'
   if (options.headless ?? true) {
     args.push('--headless');
   }
-  if (options.isolated ?? true) {
+  if (options.isolated ?? false) {
     args.push('--isolated');
+  }
+  if (!options.isolated && !options.cdpEndpoint) {
+    const dir = options.userDataDir ?? '/home/hakan/.playwright-mcp/browser-profile';
+    args.push('--user-data-dir', dir);
   }
   if (options.extension) {
     args.push('--extension');
@@ -1568,6 +1573,138 @@ const _mcpLegacyTools = [
     },
   },
   {
+    name: 'mcp_browserSequence',
+    description:
+      'Execute a sequence of browser steps in order: click, fill, type — any combination, any order. ' +
+      'Snapshot is taken only after the last step. Ideal for login flows, multi-step forms, chained clicks.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionId: { type: 'string', description: 'Browser connection ID.' },
+        steps: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              action: { type: 'string', enum: ['click', 'fill', 'type'], description: 'Step action.' },
+              ref: { type: 'string', description: 'Element ref from snapshot.' },
+              value: { type: 'string', description: 'Value to fill (fill action).' },
+              text: { type: 'string', description: 'Text to type (type action).' },
+              element: { type: 'string', description: 'Human-readable description.' },
+              submit: { type: 'boolean', description: 'Press Enter after (type action).' },
+            },
+            required: ['action', 'ref'],
+          },
+          description: 'Ordered list of steps to execute.',
+        },
+      },
+      required: ['steps'],
+    },
+    handler: async (args: unknown) => {
+      const stepSchema = z.object({
+        action: z.enum(['click', 'fill', 'type']),
+        ref: z.string(),
+        value: z.string().optional(),
+        text: z.string().optional(),
+        element: z.string().optional(),
+        submit: z.boolean().optional(),
+      });
+
+      const parsed = z
+        .object({
+          connectionId: z.string().optional(),
+          steps: z.array(stepSchema).min(1),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      const results: Array<{ step: number; action: string; ref: string; ok: boolean; detail: string }> = [];
+
+      for (let i = 0; i < parsed.steps.length; i++) {
+        const step = parsed.steps[i];
+        const label = step.element ?? `ref=${step.ref}`;
+        try {
+          let result;
+          switch (step.action) {
+            case 'fill': {
+              const fillArgs: Record<string, unknown> = {
+                ref: step.ref,
+                value: step.value ?? '',
+                element: label,
+                fields: [{ ref: step.ref, value: step.value ?? '', name: label, type: 'textbox' }],
+              };
+              result = await callRemoteTool(connectionId, browserTools.fill, fillArgs);
+              break;
+            }
+            case 'click': {
+              result = await callRemoteTool(connectionId, browserTools.click, {
+                ref: step.ref,
+                element: label,
+              });
+              break;
+            }
+            case 'type': {
+              const typeArgs: Record<string, unknown> = {
+                ref: step.ref,
+                text: step.text ?? step.value ?? '',
+                element: label,
+              };
+              if (step.submit) typeArgs.pressEnter = true;
+              result = await callRemoteTool(connectionId, browserTools.type ?? browserTools.fill, typeArgs);
+              break;
+            }
+          }
+          const text = extractTextChunks(result).join('\n');
+          results.push({ step: i + 1, action: step.action, ref: step.ref, ok: true, detail: compactText(text, 150) });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          results.push({ step: i + 1, action: step.action, ref: step.ref, ok: false, detail: msg.substring(0, 150) });
+        }
+      }
+
+      // Snapshot after last step
+      let snapshotText = '';
+      if (browserTools.snapshot) {
+        const snapshotResult = await callRemoteTool(connectionId, browserTools.snapshot);
+        snapshotText = extractTextChunks(snapshotResult).join('\n');
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                action: 'sequence',
+                totalSteps: parsed.steps.length,
+                succeeded: results.filter((r) => r.ok).length,
+                failed: results.filter((r) => !r.ok).length,
+                results,
+                snapshot: snapshotText ? summarizeSnapshot(snapshotText, 1200) : undefined,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
     name: 'mcp_browserType',
     description: 'Type text into a focused element, optionally pressing keys like Enter or Tab.',
     inputSchema: {
@@ -1738,18 +1875,19 @@ export const mcpClientTools = [
   {
     name: 'browser',
     description:
-      'Browser automation. Actions: connect, navigateExtract, click, fill, type, probeLogin, captureProof, disconnect.',
+      'Browser automation. Actions: connect, navigateExtract, click, fill, sequence, type, probeLogin, captureProof, disconnect.',
     inputSchema: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['connect', 'navigateExtract', 'click', 'fill', 'type', 'probeLogin', 'captureProof', 'disconnect'],
+          enum: ['connect', 'navigateExtract', 'click', 'fill', 'sequence', 'type', 'probeLogin', 'captureProof', 'disconnect'],
           description: 'Operation to perform',
         },
         browser: { type: 'string', enum: ['chrome', 'firefox', 'webkit', 'msedge'], description: 'Browser channel' },
         headless: { type: 'boolean', description: 'Run headless' },
-        isolated: { type: 'boolean', description: 'Keep profile in memory' },
+        isolated: { type: 'boolean', description: 'Keep profile in memory (default: false, persistent)' },
+        userDataDir: { type: 'string', description: 'Path for persistent browser profile' },
         extension: { type: 'boolean', description: 'Connect via browser extension' },
         cdpEndpoint: { type: 'string', description: 'CDP endpoint to connect to' },
         allowedHosts: { type: 'array', items: { type: 'string' }, description: 'Allowed hosts' },
@@ -1766,17 +1904,34 @@ export const mcpClientTools = [
         value: { type: 'string', description: 'Value to fill (fill action)' },
         text: { type: 'string', description: 'Text to type (type action)' },
         element: { type: 'string', description: 'Human-readable element description (click/fill)' },
+        steps: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              action: { type: 'string', enum: ['click', 'fill', 'type'] },
+              ref: { type: 'string' },
+              value: { type: 'string' },
+              text: { type: 'string' },
+              element: { type: 'string' },
+              submit: { type: 'boolean' },
+            },
+            required: ['action', 'ref'],
+          },
+          description: 'Ordered steps for sequence action (e.g. fill+fill+click)',
+        },
         submit: { type: 'boolean', description: 'Press Enter after typing (type action)' },
       },
       required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { action } = z.object({ action: z.enum(['connect', 'navigateExtract', 'click', 'fill', 'type', 'probeLogin', 'captureProof', 'disconnect']) }).parse(args);
+      const { action } = z.object({ action: z.enum(['connect', 'navigateExtract', 'click', 'fill', 'sequence', 'type', 'probeLogin', 'captureProof', 'disconnect']) }).parse(args);
       switch (action) {
         case 'connect': return _findLegacyHandler('mcp_browserConnect')(args);
         case 'navigateExtract': return _findLegacyHandler('mcp_browserNavigateExtract')(args);
         case 'click': return _findLegacyHandler('mcp_browserClick')(args);
         case 'fill': return _findLegacyHandler('mcp_browserFill')(args);
+        case 'sequence': return _findLegacyHandler('mcp_browserSequence')(args);
         case 'type': return _findLegacyHandler('mcp_browserType')(args);
         case 'probeLogin': return _findLegacyHandler('mcp_browserProbeLogin')(args);
         case 'captureProof': return _findLegacyHandler('mcp_browserCaptureProof')(args);

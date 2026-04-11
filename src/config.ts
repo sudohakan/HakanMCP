@@ -33,6 +33,7 @@ const envSchema = z
     CACHE_TTL: z.string().optional(),
     HAKANMCP_CACHE_TTL: z.string().optional(),
     GITBOOK_URL: z.string().optional(),
+    GITBOOK_TOKEN: z.string().optional(),
     LOG_DIR: z.string().optional(),
     CODEX_API_KEY: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
@@ -45,6 +46,7 @@ const envSchema = z
 const configSchema = z.object({
   serverName: z.string().min(1, 'serverName cannot be empty'),
   gitbookUrl: z.string().url('gitbookUrl must be a valid URL'),
+  gitbookToken: z.string().optional(),
   postmanDir: z.string().min(1, 'postmanDir cannot be empty'),
   cacheTtl: z
     .number()
@@ -163,6 +165,7 @@ export type ConsciousnessConfig = Config['consciousness'];
 const DEFAULT_CONFIG: Config = {
   serverName: 'hakan-mcp',
   gitbookUrl: process.env.GITBOOK_URL || 'https://example.com/api-docs',
+  gitbookToken: process.env.GITBOOK_TOKEN || undefined,
   postmanDir: 'postman',
   cacheTtl: 300,
   logLevel: 'info',
@@ -336,6 +339,10 @@ function applyRuntimeEnvOverrides(
     } catch (err) {
       console.error('Invalid GITBOOK_URL:', err instanceof Error ? err.message : String(err));
     }
+  }
+  const gitbookTokenEnv = envValues.GITBOOK_TOKEN?.trim();
+  if (gitbookTokenEnv) {
+    cfg.gitbookToken = gitbookTokenEnv;
   }
 
   return cfg;
@@ -626,6 +633,7 @@ try {
 logger.info('Configuration loaded', {
   serverName: config.serverName,
   gitbookUrl: config.gitbookUrl,
+  gitbookToken: config.gitbookToken ? '***' : 'not set',
   ollamaUrl: config.ollamaUrl,
   cacheTtl: config.cacheTtl,
 });

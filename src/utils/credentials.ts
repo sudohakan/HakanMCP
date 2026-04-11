@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 
-const DEFAULT_PATH = '/home/hakan/.credentials.env';
+const DEFAULT_PATH = process.env.CREDENTIALS_FILE || `${process.env.HOME || '/home'}/.credentials.env`;
 
 export function loadCredentials(filePath: string = DEFAULT_PATH): Record<string, string> {
   const content = readFileSync(filePath, 'utf-8');

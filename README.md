@@ -6,9 +6,9 @@
 
 **Unified AI Agent Orchestration & MCP Tool Platform**
 
-112 MCP tools · 10 on-demand servers · 5 AI providers · 4 operating modes
+15 MCP tools (100 actions) · 13 on-demand servers · 4 AI providers · 4 operating modes
 
-[![Version](https://img.shields.io/badge/version-2.2.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.2.1-blue?style=flat-square)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square)](https://www.typescriptlang.org)
@@ -23,18 +23,18 @@
 
 ## Why HakanMCP?
 
-> Most MCP servers give you a handful of tools. HakanMCP gives you **112** — databases, AI providers, security, monitoring, workflows, and browser wrappers — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
+> Most MCP servers give you a handful of tools. HakanMCP gives you **15 tools with 100 actions** — databases, AI providers, security, monitoring, workflows, and browser wrappers — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
 
 | What you get | Details |
 |:---|:---|
-| **112 MCP tools** | Databases, git, web, file ops, AI, security, monitoring, encryption, workflows, browser wrappers |
-| **Multi-provider AI** | Automatic fallback: Codex → Claude → Gemini → Cursor → Ollama |
+| **15 MCP tools (100 actions)** | Databases, git, web, file ops, AI, security, monitoring, encryption, workflows, browser wrappers |
+| **Multi-provider AI** | Automatic fallback: Codex → Claude → Gemini → Ollama |
 | **Mission Agent CLI** | Autonomous task execution from markdown mission files |
 | **4 operating modes** | Watch, Scheduled, Assistant, Reactive |
 | **Agentic mode** | Multi-turn tool-use loops with automatic provider selection |
 | **Lazy dependencies** | Only installs what you actually use — no bloat |
 | **Rate limit handling** | Automatic cooldown management across all providers |
-| **10 on-demand MCP servers** | Connect additional servers from the built-in catalog at runtime |
+| **13 on-demand MCP servers** | Connect additional servers from the built-in catalog at runtime |
 | **Low-token browser bridge** | Use Playwright through HakanMCP wrappers instead of returning large raw snapshots |
 
 ---
@@ -236,14 +236,14 @@ This pattern is especially useful for Claude Code and other agent clients where 
 
 ```mermaid
 graph TB
-    subgraph MCP["MCP Server (107 tools)"]
+    subgraph MCP["MCP Server (15 tools, 100 actions)"]
         TR[Tool Registry<br/>lazy-loaded, health-checked]
         AL[Agentic Loop<br/>multi-turn tool-use]
         MB[MCP Bridge<br/>proxy remote servers]
     end
 
     subgraph AI["AI Provider System"]
-        CLI[CLI Chain<br/>codex → claude → gemini → cursor]
+        CLI[CLI Chain<br/>codex → claude → gemini]
         API[API Chain<br/>codex → claude → gemini]
         OL[Ollama<br/>local fallback]
         RL[Rate Limit<br/>detection & cooldown]
@@ -269,7 +269,7 @@ HakanMCP/
 │   ├── index.ts            # MCP server entry point
 │   ├── config.ts           # Zod-validated config loader
 │   ├── toolRegistry.ts     # Lazy-loaded tool discovery
-│   ├── tools/              # 30 tool modules (~107 tools)
+│   ├── tools/              # 14 tool modules (15 tools, 100 actions)
 │   ├── services/           # Core services (agentic, backup, cache, consensus...)
 │   ├── cli/                # CLI command handlers
 │   ├── mission/            # Mission system (loader, runner, state)
@@ -302,7 +302,7 @@ HakanMCP/
 <summary><strong>🤖 AI Provider Fallback Chain</strong></summary>
 
 ```
-Request → CLI Chain (codex → claude → gemini → cursor)
+Request → CLI Chain (codex → claude → gemini)
               ↓ all CLIs failed
           API Chain (codex → claude → gemini)
               ↓ all APIs failed
@@ -313,7 +313,7 @@ Configure priority in `config.yaml`:
 
 ```yaml
 aiProviders:
-  cliPriority: [codex, claude, gemini, cursor]
+  cliPriority: [codex, claude, gemini]
   apiPriority: [codex, claude, gemini]
   fallbackOrder: [cli, api, ollama]
   agenticEnabled: true
@@ -451,10 +451,10 @@ backup:
 
 | Metric | Value |
 |:---|:---|
-| Total MCP tools | 107 |
-| On-demand MCP servers | 9 |
-| Tool modules | 30 |
-| AI providers supported | 5 (Codex, Claude, Gemini, Cursor, Ollama) |
+| Total MCP tools | 15 (100 actions) |
+| On-demand MCP servers | 13 |
+| Tool modules | 14 |
+| AI providers supported | 4 (Codex, Claude, Gemini, Ollama) |
 | Database engines | 5 (PostgreSQL, MySQL, MSSQL, SQLite, MongoDB) |
 | Operating modes | 4 (Watch, Scheduled, Assistant, Reactive) |
 | CI/CD workflows | 7 |

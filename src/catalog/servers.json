@@ -148,6 +148,18 @@
         "Document similarity search",
         "RAG pipeline or knowledge base queries"
       ]
+    },
+    "markitdown": {
+      "name": "MarkItDown",
+      "description": "Convert any file to Markdown (PDF, DOCX, PPTX, XLSX, HTML, images, audio, ZIP, YouTube)",
+      "command": "uvx",
+      "args": ["markitdown-mcp"],
+      "conditions": [
+        "Read tool cannot handle binary files (PDF, DOCX, PPTX, XLSX)",
+        "File content needs to be converted to Markdown for analysis",
+        "Image OCR or audio transcription to text needed",
+        "YouTube video content extraction needed"
+      ]
     }
   }
 }

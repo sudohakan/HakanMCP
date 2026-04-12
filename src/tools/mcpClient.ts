@@ -399,7 +399,7 @@ function buildPlaywrightArgs(options: Omit<BrowserConnectOptions, 'connectionId'
     args.push('--isolated');
   }
   if (!options.isolated && !options.cdpEndpoint) {
-    const dir = options.userDataDir ?? '/home/hakan/.playwright-mcp/browser-profile';
+    const dir = options.userDataDir ?? `${process.env.HOME || require('os').homedir()}/.playwright-mcp/browser-profile`;
     args.push('--user-data-dir', dir);
   }
   if (options.extension) {

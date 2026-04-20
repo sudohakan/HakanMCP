@@ -5,6 +5,15 @@ All notable changes to the HakanMCP project (formerly Claude Flow) are documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `cfbypass` tool: Cloudflare-protected sayfaları FlareSolverr Docker container (port 8191) üzerinden çekme. Rendered HTML + cookies (cf_clearance dahil) döndürür. Akakçe, Epey, Sinerji, Cimri gibi basit Cloudflare JS challenge siteleri için çalışır. Turnstile siteleri (Trendyol, n11) kapsam dışı.
+- Unit tests (`tests/cfbypass.test.ts`): 8 test — happy path, method switching, session passthrough, error handling, zod validation, timeout propagation
+
+### Setup
+- FlareSolverr container: `docker run -d --name flaresolverr -p 8191:8191 --restart unless-stopped ghcr.io/flaresolverr/flaresolverr:latest`
+
 ## [2.2.1] - 2026-04-12
 
 ### Added

@@ -14,6 +14,7 @@ const TOOL_MODULES = [
   { path: './tools/cache.js', export: 'cacheTools' },
   { path: './tools/disk.js', export: 'diskTools' },
   { path: './tools/sysint.js', export: 'sysintTools' },
+  { path: './tools/cfbypass.js', export: 'cfbypassTools' },
 ] as const;
 
 async function main() {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import fetch from 'node-fetch';
+import { fetchWithRetry, jsonResultTruncated } from './_httpShared.js';
 
 const EXA_BASE = 'https://api.exa.ai';
 
@@ -10,7 +10,7 @@ function requireKey(): string {
 }
 
 async function exaCall(path: string, body: unknown): Promise<unknown> {
-  const res = await fetch(`${EXA_BASE}${path}`, {
+  const res = await fetchWithRetry(`${EXA_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': requireKey() },
     body: JSON.stringify(body),
@@ -40,10 +40,6 @@ const getContentsSchema = z.object({
   highlights: z.boolean().default(false),
 });
 
-function jsonResult(data: unknown) {
-  return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
-}
-
 export const exaTools = [
   {
     name: 'exaSearch',
@@ -60,7 +56,7 @@ export const exaTools = [
     },
     handler: async (args: unknown) => {
       const parsed = searchSchema.parse(args);
-      return jsonResult(await exaCall('/search', parsed));
+      return jsonResultTruncated(await exaCall('/search', parsed));
     },
   },
   {
@@ -76,7 +72,7 @@ export const exaTools = [
     },
     handler: async (args: unknown) => {
       const parsed = findSimilarSchema.parse(args);
-      return jsonResult(await exaCall('/findSimilar', parsed));
+      return jsonResultTruncated(await exaCall('/findSimilar', parsed));
     },
   },
   {
@@ -93,7 +89,7 @@ export const exaTools = [
     },
     handler: async (args: unknown) => {
       const parsed = getContentsSchema.parse(args);
-      return jsonResult(await exaCall('/contents', parsed));
+      return jsonResultTruncated(await exaCall('/contents', parsed));
     },
   },
 ];

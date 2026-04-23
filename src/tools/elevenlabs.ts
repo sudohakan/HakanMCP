@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import fetch from 'node-fetch';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fetchWithRetry, jsonResultTruncated, safePath } from './_httpShared.js';
 
 const EL_BASE = 'https://api.elevenlabs.io/v1';
 
@@ -31,10 +31,6 @@ const voiceCloneSchema = z.object({
   filePaths: z.array(z.string()).min(1).max(25),
 });
 
-function jsonResult(data: unknown) {
-  return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
-}
-
 export const elevenlabsTools = [
   {
     name: 'ttsGenerate',
@@ -54,7 +50,7 @@ export const elevenlabsTools = [
     handler: async (args: unknown) => {
       const parsed = ttsSchema.parse(args);
       const apiKey = requireKey();
-      const res = await fetch(`${EL_BASE}/text-to-speech/${encodeURIComponent(parsed.voiceId)}`, {
+      const res = await fetchWithRetry(`${EL_BASE}/text-to-speech/${encodeURIComponent(parsed.voiceId)}`, {
         method: 'POST',
         headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -65,9 +61,10 @@ export const elevenlabsTools = [
       });
       if (!res.ok) throw new Error(`ElevenLabs TTS ${res.status}: ${await res.text()}`);
       const buffer = Buffer.from(await res.arrayBuffer());
-      fs.mkdirSync(path.dirname(parsed.outputPath), { recursive: true });
-      fs.writeFileSync(parsed.outputPath, buffer);
-      return jsonResult({ ok: true, path: parsed.outputPath, bytes: buffer.length });
+      const outPath = safePath(parsed.outputPath, 'write');
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.writeFileSync(outPath, buffer);
+      return jsonResultTruncated({ ok: true, path: outPath, bytes: buffer.length });
     },
   },
   {
@@ -76,9 +73,9 @@ export const elevenlabsTools = [
     inputSchema: { type: 'object' as const, properties: {}, required: [] },
     handler: async (_args: unknown) => {
       const apiKey = requireKey();
-      const res = await fetch(`${EL_BASE}/voices`, { headers: { 'xi-api-key': apiKey } });
+      const res = await fetchWithRetry(`${EL_BASE}/voices`, { headers: { 'xi-api-key': apiKey } });
       if (!res.ok) throw new Error(`ElevenLabs voices ${res.status}`);
-      return jsonResult(await res.json());
+      return jsonResultTruncated(await res.json());
     },
   },
   {
@@ -95,18 +92,19 @@ export const elevenlabsTools = [
     handler: async (args: unknown) => {
       const parsed = transcribeSchema.parse(args);
       const apiKey = requireKey();
-      if (!fs.existsSync(parsed.filePath)) throw new Error(`Audio file not found: ${parsed.filePath}`);
+      const audioPath = safePath(parsed.filePath, 'read');
+      if (!fs.existsSync(audioPath)) throw new Error(`Audio file not found: ${audioPath}`);
       const FormData = (await import('form-data')).default;
       const form = new FormData();
-      form.append('file', fs.createReadStream(parsed.filePath));
+      form.append('file', fs.createReadStream(audioPath));
       form.append('model_id', parsed.model);
-      const res = await fetch(`${EL_BASE}/speech-to-text`, {
+      const res = await fetchWithRetry(`${EL_BASE}/speech-to-text`, {
         method: 'POST',
         headers: { 'xi-api-key': apiKey, ...form.getHeaders() },
         body: form as unknown as NodeJS.ReadableStream,
       });
       if (!res.ok) throw new Error(`ElevenLabs transcribe ${res.status}: ${await res.text()}`);
-      return jsonResult(await res.json());
+      return jsonResultTruncated(await res.json());
     },
   },
   {
@@ -128,17 +126,18 @@ export const elevenlabsTools = [
       const form = new FormData();
       form.append('name', parsed.name);
       if (parsed.description) form.append('description', parsed.description);
-      for (const p of parsed.filePaths) {
-        if (!fs.existsSync(p)) throw new Error(`File not found: ${p}`);
-        form.append('files', fs.createReadStream(p));
+      for (const raw of parsed.filePaths) {
+        const sp = safePath(raw, 'read');
+        if (!fs.existsSync(sp)) throw new Error(`File not found: ${sp}`);
+        form.append('files', fs.createReadStream(sp));
       }
-      const res = await fetch(`${EL_BASE}/voices/add`, {
+      const res = await fetchWithRetry(`${EL_BASE}/voices/add`, {
         method: 'POST',
         headers: { 'xi-api-key': apiKey, ...form.getHeaders() },
         body: form as unknown as NodeJS.ReadableStream,
       });
       if (!res.ok) throw new Error(`ElevenLabs clone ${res.status}: ${await res.text()}`);
-      return jsonResult(await res.json());
+      return jsonResultTruncated(await res.json());
     },
   },
 ];

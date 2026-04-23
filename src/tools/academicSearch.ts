@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import fetch from 'node-fetch';
+import { fetchWithRetry, jsonResultTruncated, escapeArxivQuery } from './_httpShared.js';
 
-const ARXIV_BASE = 'http://export.arxiv.org/api/query';
+const ARXIV_BASE = 'https://export.arxiv.org/api/query';
 const SS_BASE = 'https://api.semanticscholar.org/graph/v1';
 
 const arxivSchema = z.object({
@@ -20,10 +20,6 @@ const paperDetailsSchema = z.object({
   paperId: z.string(),
   fields: z.string().default('title,authors,year,abstract,references,citations,url'),
 });
-
-function jsonResult(data: unknown) {
-  return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
-}
 
 interface ArxivEntry {
   title: string;
@@ -68,16 +64,16 @@ export const academicTools = [
     handler: async (args: unknown) => {
       const parsed = arxivSchema.parse(args);
       const params = new URLSearchParams({
-        search_query: `all:${parsed.query}`,
+        search_query: `all:${escapeArxivQuery(parsed.query)}`,
         start: '0',
         max_results: String(parsed.maxResults),
         sortBy: parsed.sortBy,
         sortOrder: 'descending',
       });
-      const res = await fetch(`${ARXIV_BASE}?${params.toString()}`);
+      const res = await fetchWithRetry(`${ARXIV_BASE}?${params.toString()}`);
       if (!res.ok) throw new Error(`arXiv API ${res.status}`);
       const xml = await res.text();
-      return jsonResult({ results: parseArxivXml(xml) });
+      return jsonResultTruncated({ results: parseArxivXml(xml) });
     },
   },
   {
@@ -99,12 +95,12 @@ export const academicTools = [
         limit: String(parsed.limit),
         fields: parsed.fields,
       });
-      const res = await fetch(`${SS_BASE}/paper/search?${params.toString()}`);
+      const res = await fetchWithRetry(`${SS_BASE}/paper/search?${params.toString()}`);
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(`Semantic Scholar API ${res.status}: ${txt.slice(0, 300)}`);
       }
-      return jsonResult(await res.json());
+      return jsonResultTruncated(await res.json());
     },
   },
   {
@@ -121,9 +117,9 @@ export const academicTools = [
     handler: async (args: unknown) => {
       const parsed = paperDetailsSchema.parse(args);
       const params = new URLSearchParams({ fields: parsed.fields });
-      const res = await fetch(`${SS_BASE}/paper/${encodeURIComponent(parsed.paperId)}?${params.toString()}`);
+      const res = await fetchWithRetry(`${SS_BASE}/paper/${encodeURIComponent(parsed.paperId)}?${params.toString()}`);
       if (!res.ok) throw new Error(`Semantic Scholar detail API ${res.status}`);
-      return jsonResult(await res.json());
+      return jsonResultTruncated(await res.json());
     },
   },
 ];

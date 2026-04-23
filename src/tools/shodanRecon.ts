@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import fetch from 'node-fetch';
+import { fetchWithRetry, jsonResultTruncated } from './_httpShared.js';
 
 const SHODAN_BASE = 'https://api.shodan.io';
 
@@ -9,8 +9,24 @@ function requireKey(): string {
   return k;
 }
 
+async function shodanCall(path: string, extraParams: Record<string, string> = {}) {
+  // Shodan requires key as URL param (no Authorization header support).
+  // Do NOT log the full URL anywhere — key is embedded.
+  const key = requireKey();
+  const params = new URLSearchParams({ key, ...extraParams });
+  const url = `${SHODAN_BASE}${path}?${params.toString()}`;
+  const res = await fetchWithRetry(url);
+  if (!res.ok) {
+    const body = await res.text();
+    // Strip key from any body echo just in case
+    throw new Error(`Shodan ${path} ${res.status}: ${body.slice(0, 300).replace(key, '***')}`);
+  }
+  return res.json();
+}
+
+const IPV4_RE = /^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$/;
 const hostSchema = z.object({
-  ip: z.string(),
+  ip: z.string().regex(IPV4_RE, 'Must be valid IPv4'),
   history: z.boolean().default(false),
   minify: z.boolean().default(false),
 });
@@ -24,10 +40,6 @@ const searchSchema = z.object({
 const dnsSchema = z.object({
   hostnames: z.array(z.string()).min(1).max(100),
 });
-
-function jsonResult(data: unknown) {
-  return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
-}
 
 export const shodanTools = [
   {
@@ -44,12 +56,10 @@ export const shodanTools = [
     },
     handler: async (args: unknown) => {
       const parsed = hostSchema.parse(args);
-      const params = new URLSearchParams({ key: requireKey() });
-      if (parsed.history) params.set('history', 'true');
-      if (parsed.minify) params.set('minify', 'true');
-      const res = await fetch(`${SHODAN_BASE}/shodan/host/${encodeURIComponent(parsed.ip)}?${params.toString()}`);
-      if (!res.ok) throw new Error(`Shodan host ${res.status}: ${await res.text()}`);
-      return jsonResult(await res.json());
+      const extras: Record<string, string> = {};
+      if (parsed.history) extras.history = 'true';
+      if (parsed.minify) extras.minify = 'true';
+      return jsonResultTruncated(await shodanCall(`/shodan/host/${encodeURIComponent(parsed.ip)}`, extras));
     },
   },
   {
@@ -66,15 +76,11 @@ export const shodanTools = [
     },
     handler: async (args: unknown) => {
       const parsed = searchSchema.parse(args);
-      const params = new URLSearchParams({
-        key: requireKey(),
+      return jsonResultTruncated(await shodanCall('/shodan/host/search', {
         query: parsed.query,
         page: String(parsed.page),
         minify: String(parsed.minify),
-      });
-      const res = await fetch(`${SHODAN_BASE}/shodan/host/search?${params.toString()}`);
-      if (!res.ok) throw new Error(`Shodan search ${res.status}: ${await res.text()}`);
-      return jsonResult(await res.json());
+      }));
     },
   },
   {
@@ -89,10 +95,7 @@ export const shodanTools = [
     },
     handler: async (args: unknown) => {
       const parsed = dnsSchema.parse(args);
-      const params = new URLSearchParams({ key: requireKey(), hostnames: parsed.hostnames.join(',') });
-      const res = await fetch(`${SHODAN_BASE}/dns/resolve?${params.toString()}`);
-      if (!res.ok) throw new Error(`Shodan dns ${res.status}`);
-      return jsonResult(await res.json());
+      return jsonResultTruncated(await shodanCall('/dns/resolve', { hostnames: parsed.hostnames.join(',') }));
     },
   },
 ];

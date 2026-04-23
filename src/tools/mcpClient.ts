@@ -340,6 +340,7 @@ type BrowserConnectOptions = {
   headless?: boolean;
   isolated?: boolean;
   userDataDir?: string;
+  profileTag?: string;
   extension?: boolean;
   cdpEndpoint?: string;
   allowedHosts?: string[];
@@ -358,6 +359,9 @@ type BrowserToolSet = {
   click?: RemoteToolDescriptor;
   fill?: RemoteToolDescriptor;
   type?: RemoteToolDescriptor;
+  pressKey?: RemoteToolDescriptor;
+  evaluate?: RemoteToolDescriptor;
+  selectOption?: RemoteToolDescriptor;
 };
 
 const browserToolCandidates = {
@@ -369,6 +373,9 @@ const browserToolCandidates = {
   click: ['browser_click'],
   fill: ['browser_fill_form'],
   type: ['browser_type'],
+  pressKey: ['browser_press_key'],
+  evaluate: ['browser_evaluate'],
+  selectOption: ['browser_select_option'],
 } as const;
 
 function buildBrowserCacheKey(options: Omit<BrowserConnectOptions, 'connectionId'>): string {
@@ -383,6 +390,7 @@ function buildBrowserCacheKey(options: Omit<BrowserConnectOptions, 'connectionId
     snapshotMode: options.snapshotMode ?? 'incremental',
     timeoutAction: options.timeoutAction ?? 5000,
     timeoutNavigation: options.timeoutNavigation ?? 60000,
+    profileTag: options.profileTag ?? '',
   });
 }
 
@@ -399,7 +407,11 @@ function buildPlaywrightArgs(options: Omit<BrowserConnectOptions, 'connectionId'
     args.push('--isolated');
   }
   if (!options.isolated && !options.cdpEndpoint) {
-    const dir = options.userDataDir ?? `${process.env.HOME || require('os').homedir()}/.playwright-mcp/browser-profile`;
+    let dir = options.userDataDir;
+    if (!dir && options.profileTag) {
+      dir = `/tmp/hakanmcp-browser/${options.profileTag}`;
+    }
+    dir = dir ?? `${process.env.HOME || require('os').homedir()}/.playwright-mcp/browser-profile`;
     args.push('--user-data-dir', dir);
   }
   if (options.extension) {
@@ -453,6 +465,9 @@ function getBrowserToolSet(tools: RemoteToolDescriptor[]): BrowserToolSet {
     click: resolveRemoteTool(tools, browserToolCandidates.click),
     fill: resolveRemoteTool(tools, browserToolCandidates.fill),
     type: resolveRemoteTool(tools, browserToolCandidates.type),
+    pressKey: resolveRemoteTool(tools, browserToolCandidates.pressKey),
+    evaluate: resolveRemoteTool(tools, browserToolCandidates.evaluate),
+    selectOption: resolveRemoteTool(tools, browserToolCandidates.selectOption),
   };
 }
 
@@ -971,6 +986,10 @@ const _mcpLegacyTools = [
           type: 'number',
           description: 'Navigation timeout in milliseconds.',
         },
+        profileTag: {
+          type: 'string',
+          description: 'Named profile tag for multi-session isolation. Each unique tag gets its own browser profile at /tmp/hakanmcp-browser/<tag>.',
+        },
       },
     },
     handler: async (args: unknown) => {
@@ -986,6 +1005,7 @@ const _mcpLegacyTools = [
           snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
           timeoutAction: z.number().int().positive().optional(),
           timeoutNavigation: z.number().int().positive().optional(),
+          profileTag: z.string().optional(),
         })
         .parse(args);
 
@@ -1779,6 +1799,218 @@ const _mcpLegacyTools = [
     },
   },
   {
+    name: 'mcp_browserPressKey',
+    description: 'Press a keyboard key in the browser (Enter, ArrowDown, Escape, Tab, etc.).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionId: { type: 'string', description: 'Browser connection ID.' },
+        key: { type: 'string', description: 'Key to press (e.g. "Enter", "ArrowDown", "Escape", "Tab").' },
+      },
+      required: ['key'],
+    },
+    handler: async (args: unknown) => {
+      const parsed = z
+        .object({
+          connectionId: z.string().optional(),
+          key: z.string(),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      const result = await callRemoteTool(connectionId, browserTools.pressKey, { key: parsed.key });
+      const resultText = extractTextChunks(result).join('\n');
+
+      let snapshotText = '';
+      if (browserTools.snapshot) {
+        const snapshotResult = await callRemoteTool(connectionId, browserTools.snapshot);
+        snapshotText = extractTextChunks(snapshotResult).join('\n');
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                action: 'pressKey',
+                key: parsed.key,
+                result: compactText(resultText, 800),
+                snapshot: snapshotText ? summarizeSnapshot(snapshotText, 1200) : undefined,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'mcp_browserEvaluate',
+    description: 'Evaluate a JavaScript function in the browser page context.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionId: { type: 'string', description: 'Browser connection ID.' },
+        function: {
+          type: 'string',
+          description: 'JS function string to evaluate, e.g. "() => document.title".',
+        },
+        element: {
+          type: 'string',
+          description: 'Human-readable element description (optional, for element-scoped evaluation).',
+        },
+        ref: {
+          type: 'string',
+          description: 'Element ref from snapshot (optional, for element-scoped evaluation).',
+        },
+      },
+      required: ['function'],
+    },
+    handler: async (args: unknown) => {
+      const parsed = z
+        .object({
+          connectionId: z.string().optional(),
+          function: z.string(),
+          element: z.string().optional(),
+          ref: z.string().optional(),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      const evalArgs: Record<string, unknown> = { function: parsed.function };
+      if (parsed.ref) {
+        evalArgs.ref = parsed.ref;
+        evalArgs.element = parsed.element ?? `element ref=${parsed.ref}`;
+      } else if (parsed.element) {
+        evalArgs.element = parsed.element;
+      }
+
+      const result = await callRemoteTool(connectionId, browserTools.evaluate, evalArgs);
+      const resultText = extractTextChunks(result).join('\n');
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                action: 'evaluate',
+                result: compactText(resultText, 2000),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
+    name: 'mcp_browserSelectOption',
+    description: 'Select one or more options in a <select> element.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        connectionId: { type: 'string', description: 'Browser connection ID.' },
+        ref: { type: 'string', description: 'Element ref from snapshot (required).' },
+        values: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Option values to select (supports multi-select).',
+        },
+      },
+      required: ['ref', 'values'],
+    },
+    handler: async (args: unknown) => {
+      const parsed = z
+        .object({
+          connectionId: z.string().optional(),
+          ref: z.string(),
+          values: z.array(z.string()),
+          browser: z.enum(['chrome', 'firefox', 'webkit', 'msedge']).optional(),
+          headless: z.boolean().optional(),
+          isolated: z.boolean().optional(),
+          extension: z.boolean().optional(),
+          cdpEndpoint: z.string().optional(),
+          allowedHosts: z.array(z.string()).optional(),
+          outputDir: z.string().optional(),
+          snapshotMode: z.enum(['incremental', 'full', 'none']).optional(),
+          timeoutAction: z.number().int().positive().optional(),
+          timeoutNavigation: z.number().int().positive().optional(),
+        })
+        .parse(args);
+
+      const { connectionId } = await ensurePlaywrightConnection(parsed);
+      const tools = await listRemoteTools(connectionId);
+      const browserTools = getBrowserToolSet(tools);
+
+      const selectArgs: Record<string, unknown> = {
+        element: `element ref=${parsed.ref}`,
+        ref: parsed.ref,
+        values: parsed.values,
+      };
+
+      const result = await callRemoteTool(connectionId, browserTools.selectOption, selectArgs);
+      const resultText = extractTextChunks(result).join('\n');
+
+      let snapshotText = '';
+      if (browserTools.snapshot) {
+        const snapshotResult = await callRemoteTool(connectionId, browserTools.snapshot);
+        snapshotText = extractTextChunks(snapshotResult).join('\n');
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                connectionId,
+                action: 'selectOption',
+                ref: parsed.ref,
+                values: parsed.values,
+                result: compactText(resultText, 800),
+                snapshot: snapshotText ? summarizeSnapshot(snapshotText, 1200) : undefined,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  },
+  {
     name: 'mcp_browserDisconnect',
     description:
       'Closes one browser MCP connection or all cached Playwright browser connections managed by HakanMCP.',
@@ -1875,13 +2107,13 @@ export const mcpClientTools = [
   {
     name: 'browser',
     description:
-      'Browser automation. Actions: connect, navigateExtract, click, fill, sequence, type, probeLogin, captureProof, disconnect.',
+      'Browser automation. Actions: connect, navigateExtract, click, fill, sequence, type, pressKey, evaluate, selectOption, probeLogin, captureProof, disconnect.',
     inputSchema: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['connect', 'navigateExtract', 'click', 'fill', 'sequence', 'type', 'probeLogin', 'captureProof', 'disconnect'],
+          enum: ['connect', 'navigateExtract', 'click', 'fill', 'sequence', 'type', 'pressKey', 'evaluate', 'selectOption', 'probeLogin', 'captureProof', 'disconnect'],
           description: 'Operation to perform',
         },
         browser: { type: 'string', enum: ['chrome', 'firefox', 'webkit', 'msedge'], description: 'Browser channel' },
@@ -1896,6 +2128,7 @@ export const mcpClientTools = [
         timeoutAction: { type: 'number', description: 'Per-action timeout ms' },
         timeoutNavigation: { type: 'number', description: 'Navigation timeout ms' },
         connectionId: { type: 'string', description: 'Existing browser connection ID' },
+        profileTag: { type: 'string', description: 'Named profile tag for multi-session isolation (connect action)' },
         url: { type: 'string', description: 'URL to navigate to (navigateExtract/probeLogin/captureProof)' },
         screenshotPath: { type: 'string', description: 'Path for screenshot (navigateExtract/captureProof)' },
         maxSummaryChars: { type: 'number', description: 'Max chars for summaries (navigateExtract)' },
@@ -1921,11 +2154,14 @@ export const mcpClientTools = [
           description: 'Ordered steps for sequence action (e.g. fill+fill+click)',
         },
         submit: { type: 'boolean', description: 'Press Enter after typing (type action)' },
+        key: { type: 'string', description: 'Key to press (Enter, ArrowDown, Escape, etc.) (pressKey action)' },
+        function: { type: 'string', description: 'JS function to evaluate, e.g. "() => document.title" (evaluate action)' },
+        values: { type: 'array', items: { type: 'string' }, description: 'Option values to select, supports multi-select (selectOption action)' },
       },
       required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { action } = z.object({ action: z.enum(['connect', 'navigateExtract', 'click', 'fill', 'sequence', 'type', 'probeLogin', 'captureProof', 'disconnect']) }).parse(args);
+      const { action } = z.object({ action: z.enum(['connect', 'navigateExtract', 'click', 'fill', 'sequence', 'type', 'pressKey', 'evaluate', 'selectOption', 'probeLogin', 'captureProof', 'disconnect']) }).parse(args);
       switch (action) {
         case 'connect': return _findLegacyHandler('mcp_browserConnect')(args);
         case 'navigateExtract': return _findLegacyHandler('mcp_browserNavigateExtract')(args);
@@ -1933,6 +2169,9 @@ export const mcpClientTools = [
         case 'fill': return _findLegacyHandler('mcp_browserFill')(args);
         case 'sequence': return _findLegacyHandler('mcp_browserSequence')(args);
         case 'type': return _findLegacyHandler('mcp_browserType')(args);
+        case 'pressKey': return _findLegacyHandler('mcp_browserPressKey')(args);
+        case 'evaluate': return _findLegacyHandler('mcp_browserEvaluate')(args);
+        case 'selectOption': return _findLegacyHandler('mcp_browserSelectOption')(args);
         case 'probeLogin': return _findLegacyHandler('mcp_browserProbeLogin')(args);
         case 'captureProof': return _findLegacyHandler('mcp_browserCaptureProof')(args);
         case 'disconnect': return _findLegacyHandler('mcp_browserDisconnect')(args);

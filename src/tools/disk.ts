@@ -200,7 +200,7 @@ export const diskTools: ToolDefinition[] = [
         limit: { type: 'string', description: 'Quota limit (bytes or "50GB")' },
         name: { type: 'string', description: 'Snapshot/policy name' },
         description: { type: 'string', description: 'Policy description' },
-        rules: { type: 'array', description: 'Policy rules' },
+        rules: { type: 'array', items: { type: 'object' }, description: 'Policy rules' },
         actionFilter: { type: 'string', description: 'Filter history by action' },
       },
       required: ['action'],

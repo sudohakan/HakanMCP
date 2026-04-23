@@ -84,7 +84,7 @@ export const postmanTools = [
             name: { type: 'string' },
             method: { type: 'string' },
             url: { type: 'string' },
-            headers: { type: 'array' },
+            headers: { type: 'array', items: { type: 'object' } },
             body: { type: 'object' },
           },
         },

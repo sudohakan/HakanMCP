@@ -15,6 +15,10 @@ const TOOL_MODULES = [
   { path: './tools/disk.js', export: 'diskTools' },
   { path: './tools/sysint.js', export: 'sysintTools' },
   { path: './tools/cfbypass.js', export: 'cfbypassTools' },
+  { path: './tools/exaSearch.js', export: 'exaTools' },
+  { path: './tools/academicSearch.js', export: 'academicTools' },
+  { path: './tools/elevenlabs.js', export: 'elevenlabsTools' },
+  { path: './tools/shodanRecon.js', export: 'shodanTools' },
 ] as const;
 
 async function main() {

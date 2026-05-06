@@ -88,7 +88,6 @@ describe('AI Tools', () => {
       serverName: 'test-server',
       gitbookUrl: '',
       cacheTtl: 3600,
-      postmanDir: '',
       logLevel: 'info',
       ollamaTimeout: 1000, // Short timeout for tests
       retryCount: 0, // Disable retries for faster tests and immediate fallback

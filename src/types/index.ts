@@ -108,48 +108,6 @@ export interface DirectoryListing {
   files: FileInfo[];
 }
 
-export interface PostmanCollection {
-  info: {
-    name: string;
-    schema: string;
-  };
-  item: PostmanItem[];
-}
-
-export interface PostmanItem {
-  name: string;
-  request?: PostmanRequest;
-  response?: PostmanResponse[];
-  item?: PostmanItem[];
-}
-
-export interface PostmanRequest {
-  method: string;
-  header: Array<{ key: string; value: string }>;
-  body?: {
-    mode?: string;
-    raw?: string;
-    urlencoded?: Array<{ key: string; value: string }>;
-    graphql?: unknown;
-  };
-  url: string | PostmanUrl;
-}
-
-export interface PostmanUrl {
-  raw: string;
-  protocol?: string;
-  host?: string[];
-  path?: string[];
-  query?: Array<{ key: string; value?: string }>;
-  variable?: Array<{ key: string; value?: string }>;
-}
-
-export interface PostmanResponse {
-  name: string;
-  code: number;
-  body: string;
-}
-
 export interface OllamaMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;

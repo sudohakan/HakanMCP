@@ -1315,7 +1315,6 @@ function runConfigYamlHelp(): void {
     { title: 'Root', paths: [
       ['serverName', 'string', 'MCP server name'],
       ['gitbookUrl', 'url', 'GitBook base URL'],
-      ['postmanDir', 'string', 'Postman collection dir'],
       ['cacheTtl', '0-86400', 'Cache TTL (seconds)'],
       ['logLevel', 'debug|info|warn|error|none', 'Log verbosity'],
       ['ollamaUrl', 'url', 'Ollama API endpoint'],

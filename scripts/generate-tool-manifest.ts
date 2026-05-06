@@ -30,9 +30,10 @@ interface ToolManifest {
 }
 
 const MODULE_NAMES = [
-  'gitbook', 'postman', 'db', 'mongodb', 'http', 'env',
+  'gitbook', 'db', 'mongodb', 'http', 'env',
   'aiTools', 'backup', 'mcpClient', 'encryption', 'aiProviders',
   'cache', 'disk', 'sysint',
+  'ollamaChat', 'transcribeLocal', 'hermesDelegate',
 ];
 
 async function generateManifest(): Promise<void> {

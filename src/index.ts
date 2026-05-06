@@ -3,7 +3,6 @@ process.setMaxListeners(20);
 // Tool modules — loaded lazily via dynamic import after MCP handshake
 const TOOL_MODULES = [
   { path: './tools/gitbook.js', export: 'gitbookTools' },
-  { path: './tools/postman.js', export: 'postmanTools' },
   { path: './tools/http.js', export: 'httpTools' },
   { path: './tools/env.js', export: 'envTools' },
   { path: './tools/aiTools.js', export: 'aiTools' },
@@ -15,10 +14,15 @@ const TOOL_MODULES = [
   { path: './tools/disk.js', export: 'diskTools' },
   { path: './tools/sysint.js', export: 'sysintTools' },
   { path: './tools/cfbypass.js', export: 'cfbypassTools' },
+  { path: './tools/chromeDevtools.js', export: 'chromeDevtoolsTools' },
   { path: './tools/exaSearch.js', export: 'exaTools' },
   { path: './tools/academicSearch.js', export: 'academicTools' },
   { path: './tools/elevenlabs.js', export: 'elevenlabsTools' },
   { path: './tools/shodanRecon.js', export: 'shodanTools' },
+  { path: './tools/ollamaChat.js', export: 'ollamaChatTools' },
+  { path: './tools/transcribeLocal.js', export: 'transcribeLocalTools' },
+  { path: './tools/hermesDelegate.js', export: 'hermesDelegateTools' },
+  { path: './tools/googleDocs.js', export: 'googleDocsTools' },
 ] as const;
 
 async function main() {

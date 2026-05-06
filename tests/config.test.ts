@@ -91,7 +91,6 @@ describe('config module', () => {
     const { config } = module;
 
     expect(config.serverName).toBe('hakan-mcp');
-    expect(config.postmanDir).toBe('postman');
     expect(mocks.logger.info).toHaveBeenCalledWith(expect.stringContaining('No config.yaml'));
   });
 
@@ -100,7 +99,6 @@ describe('config module', () => {
       serverName: 'custom-server',
       logLevel: 'debug',
       gitbookUrl: 'https://docs.example.com',
-      postmanDir: 'custom-postman',
       ollamaUrl: 'https://ollama.example.com',
       availableModels: ['llama3'],
       backup: {
@@ -126,7 +124,6 @@ describe('config module', () => {
     const base = {
       serverName: 'initial',
       gitbookUrl: 'https://docs.example.com',
-      postmanDir: 'postman',
       cacheTtl: 200,
       logLevel: 'info',
       ollamaUrl: 'https://ollama.example.com',
@@ -166,7 +163,6 @@ describe('config module', () => {
     const validConfig = {
       serverName: 'srv',
       gitbookUrl: 'https://docs.example.com',
-      postmanDir: 'postman',
       cacheTtl: 60,
       logLevel: 'info',
       ollamaUrl: 'https://ollama.example.com',
@@ -222,7 +218,6 @@ describe('config module', () => {
         ...{
           serverName: 'srv',
           gitbookUrl: 'https://docs.example.com',
-          postmanDir: 'postman',
           cacheTtl: 10,
           logLevel: 'info',
           ollamaUrl: 'https://ollama.example.com',
@@ -235,7 +230,6 @@ describe('config module', () => {
     const unsafe = {
       serverName: 'bad',
       gitbookUrl: 'invalid-url',
-      postmanDir: 'postman',
       cacheTtl: 10,
       logLevel: 'info',
       ollamaUrl: 'https://ollama.example.com',
@@ -253,7 +247,6 @@ describe('config module', () => {
     const fileConfig = {
       serverName: 'aiproviders-enabled',
       gitbookUrl: 'https://docs.example.com',
-      postmanDir: 'postman',
       cacheTtl: 300,
       logLevel: 'info',
       ollamaUrl: 'https://ollama.example.com',

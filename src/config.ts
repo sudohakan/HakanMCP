@@ -47,7 +47,6 @@ const configSchema = z.object({
   serverName: z.string().min(1, 'serverName cannot be empty'),
   gitbookUrl: z.string().url('gitbookUrl must be a valid URL'),
   gitbookToken: z.string().optional(),
-  postmanDir: z.string().min(1, 'postmanDir cannot be empty'),
   cacheTtl: z
     .number()
     .int()
@@ -151,6 +150,13 @@ const configSchema = z.object({
   reactive: z.object({
     enabled: z.boolean(),
   }).optional(),
+  googleDocs: z
+    .object({
+      clientId: z.string().optional(),
+      clientSecret: z.string().optional(),
+      refreshToken: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -166,7 +172,6 @@ const DEFAULT_CONFIG: Config = {
   serverName: 'hakan-mcp',
   gitbookUrl: process.env.GITBOOK_URL || 'https://example.com/api-docs',
   gitbookToken: process.env.GITBOOK_TOKEN || undefined,
-  postmanDir: 'postman',
   cacheTtl: 300,
   logLevel: 'info',
   ollamaUrl: 'http://localhost:11434',
@@ -343,6 +348,18 @@ function applyRuntimeEnvOverrides(
   const gitbookTokenEnv = envValues.GITBOOK_TOKEN?.trim();
   if (gitbookTokenEnv) {
     cfg.gitbookToken = gitbookTokenEnv;
+  }
+
+  const gdClientId = envValues.GOOGLE_DOCS_CLIENT_ID?.trim();
+  const gdClientSecret = envValues.GOOGLE_DOCS_CLIENT_SECRET?.trim();
+  const gdRefreshToken = envValues.GOOGLE_DOCS_REFRESH_TOKEN?.trim();
+  if (gdClientId || gdClientSecret || gdRefreshToken) {
+    cfg.googleDocs = {
+      ...(cfg.googleDocs || {}),
+      ...(gdClientId ? { clientId: gdClientId } : {}),
+      ...(gdClientSecret ? { clientSecret: gdClientSecret } : {}),
+      ...(gdRefreshToken ? { refreshToken: gdRefreshToken } : {}),
+    };
   }
 
   return cfg;

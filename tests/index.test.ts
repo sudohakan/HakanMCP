@@ -9,7 +9,6 @@ describe('MCP Server Entry Point', () => {
     it('should import and aggregate all tool modules', async () => {
       // Dynamically import to avoid executing the server
       const { gitbookTools } = await import('../src/tools/gitbook.js');
-      const { postmanTools } = await import('../src/tools/postman.js');
       const { systemTools } = await import('../src/tools/system.js');
       const { dbTools } = await import('../src/tools/db.js');
       const { aiTools } = await import('../src/tools/aiTools.js');
@@ -17,9 +16,6 @@ describe('MCP Server Entry Point', () => {
       expect(gitbookTools).toBeDefined();
       expect(Array.isArray(gitbookTools)).toBe(true);
       expect(gitbookTools.length).toBeGreaterThan(0);
-
-      expect(postmanTools).toBeDefined();
-      expect(Array.isArray(postmanTools)).toBe(true);
 
       expect(systemTools).toBeDefined();
       expect(Array.isArray(systemTools)).toBe(true);
@@ -33,10 +29,9 @@ describe('MCP Server Entry Point', () => {
 
     it('should have unique tool names across all modules', async () => {
       const { gitbookTools } = await import('../src/tools/gitbook.js');
-      const { postmanTools } = await import('../src/tools/postman.js');
       const { systemTools } = await import('../src/tools/system.js');
 
-      const allTools = [...gitbookTools, ...postmanTools, ...systemTools];
+      const allTools = [...gitbookTools, ...systemTools];
       const toolNames = allTools.map((t) => t.name);
       const uniqueNames = new Set(toolNames);
 
@@ -46,7 +41,6 @@ describe('MCP Server Entry Point', () => {
     it('should load all expected tool categories', async () => {
       const modules = [
         '../src/tools/gitbook.js',
-        '../src/tools/postman.js',
         '../src/tools/system.js',
         '../src/tools/db.js',
         '../src/tools/mongodb.js',
@@ -164,7 +158,6 @@ describe('MCP Server Entry Point', () => {
     it('should have at least 180 tools total', async () => {
       const modules = {
         gitbook: await import('../src/tools/gitbook.js'),
-        postman: await import('../src/tools/postman.js'),
         system: await import('../src/tools/system.js'),
         db: await import('../src/tools/db.js'),
         mongodb: await import('../src/tools/mongodb.js'),

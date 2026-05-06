@@ -12,7 +12,6 @@ const setupConfigModuleWithFailingWrite = async () => {
   const originalContent = yaml.dump({
     serverName: 'original',
     gitbookUrl: 'https://docs.example.com',
-    postmanDir: 'postman',
     cacheTtl: 300,
     logLevel: 'info',
     ollamaUrl: 'https://ollama.example.com',

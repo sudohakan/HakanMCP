@@ -28,7 +28,6 @@ export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   env: { modulePath: './tools/env.js', exportName: 'envTools', nativeDeps: [], core: true, featureName: '' },
   cache: { modulePath: './tools/cache.js', exportName: 'cacheTools', nativeDeps: [], core: true, featureName: '' },
   gb: { modulePath: './tools/gitbook.js', exportName: 'gitbookTools', nativeDeps: [], core: true, featureName: '' },
-  pm: { modulePath: './tools/postman.js', exportName: 'postmanTools', nativeDeps: [], core: true, featureName: '' },
   ai: { modulePath: './tools/aiTools.js', exportName: 'aiTools', nativeDeps: [], core: true, featureName: '' },
   backup: { modulePath: './tools/backup.js', exportName: 'backupTools', nativeDeps: [], core: true, featureName: '' },
   mcp: { modulePath: './tools/mcpClient.js', exportName: 'mcpClientTools', nativeDeps: [], core: true, featureName: '' },

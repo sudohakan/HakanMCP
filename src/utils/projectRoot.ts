@@ -7,6 +7,7 @@
 
 import path from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 function toWslPath(p: string): string {
   const winMatch = p.match(/^([A-Za-z]):[/\\](.*)/);
@@ -30,14 +31,12 @@ function findProjectRoot(startDir: string): string {
 }
 
 // Resolve the directory of this module.
-// __filename is available in CJS and injected by ts-jest (useESM).
-// In native ESM builds, __filename is declared at the top of the compiled output.
-// Fall back to process.cwd() so the project root search still works.
+// The project is native ESM ("type": "module", NodeNext); tests run via
+// --experimental-vm-modules. import.meta.url is therefore always available.
+// Fall back to process.cwd() only if URL resolution unexpectedly fails.
 const _moduleDir: string = (() => {
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore — __filename available in CJS/ts-jest; may be undefined in some ESM contexts
-    if (typeof __filename === 'string') return path.dirname(__filename as string);
+    return path.dirname(fileURLToPath(import.meta.url));
   } catch {
     // ignore — proceed to fallback
   }

@@ -5,7 +5,7 @@
 ## Project Overview
 
 HakanMCP serves two roles:
-1. **MCP Server** — STDIO-based Model Context Protocol server with ~107 tools for Claude Code + on-demand MCP catalog (9 auth-free servers)
+1. **MCP Server** — STDIO-based Model Context Protocol server with 63 tools for Claude Code + on-demand MCP catalog (9 auth-free servers)
 2. **Mission Agent CLI** — Autonomous task execution via markdown mission files with 4 operating modes (Watch, Scheduled, Assistant, Reactive)
 
 ## Architecture
@@ -65,45 +65,67 @@ scripts/          Build scripts (tool manifest generator)
 | `hakanmcp watch` | File watcher mode |
 | `hakanmcp scheduled` | Cron/interval task mode |
 | `hakanmcp reactive` | Combined watch + scheduled mode |
-| `hakanmcp doctor` | Health check (version, build, config) |
+| `hakanmcp doctor` | Health check (version, build, config, tools) |
 | `hakanmcp doctor fix` | AI-driven auto-repair |
+| `hakanmcp health` | Alias for doctor |
+| `hakanmcp status` | Status dashboard (version, uptime, backup) |
+| `hakanmcp tools` | List registered MCP tools (reads `dist/tool-manifest.json`) |
+| `hakanmcp backup [run]` | Backup info / force a backup |
+| `hakanmcp config [yaml [help]]` | View/edit config.yaml |
+| `hakanmcp journal` | Consciousness journal entries |
+| `hakanmcp providers` | AI provider status |
+| `hakanmcp ralph` | Ralph autonomous loop control |
+| `hakanmcp logs` | Tail server logs |
+
+Interactive menu: run `hakanmcp` with no args.
+
+### CLI Launcher (Windows)
+
+The CLI needs **Node >= 18** (`import ... with { type: 'json' }`). The user's
+nvm4w default is `16.20.2` (Finekra React builds), so the npm-generated
+`hakanmcp.cmd`/`.ps1` shims in `%APPDATA%\npm` are repointed to a fixed
+Node 24 install — they do not follow the nvm-active version:
+
+```
+"C:\Users\Hakan\AppData\Local\nvm\v24.11.1\node.exe" "C:\dev\HakanMCP\dist\bin\cli.js" %*
+```
+
+After `npm install -g .` (which regenerates npm's ambient-Node shims),
+re-apply the Node-24 pin to `hakanmcp.cmd` and `hakanmcp.ps1`.
 
 ## MCP Tools (src/tools/)
 
-| Module | Tool Name | Purpose |
-|--------|-----------|---------|
-| gitbook.ts | `gitbook` | GitBook API (7 actions: getPage, listLinks, find, headings, outline, getMetadata, searchContent) |
-| postman.ts | `postman` | Postman collection/request management (10 actions) |
-| system.ts | `sys` | OS info, process management, run commands (7 actions) |
-| systemOptimization.ts | `sysopt` | System cleanup, optimization, admin ops (7 actions) |
-| http.ts | `http` | HTTP requests, file downloads (request, downloadFile) |
-| env.ts | `env` | Environment variable management (6 actions) |
-| parser.ts | `parse` | CSV/JSON/XML/YAML parsing (parse, convertFile) |
-| template.ts | `compile_template` | Handlebars template compilation |
-| aiTools.ts | `ai` | AI chat, generate, listModels, history (5 actions) |
-| aiProviders.ts | `ai_provider_chat` | Multi-provider AI routing |
-| aiDefence.ts | `aidefence` | Input scanning, PII detection |
-| backup.ts | `backup` | Project backup/restore (7 actions incl. restore) |
+23 modules → 63 registered tools. Most are action-multiplexed (one tool, `action` parameter).
+
+| Module | Tool Name(s) | Purpose |
+|--------|--------------|---------|
+| gitbook.ts | `gitbook` | GitBook API operations (listSpaces, getPage, updatePage, search...) |
+| http.ts | `http` | HTTP request, downloadFile |
+| env.ts | `env` | Environment variable management |
+| aiTools.ts | `ai` | AI chat, generate, listModels, history |
+| aiProviders.ts | `ai_provider_chat` | Multi-provider AI routing (codex/claude/gemini) |
+| backup.ts | `backup` | Project backup/restore |
 | cache.ts | `cache` | In-memory cache (get, set, delete, clear, stats) |
-| db.ts | `db` | SQL database operations (7 actions) |
-| dbMonitoring.ts | `db_monitor` | Database pool stats, monitoring |
-| mongodb.ts | `mongo` | MongoDB CRUD, aggregation, indexes (11 actions) |
-| encryption.ts | `crypto` | File/value encryption (4 actions) |
-| monitoring.ts | `monitor` | Health checks, auto-heal, peer sync (7 actions) |
-| selfImprovement.ts | `self` | Self-modification proposals (propose, changelog, applyChange) |
-| scheduler.ts | `scheduler` | Cron task scheduling (10 actions) |
-| api.ts | `api` | Rate limiting, webhook handling (4 actions) |
-| performance.ts | `perf_benchmark` | Benchmarking |
-| dx.ts | `dx_toolScaffold` | Developer experience (tool scaffolding) |
-| flow.ts | `flow`, `connection` | Flow execution & versioning; connection management |
-| swarm.ts | `swarm` | Multi-agent coordination (5 actions) |
-| consensus.ts | `consensus` | Distributed consensus protocols (3 actions) |
-| ruvector.ts | `ruvector` | Vector similarity search (5 actions) |
-| moeRouter.ts | `moe_route` | Mixture-of-experts routing |
-| guidance.ts | `guidance` | Code guidance rules, auditing (compile, enforce, audit) |
-| mcpClient.ts | `mcp`, `browser` | MCP bridge (7 actions) + browser automation (5 actions) |
+| encryption.ts | `crypto` | File/value encryption |
+| disk.ts | `disk` | Disk usage scan, duplicate find, temp/cache/log cleanup |
+| sysint.ts | `sysint` | Cross-platform native system intelligence (ports, drivers, USB, Wi-Fi, processes) |
+| cfbypass.ts | `cfbypass` | Cloudflare challenge bypass (FlareSolverr) |
+| chromeDevtools.ts | `chrome_*` (29) | Chrome DevTools proxy — console, network, perf, DOM, JS eval, screenshot |
+| exaSearch.ts | `exaSearch`, `exaFindSimilar`, `exaGetContents` | Exa neural web search |
+| academicSearch.ts | `arxivSearch`, `semanticScholarSearch`, `paperDetails` | Academic paper search |
+| elevenlabs.ts | `ttsGenerate`, `listVoices`, `transcribe`, `voiceClone` | ElevenLabs TTS / STT / voice clone |
+| shodanRecon.ts | `shodanHostInfo`, `shodanSearch`, `shodanDnsResolve` | Shodan recon |
+| ollamaChat.ts | `ollamaChat`, `ollamaListModels` | Local Ollama delegation |
+| transcribeLocal.ts | `transcribeLocal` | Local faster-whisper STT (offline) |
+| hermesDelegate.ts | `hermesDelegate`, `hermesStatus` | Hermes Agent task delegation |
+| googleDocs.ts | `gdocs` | Google Docs operations |
+| mcpClient.ts | `mcp`, `browser` | On-demand MCP bridge + Playwright browser automation (action-multiplexed) |
+| db.ts | `db` | SQL database operations (feature tool, lazy-loaded) |
+| mongodb.ts | `mongo` | MongoDB CRUD, aggregation, indexes (feature tool, lazy-loaded) |
 
 Feature tools (`db`, `mongo`) require optional native dependencies — they register as placeholders when deps are missing.
+
+`mcpClient.ts` exposes only `mcp` + `browser`; the individual `mcp_*` / `mcp_browser*` handlers in the internal `_mcpLegacyTools` array are implementation targets the two multiplexed tools delegate to — they are not registered as MCP tools.
 
 ## Tech Stack
 

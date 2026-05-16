@@ -29,12 +29,14 @@ interface ToolManifest {
   modules: ManifestModule[];
 }
 
-const MODULE_NAMES = [
-  'gitbook', 'db', 'mongodb', 'http', 'env',
-  'aiTools', 'backup', 'mcpClient', 'encryption', 'aiProviders',
-  'cache', 'disk', 'sysint',
-  'ollamaChat', 'transcribeLocal', 'hermesDelegate',
-];
+// Discover every tool module under dist/src/tools/ so the manifest never
+// drifts when a module is added or removed. Skip helpers (underscore-prefixed).
+const TOOLS_DIR = path.join(DIST_ROOT, 'src', 'tools');
+const MODULE_NAMES = fs
+  .readdirSync(TOOLS_DIR)
+  .filter((f) => f.endsWith('.js') && !f.startsWith('_'))
+  .map((f) => f.replace(/\.js$/, ''))
+  .sort();
 
 async function generateManifest(): Promise<void> {
   const modules: ManifestModule[] = [];

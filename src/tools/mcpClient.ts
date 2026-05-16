@@ -62,14 +62,34 @@ export class MCPConnectionManager {
 
     const connectionId = this.idGenerator();
 
-    logger.info('Creating MCP connection', { connectionId, command, args });
+    // Resolve absolute path for `npx`/`uvx` when the parent PATH puts a wrapper
+    // (e.g. Bun's npx) ahead of the actual launcher. Bun's npx fails to spawn
+    // stdio MCP servers with exit code 7. Fall back to /usr/local/bin or
+    // /usr/bin when the wrapper is detected.
+    let resolvedCommand = command;
+    if (process.platform !== 'win32' && (command === 'npx' || command === 'uvx')) {
+      const candidates = [`/usr/local/bin/${command}`, `/usr/bin/${command}`];
+      for (const candidate of candidates) {
+        try {
+          if (require('fs').existsSync(candidate)) {
+            resolvedCommand = candidate;
+            break;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    logger.info('Creating MCP connection', { connectionId, command: resolvedCommand, args });
 
     return new Promise((resolve, reject) => {
       const isWindows = process.platform === 'win32';
       const child = processRegistry.track(
-        this.spawnFn(command, args, {
+        this.spawnFn(resolvedCommand, args, {
           stdio: ['pipe', 'pipe', 'pipe'],
           shell: isWindows,
+          cwd: '/tmp',
           ...(env && { env: { ...process.env, ...env } }),
         }),
         `mcp-${command}`,
@@ -566,12 +586,21 @@ async function ensurePlaywrightConnection(
     return { connectionId: options.connectionId, reused: true };
   }
 
+  // Default to the existing automation Chrome (CDP) when one is configured.
+  // Attaching to a real, persistent profile keeps `navigator.webdriver=false`
+  // and bot-score-killing fingerprint signals — the same setup makes hCaptcha
+  // / Turnstile fall through silently in most cases. Caller can still pass
+  // cdpEndpoint=null or isolated=true to opt out.
+  const defaultCdp = process.env.HAKANMCP_DEFAULT_CDP_ENDPOINT?.trim() ||
+    process.env.CHROME_DEVTOOLS_BROWSER_URL?.trim();
+  const effectiveCdp = options.cdpEndpoint ?? (options.isolated ? undefined : defaultCdp || undefined);
+
   const browserOptions: Omit<BrowserConnectOptions, 'connectionId'> = {
     browser: options.browser,
     headless: options.headless,
     isolated: options.isolated,
     extension: options.extension,
-    cdpEndpoint: options.cdpEndpoint,
+    cdpEndpoint: effectiveCdp,
     allowedHosts: options.allowedHosts,
     outputDir: options.outputDir,
     snapshotMode: options.snapshotMode,

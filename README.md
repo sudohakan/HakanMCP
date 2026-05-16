@@ -6,7 +6,7 @@
 
 **Unified AI Agent Orchestration & MCP Tool Platform**
 
-15 MCP tools (100 actions) · 13 on-demand servers · 4 AI providers · 4 operating modes
+63 MCP tools · 14 on-demand servers · 5 AI providers · 4 operating modes
 
 [![Version](https://img.shields.io/badge/version-2.2.1-blue?style=flat-square)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
@@ -23,18 +23,18 @@
 
 ## Why HakanMCP?
 
-> Most MCP servers give you a handful of tools. HakanMCP gives you **15 tools with 100 actions** — databases, AI providers, security, monitoring, workflows, and browser wrappers — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
+> Most MCP servers give you a handful of tools. HakanMCP gives you **63 tools** — databases, AI providers, security, monitoring, workflows, and browser wrappers — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
 
 | What you get | Details |
 |:---|:---|
-| **15 MCP tools (100 actions)** | Databases, git, web, file ops, AI, security, monitoring, encryption, workflows, browser wrappers |
-| **Multi-provider AI** | Automatic fallback: Codex → Claude → Gemini → Ollama |
+| **63 MCP tools** | Databases, git, web, file ops, AI, security, monitoring, encryption, workflows, browser wrappers |
+| **Multi-provider AI** | Automatic fallback: Codex → Claude → Gemini → Cursor (CLI), then Ollama |
 | **Mission Agent CLI** | Autonomous task execution from markdown mission files |
 | **4 operating modes** | Watch, Scheduled, Assistant, Reactive |
 | **Agentic mode** | Multi-turn tool-use loops with automatic provider selection |
 | **Lazy dependencies** | Only installs what you actually use — no bloat |
 | **Rate limit handling** | Automatic cooldown management across all providers |
-| **13 on-demand MCP servers** | Connect additional servers from the built-in catalog at runtime |
+| **14 on-demand MCP servers** | Connect additional servers from the built-in catalog at runtime |
 | **Low-token browser bridge** | Use Playwright through HakanMCP wrappers instead of returning large raw snapshots |
 
 ---
@@ -183,7 +183,6 @@ import { startServer } from 'hakanmcp';
 - Pipeline engine (define, validate, run, replay)
 - Multi-agent swarm orchestration
 - Self-improvement engine
-- Postman collection management
 - HTTP requests & file downloads
 - Rate limiting & webhook handling
 - Remote MCP server proxy (MCP Bridge)
@@ -230,20 +229,43 @@ Example:
 
 This pattern is especially useful for Claude Code and other agent clients where raw browser snapshots can consume excessive context.
 
+### On-Demand MCP Servers
+
+Beyond its built-in tools, HakanMCP can connect to **14 additional MCP servers** from a built-in catalog at runtime via the `mcp` tool (`connectFromCatalog`). Servers are launched on demand and disconnected when no longer needed — no static config required.
+
+| Key | Server | Purpose |
+|:---|:---|:---|
+| `fetch` | Fetch | Enhanced web content fetching and markdown conversion |
+| `filesystem` | Filesystem | Sandboxed file operations with directory tree, batch read, and search |
+| `git` | Git | Deep git repository analysis — diff, blame, log, branch comparison |
+| `graphify` | Graphify | Codebase knowledge graph — query structure, find god nodes, trace paths |
+| `sequential-thinking` | Sequential Thinking | Structured reasoning with hypothesis revision and trade-off analysis |
+| `sqlite` | SQLite | Local SQLite database querying and analysis |
+| `time` | Time | Timezone conversion and current time queries |
+| `mermaid` | Mermaid | Diagram generation — flowcharts, sequence, class, ER, state, Gantt |
+| `duckdb` | DuckDB | Analytical SQL on local CSV, Parquet, and JSON files |
+| `playwright` | Playwright | Browser automation and lightweight browser evidence capture |
+| `infoset` | Infoset | Customer support ticket, contact, and company management |
+| `kali` | Kali MCP | Offensive security tools — recon, scanning, exploitation |
+| `chroma` | Chroma | Vector database for document embedding and similarity search |
+| `markitdown` | MarkItDown | Convert any file to Markdown (PDF, DOCX, PPTX, XLSX, HTML, images, audio, YouTube) |
+
+Servers with `envKeys` load credentials from `~/.credentials.env` automatically.
+
 ---
 
 ## 🏗 Architecture
 
 ```mermaid
 graph TB
-    subgraph MCP["MCP Server (15 tools, 100 actions)"]
+    subgraph MCP["MCP Server (63 tools, 23 modules)"]
         TR[Tool Registry<br/>lazy-loaded, health-checked]
         AL[Agentic Loop<br/>multi-turn tool-use]
         MB[MCP Bridge<br/>proxy remote servers]
     end
 
     subgraph AI["AI Provider System"]
-        CLI[CLI Chain<br/>codex → claude → gemini]
+        CLI[CLI Chain<br/>codex → claude → gemini → cursor]
         API[API Chain<br/>codex → claude → gemini]
         OL[Ollama<br/>local fallback]
         RL[Rate Limit<br/>detection & cooldown]
@@ -269,7 +291,7 @@ HakanMCP/
 │   ├── index.ts            # MCP server entry point
 │   ├── config.ts           # Zod-validated config loader
 │   ├── toolRegistry.ts     # Lazy-loaded tool discovery
-│   ├── tools/              # 14 tool modules (15 tools, 100 actions)
+│   ├── tools/              # 23 tool modules (63 tools)
 │   ├── services/           # Core services (agentic, backup, cache, consensus...)
 │   ├── cli/                # CLI command handlers
 │   ├── mission/            # Mission system (loader, runner, state)
@@ -280,7 +302,7 @@ HakanMCP/
 ├── bin/hakanmcp.ts         # CLI entry point
 ├── agents/                 # Agent YAML definitions
 ├── tests/                  # Jest test suite
-├── .github/workflows/      # CI/CD (7 workflows)
+├── .github/workflows/      # CI/CD (2 workflows)
 └── docs/                   # Documentation
 ```
 
@@ -302,7 +324,7 @@ HakanMCP/
 <summary><strong>🤖 AI Provider Fallback Chain</strong></summary>
 
 ```
-Request → CLI Chain (codex → claude → gemini)
+Request → CLI Chain (codex → claude → gemini → cursor)
               ↓ all CLIs failed
           API Chain (codex → claude → gemini)
               ↓ all APIs failed
@@ -313,7 +335,7 @@ Configure priority in `config.yaml`:
 
 ```yaml
 aiProviders:
-  cliPriority: [codex, claude, gemini]
+  cliPriority: [codex, claude, gemini, cursor]
   apiPriority: [codex, claude, gemini]
   fallbackOrder: [cli, api, ollama]
   agenticEnabled: true
@@ -451,14 +473,14 @@ backup:
 
 | Metric | Value |
 |:---|:---|
-| Total MCP tools | 15 (100 actions) |
-| On-demand MCP servers | 13 |
-| Tool modules | 14 |
-| AI providers supported | 4 (Codex, Claude, Gemini, Ollama) |
+| Total MCP tools | 63 |
+| Tool modules | 23 |
+| On-demand MCP servers | 14 |
+| AI providers supported | 5 (Codex, Claude, Gemini, Cursor, Ollama) |
 | Database engines | 5 (PostgreSQL, MySQL, MSSQL, SQLite, MongoDB) |
 | Operating modes | 4 (Watch, Scheduled, Assistant, Reactive) |
-| CI/CD workflows | 7 |
-| Test suite | 247 tests |
+| CI/CD workflows | 2 |
+| Test suite | 353 tests |
 | License | MIT |
 
 ---

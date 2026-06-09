@@ -160,6 +160,29 @@
         "Image OCR or audio transcription to text needed",
         "YouTube video content extraction needed"
       ]
+    },
+    "docker": {
+      "name": "Docker MCP Gateway",
+      "description": "Docker MCP gateway - container and image operations via docker mcp toolset",
+      "command": "/mnt/c/Program Files/Docker/Docker/resources/bin/docker.exe",
+      "args": ["mcp", "gateway", "run"],
+      "conditions": [
+        "Docker container or image management through MCP needed",
+        "Docker MCP toolset operations required",
+        "Bash docker commands insufficient for the task"
+      ]
+    },
+    "gtasks": {
+      "name": "Google Tasks",
+      "description": "Google Tasks list/create/update (OAuth — requires prior auth in config dir)",
+      "command": "/home/hakan/.bun/bin/bun",
+      "args": ["/mnt/c/dev/gtasks-mcp/dist/index.js"],
+      "env": { "GTASKS_MCP_CONFIG_DIR": "/home/hakan/.config/gtasks-mcp" },
+      "conditions": [
+        "Google Tasks list, create, or update operations",
+        "Task tracking via Google Tasks needed",
+        "NOTE: OAuth — only works if config dir already authenticated"
+      ]
     }
   }
 }

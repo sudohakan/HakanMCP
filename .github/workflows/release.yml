@@ -78,6 +78,11 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Publish
-        run: npm publish --provenance --access public
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN tanımlı değil — npm publish atlanıyor (GitHub Release yeterli)."
+            exit 0
+          fi
+          npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

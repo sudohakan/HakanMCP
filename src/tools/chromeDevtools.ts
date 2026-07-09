@@ -22,7 +22,23 @@ import upstreamCatalog from './chromeDevtools.tools.json' with { type: 'json' };
 
 const PREFIX = 'chrome';
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
-const REQUEST_TIMEOUT_MS = 90 * 1000;
+// Per-tool request timeout. chrome-devtools-mcp processes requests serially over
+// stdio, so a single wedged request (CDP call on a busy/recompiling page) blocks
+// every subsequent call — a cascade of client timeouts. Interactive tools get a
+// short ceiling so a wedge is detected fast and the child is reset (see callTool);
+// genuinely slow tools (lighthouse, perf traces, navigation/waits) keep a long one.
+const REQUEST_TIMEOUT_MS = 25 * 1000; // fast/interactive default
+const SLOW_REQUEST_TIMEOUT_MS = 120 * 1000; // page-load + audit + trace tools
+const SLOW_TOOLS = new Set<string>([
+  'navigate_page',
+  'new_page',
+  'wait_for',
+  'performance_start_trace',
+  'performance_stop_trace',
+  'performance_analyze_insight',
+  'lighthouse_audit',
+  'take_memory_snapshot',
+]);
 const SPAWN_TIMEOUT_MS = 60 * 1000;
 
 interface PendingRequest {
@@ -62,11 +78,18 @@ class ChromeDevtoolsClient {
       params: { name: upstreamName, arguments: args ?? {} },
     };
 
+    const timeoutMs = SLOW_TOOLS.has(upstreamName) ? SLOW_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+
     return new Promise<ToolResponse>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`chrome_${upstreamName} timeout (${REQUEST_TIMEOUT_MS}ms)`));
-      }, REQUEST_TIMEOUT_MS);
+        reject(new Error(`chrome_${upstreamName} timeout (${timeoutMs}ms)`));
+        // Serial-stdio child is now wedged on this request; leaving it alive makes
+        // every subsequent call queue behind the stuck one (cascade timeout). Reset
+        // so the next callTool respawns a fresh child. In attach mode the persistent
+        // Chrome is untouched (we only kill the proxy child, not the browser).
+        this.resetChild(new Error(`chrome_${upstreamName} timed out — resetting proxy child`));
+      }, timeoutMs);
       const timerRef = timer as NodeJS.Timeout & { unref?: () => void };
       timerRef.unref?.();
 
@@ -266,6 +289,24 @@ class ChromeDevtoolsClient {
       // already gone
     }
     this.cleanup(new Error('chrome-devtools-mcp disconnected (idle)'));
+    killOrphanChromeProfile();
+  }
+
+  // Force-reset the wedged proxy child after a request timeout. Kills the child
+  // (respawned lazily on the next callTool) and rejects any still-pending requests
+  // so a single stuck CDP call cannot cascade into serial-queue timeouts. Attach
+  // mode: only the chrome-devtools-mcp child dies, the persistent Chrome survives.
+  private resetChild(reason: Error): void {
+    const stuck = this.child;
+    if (stuck) {
+      try {
+        stuck.kill('SIGKILL');
+      } catch {
+        // already gone
+      }
+    }
+    logger.warn('chrome-devtools-mcp proxy child reset after timeout', { reason: reason.message });
+    this.cleanup(reason);
     killOrphanChromeProfile();
   }
 

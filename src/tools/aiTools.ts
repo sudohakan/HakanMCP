@@ -862,7 +862,7 @@ export function resolveAgenticProvider(): { callFn: AgenticCallFn; label: string
     if (provider === 'claude') {
       const key = process.env.CLAUDE_CODE_API_KEY || process.env.ANTHROPIC_API_KEY;
       if (key) {
-        const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514';
+        const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
         return { callFn: createClaudeCallFn(model, key), label: `claude:${model}` };
       }
     }
@@ -903,7 +903,7 @@ async function handleAgenticChat(
     defaultModel: string;
     create: (m: string, k: string) => AgenticCallFn;
   }> = [
-    { id: 'claude', label: 'Claude', envVars: ['CLAUDE_CODE_API_KEY', 'ANTHROPIC_API_KEY'], encrypted: currentConfig.aiProviders?.claudeKeyEncrypted, defaultModel: process.env.CLAUDE_CODE_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514', create: createClaudeCallFn },
+    { id: 'claude', label: 'Claude', envVars: ['CLAUDE_CODE_API_KEY', 'ANTHROPIC_API_KEY'], encrypted: currentConfig.aiProviders?.claudeKeyEncrypted, defaultModel: process.env.CLAUDE_CODE_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6', create: createClaudeCallFn },
     { id: 'codex', label: 'OpenAI', envVars: ['CODEX_API_KEY', 'OPENAI_API_KEY'], encrypted: currentConfig.aiProviders?.codexKeyEncrypted, defaultModel: process.env.CODEX_MODEL || 'gpt-4o-mini', create: createOpenAICallFn },
     { id: 'gemini', label: 'Gemini', envVars: ['GEMINI_API_KEY', 'GOOGLE_API_KEY'], encrypted: currentConfig.aiProviders?.geminiKeyEncrypted, defaultModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash', create: createGeminiCallFn },
   ];

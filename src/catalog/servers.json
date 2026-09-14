@@ -6,7 +6,9 @@
       "name": "Fetch",
       "description": "Enhanced web content fetching and markdown conversion",
       "command": "uvx",
-      "args": ["mcp-server-fetch"],
+      "args": [
+        "mcp-server-fetch"
+      ],
       "conditions": [
         "WebFetch returns an error or truncates content",
         "Page is too large and needs chunked retrieval",
@@ -17,8 +19,13 @@
       "name": "Filesystem",
       "description": "Sandboxed file operations with directory tree, batch read, and search",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
-      "dynamicArgs": ["allowedDirectories"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem"
+      ],
+      "dynamicArgs": [
+        "allowedDirectories"
+      ],
       "conditions": [
         "Recursive directory tree visualization needed",
         "Batch reading multiple files at once",
@@ -29,29 +36,23 @@
       "name": "Git",
       "description": "Deep git repository analysis - diff, blame, log, branch comparison",
       "command": "uvx",
-      "args": ["mcp-server-git"],
+      "args": [
+        "mcp-server-git"
+      ],
       "conditions": [
         "Cross-branch file comparison or multi-commit diff analysis",
         "Blame, log search, or commit history pattern analysis",
         "Bash git commands insufficient for complex operations"
       ]
     },
-    "graphify": {
-      "name": "Graphify",
-      "description": "Codebase knowledge graph - query structure, find god nodes, trace paths between concepts",
-      "command": "/home/hakan/.graphify-venv/bin/python",
-      "args": ["-m", "graphify.serve", "/mnt/c/dev/graphify/graphify-out/graph.json"],
-      "conditions": [
-        "Querying codebase structure, architecture, or relationships",
-        "Finding connections between code concepts",
-        "Understanding god nodes and community structure"
-      ]
-    },
     "sequential-thinking": {
       "name": "Sequential Thinking",
       "description": "Structured reasoning with hypothesis revision and trade-off analysis",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
       "conditions": [
         "Architectural decision with 3+ alternatives requiring trade-off analysis",
         "Debugging requires systematic hypothesis testing with revision",
@@ -62,8 +63,13 @@
       "name": "SQLite",
       "description": "Local SQLite database querying and analysis",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sqlite"],
-      "dynamicArgs": ["dbPath"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sqlite"
+      ],
+      "dynamicArgs": [
+        "dbPath"
+      ],
       "conditions": [
         "Project contains .sqlite or .db files to query",
         "Local database analysis or data extraction needed",
@@ -74,7 +80,9 @@
       "name": "Time",
       "description": "Timezone conversion and current time queries",
       "command": "uvx",
-      "args": ["mcp-server-time"],
+      "args": [
+        "mcp-server-time"
+      ],
       "conditions": [
         "User asks to convert time between timezones",
         "Cross-timezone scheduling calculation needed",
@@ -85,7 +93,10 @@
       "name": "Mermaid",
       "description": "Diagram generation - flowcharts, sequence, class, ER, state, Gantt",
       "command": "npx",
-      "args": ["-y", "mcp-mermaid"],
+      "args": [
+        "-y",
+        "mcp-mermaid"
+      ],
       "conditions": [
         "User asks for a visual diagram",
         "Architecture or data flow visualization needed",
@@ -96,8 +107,12 @@
       "name": "DuckDB",
       "description": "Analytical SQL on local CSV, Parquet, and JSON files",
       "command": "uvx",
-      "args": ["mcp-server-duckdb"],
-      "dynamicArgs": ["dbPath"],
+      "args": [
+        "mcp-server-duckdb"
+      ],
+      "dynamicArgs": [
+        "dbPath"
+      ],
       "conditions": [
         "SQL queries on local CSV, Parquet, or JSON files needed",
         "Analytical queries (aggregation, joins, window functions) on file-based data",
@@ -108,7 +123,10 @@
       "name": "Playwright",
       "description": "Browser automation and lightweight browser evidence capture",
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"],
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
       "conditions": [
         "A browser-only flow must be automated through MCP",
         "JavaScript-heavy pages require focused browser evidence",
@@ -119,8 +137,13 @@
       "name": "Infoset",
       "description": "Customer support ticket, contact, and company management",
       "command": "node",
-      "args": ["/mnt/c/dev/infoset-mcp/src/mcp-server.mjs"],
-      "envKeys": ["INFOSET_API_KEY", "INFOSET_BASE_URL"],
+      "args": [
+        "/mnt/c/dev/infoset-mcp/src/mcp-server.mjs"
+      ],
+      "envKeys": [
+        "INFOSET_API_KEY",
+        "INFOSET_BASE_URL"
+      ],
       "conditions": [
         "Infoset ticket, contact, or company lookup",
         "Customer support operations",
@@ -130,8 +153,11 @@
     "kali": {
       "name": "Kali MCP",
       "description": "Offensive security tools — recon, scanning, exploitation",
-      "command": "python3",
-      "args": ["/mnt/c/dev/kali-mcp/main.py", "--transport", "stdio"],
+      "command": "bash",
+      "args": [
+        "-lc",
+        "cd /mnt/c/dev/kali-mcp-server && exec python3 -m kali_mcp_server.server --transport stdio"
+      ],
       "conditions": [
         "Pentest, recon, or vulnerability scanning requested",
         "Network discovery or port scanning needed",
@@ -142,7 +168,12 @@
       "name": "Chroma",
       "description": "Vector database for document embedding and similarity search",
       "command": "chroma-mcp",
-      "args": ["--client-type", "persistent", "--data-dir", "/home/hakan/.chroma-data"],
+      "args": [
+        "--client-type",
+        "persistent",
+        "--data-dir",
+        "/home/hakan/.chroma-data"
+      ],
       "conditions": [
         "Vector database or embedding operations",
         "Document similarity search",
@@ -153,7 +184,9 @@
       "name": "MarkItDown",
       "description": "Convert any file to Markdown (PDF, DOCX, PPTX, XLSX, HTML, images, audio, ZIP, YouTube)",
       "command": "uvx",
-      "args": ["markitdown-mcp"],
+      "args": [
+        "markitdown-mcp"
+      ],
       "conditions": [
         "Read tool cannot handle binary files (PDF, DOCX, PPTX, XLSX)",
         "File content needs to be converted to Markdown for analysis",
@@ -165,7 +198,11 @@
       "name": "Docker MCP Gateway",
       "description": "Docker MCP gateway - container and image operations via docker mcp toolset",
       "command": "/mnt/c/Program Files/Docker/Docker/resources/bin/docker.exe",
-      "args": ["mcp", "gateway", "run"],
+      "args": [
+        "mcp",
+        "gateway",
+        "run"
+      ],
       "conditions": [
         "Docker container or image management through MCP needed",
         "Docker MCP toolset operations required",
@@ -176,8 +213,12 @@
       "name": "Google Tasks",
       "description": "Google Tasks list/create/update (OAuth — requires prior auth in config dir)",
       "command": "/home/hakan/.bun/bin/bun",
-      "args": ["/mnt/c/dev/gtasks-mcp/dist/index.js"],
-      "env": { "GTASKS_MCP_CONFIG_DIR": "/home/hakan/.config/gtasks-mcp" },
+      "args": [
+        "/mnt/c/dev/gtasks-mcp/dist/index.js"
+      ],
+      "env": {
+        "GTASKS_MCP_CONFIG_DIR": "/home/hakan/.config/gtasks-mcp"
+      },
       "conditions": [
         "Google Tasks list, create, or update operations",
         "Task tracking via Google Tasks needed",

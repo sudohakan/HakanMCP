@@ -499,6 +499,50 @@ function schemaPropertyNames(tool?: RemoteToolDescriptor): Set<string> {
   return new Set(Object.keys(properties));
 }
 
+// Upstream renames, mapped at the boundary instead of at each call site.
+//
+// @playwright/mcp renamed the element handle `ref` -> `target` and `pressEnter` -> `submit`
+// (measured against the live server, v0.0.80: browser_click requires ['target'],
+// browser_type requires ['target','text'], browser_fill_form requires each field to carry
+// ['target','name','type','value']). Our wrappers still speak the old names.
+//
+// The rename was SILENT here precisely because adaptArgsForTool only ever removed keys: an
+// unknown `ref` was filtered out, the now-required `target` was never added, and every call
+// died with "expected string, received undefined". Renaming at 13 call sites would fix today
+// and rot on the next upstream rename, so the alias lives here — one place that already holds
+// the target schema. If a schema still accepts the old name, nothing is rewritten.
+const REMOTE_ARG_ALIASES: Record<string, string> = {
+  ref: 'target',
+  pressEnter: 'submit',
+};
+
+function applyArgAliases(
+  args: Record<string, unknown>,
+  allowedKeys: Set<string>,
+): Record<string, unknown> {
+  const out = { ...args };
+  for (const [from, to] of Object.entries(REMOTE_ARG_ALIASES)) {
+    // Only rewrite when the schema wants the new name, rejects the old one, and the new
+    // one is not already set by the caller.
+    if (from in out && !allowedKeys.has(from) && allowedKeys.has(to) && out[to] === undefined) {
+      out[to] = out[from];
+      delete out[from];
+    }
+  }
+  return out;
+}
+
+function fieldItemPropertyNames(tool?: RemoteToolDescriptor): Set<string> {
+  const fields = tool?.inputSchema?.properties?.fields as
+    | { items?: { properties?: Record<string, unknown> } }
+    | undefined;
+  const properties = fields?.items?.properties;
+  if (!properties || typeof properties !== 'object') {
+    return new Set<string>();
+  }
+  return new Set(Object.keys(properties));
+}
+
 function adaptArgsForTool(
   tool: RemoteToolDescriptor | undefined,
   args: Record<string, unknown>,
@@ -507,7 +551,26 @@ function adaptArgsForTool(
   if (allowedKeys.size === 0) {
     return args;
   }
-  return Object.fromEntries(Object.entries(args).filter(([key]) => allowedKeys.has(key)));
+  const aliased = applyArgAliases(args, allowedKeys);
+  const adapted = Object.fromEntries(
+    Object.entries(aliased).filter(([key]) => allowedKeys.has(key)),
+  );
+
+  // browser_fill_form carries the handle one level down, inside each fields[] entry —
+  // a top-level filter never reaches it, so the same rename is applied per item.
+  const itemKeys = fieldItemPropertyNames(tool);
+  if (itemKeys.size > 0 && Array.isArray(adapted.fields)) {
+    adapted.fields = (adapted.fields as unknown[]).map((item) =>
+      item && typeof item === 'object'
+        ? Object.fromEntries(
+            Object.entries(
+              applyArgAliases(item as Record<string, unknown>, itemKeys),
+            ).filter(([key]) => itemKeys.has(key)),
+          )
+        : item,
+    );
+  }
+  return adapted;
 }
 
 function extractTextChunks(result: unknown): string[] {

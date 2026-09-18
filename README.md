@@ -23,7 +23,7 @@
 
 ## What it does
 
-> Most MCP servers give you a handful of tools. HakanMCP gives you **63 tools** — databases, AI providers, security, monitoring, workflows, and browser wrappers — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
+HakanMCP is a single gateway that exposes **63 tools** — databases, AI providers, security, monitoring, workflows, and browser wrappers — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
 
 | What you get | Details |
 |:---|:---|
@@ -480,7 +480,7 @@ backup:
 | Database engines | 5 (PostgreSQL, MySQL, MSSQL, SQLite, MongoDB) |
 | Operating modes | 4 (Watch, Scheduled, Assistant, Reactive) |
 | CI/CD workflows | 2 |
-| Test suite | 353 tests |
+| Test suite | `npm test` (Vitest) |
 | License | MIT |
 
 ---

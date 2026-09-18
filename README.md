@@ -12,16 +12,16 @@
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square)](https://www.typescriptlang.org)
-[![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey?style=flat-square)](#quick-start)
+[![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-lightgrey?style=flat-square)](#install)
 [![CI](https://img.shields.io/github/actions/workflow/status/sudohakan/HakanMCP/ci.yml?style=flat-square&label=CI)](https://github.com/sudohakan/HakanMCP/actions)
 
-[Quick Start](#-quick-start) · [Features](#-features) · [Architecture](#-architecture) · [CLI Reference](#-cli-commands) · [Contributing](#-contributing)
+[Install](#install) · [Features](#features) · [Architecture](#architecture) · [Usage](#usage) · [Development](#development)
 
 </div>
 
 ---
 
-## Why HakanMCP?
+## What it does
 
 > Most MCP servers give you a handful of tools. HakanMCP gives you **63 tools** — databases, AI providers, security, monitoring, workflows, and browser wrappers — all lazy-loaded and ready to use with Claude Code, Cursor, or any MCP client.
 
@@ -39,7 +39,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Install
 
 <details open>
 <summary><strong>As MCP Server (Claude Code / Cursor)</strong></summary>
@@ -117,7 +117,7 @@ import { startServer } from 'hakanmcp';
 
 ---
 
-## 🛠 Features
+## Features
 
 <table>
 <tr>
@@ -254,7 +254,7 @@ Servers with `envKeys` load credentials from `~/.credentials.env` automatically.
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ```mermaid
 graph TB
@@ -379,7 +379,7 @@ Each workspace gets isolated state in `.hakanmcp/workspaces/<name>/`.
 
 ---
 
-## 💻 CLI Commands
+## Usage
 
 | Command | Description |
 |:---|:---|
@@ -396,7 +396,7 @@ Each workspace gets isolated state in `.hakanmcp/workspaces/<name>/`.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 <details>
 <summary><strong>Workspace Config (hakanmcp.config.yaml)</strong></summary>
@@ -469,7 +469,7 @@ backup:
 
 ---
 
-## 📊 At a Glance
+## At a Glance
 
 | Metric | Value |
 |:---|:---|
@@ -485,7 +485,7 @@ backup:
 
 ---
 
-## 📖 Documentation
+## Documentation
 
 | Document | Description |
 |:---|:---|
@@ -496,7 +496,7 @@ backup:
 
 ---
 
-## 🤝 Contributing
+## Development
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
@@ -510,7 +510,7 @@ npm test
 
 ---
 
-## 📄 License
+## License
 
 [MIT](LICENSE) — free for personal and commercial use.
 

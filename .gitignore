@@ -134,3 +134,4 @@ __pycache__/
 output/
 *.rotate-audit.json
 graphify-out/
+credentials*

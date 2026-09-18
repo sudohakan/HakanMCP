@@ -5,8 +5,8 @@ import { fetchWithRetry, jsonResultTruncated } from './_httpShared.js';
 const CLOUD_ENDPOINT = 'https://ollama.com/api';
 
 // The Windows-host IP is NOT stable across reboots, so it must never be pinned.
-// It was pinned to 172.25.240.1 until 2026-08-18; by then the live host was
-// 172.20.32.1 and every local call had been failing silently. Resolve at runtime,
+// It used to be pinned to one NAT-gateway address; when WSL moved the host, every local
+// call failed silently for weeks. Resolve at runtime,
 // cache the first host that answers, and re-resolve if it later stops answering.
 let cachedEndpoint: string | null = null;
 

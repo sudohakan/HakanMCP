@@ -18,7 +18,7 @@ const schema = z.object({
 export const hermesDelegateTools = [
   {
     name: 'hermesDelegate',
-    description: 'Delegate a task to Hermes Agent (local qwen2.5:14b via Windows host Ollama). Hermes can spawn sub-agents (depth-2), use 79 skills, and run shell commands. Use for: long-running autonomous tasks, multi-step shell workflows, tasks that benefit from Hermes skill library (research, social, mlops, etc.). Runs hermes in --yolo mode (no confirmation prompts). Returns the final agent response.',
+    description: 'Delegate a task to Hermes Agent (local Ollama on the Windows host (model resolved at runtime, not pinned)). Hermes can spawn sub-agents (depth-2), use 79 skills, and run shell commands. Use for: long-running autonomous tasks, multi-step shell workflows, tasks that benefit from Hermes skill library (research, social, mlops, etc.). Runs hermes in --yolo mode (no confirmation prompts). Returns the final agent response.',
     inputSchema: {
       type: 'object' as const,
       properties: {

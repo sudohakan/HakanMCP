@@ -2,7 +2,7 @@ import { z } from 'zod';
 import fetch from 'node-fetch';
 import NodeCache from 'node-cache';
 import { execFileSync } from 'child_process';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync, readdirSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -249,7 +249,7 @@ function renderDocument(node: unknown, spaceId?: string): string {
   }
 }
 
-// --- Git Sync helpers (for updatePage) ---
+// --- Git Sync helpers (for the local-first read path) ---
 // Uses persistent local git repo at C:/dev/Finekra/gitbook-{spaceSlug}/
 // Flow: export (first time or on sync) → edit locally → commit+push → import
 
@@ -286,80 +286,6 @@ async function getSpaceSlug(spaceId: string): Promise<string> {
   return spaceId;
 }
 
-async function ensureSyncRepo(spaceId: string): Promise<{ dir: string; branch: string; repoUrl: string }> {
-  const ghToken = getGitHubToken();
-  const slug = await getSpaceSlug(spaceId);
-  const dir = getSyncDir(slug);
-  const branch = slug;
-  const repoUrl = `https://${ghToken}@github.com/${SYNC_REPO_NAME}.git`;
-
-  // Ensure GitHub repo exists
-  try {
-    execFileSync('gh', ['repo', 'view', SYNC_REPO_NAME, '--json', 'name'], {
-      encoding: 'utf-8', timeout: 15000,
-      env: { ...process.env, GH_TOKEN: ghToken },
-    });
-  } catch {
-    logger.info('updatePage: creating sync repo', { repo: SYNC_REPO_NAME });
-    execFileSync('gh', ['repo', 'create', SYNC_REPO_NAME, '--private'], {
-      encoding: 'utf-8', timeout: 15000,
-      env: { ...process.env, GH_TOKEN: ghToken },
-    });
-  }
-
-  // Ensure local dir exists with git
-  if (!existsSync(join(dir, '.git'))) {
-    logger.info('updatePage: initializing local sync dir', { dir, branch });
-    execFileSync('mkdir', ['-p', dir], { encoding: 'utf-8' });
-    git(['init'], dir);
-    git(['config', 'user.email', 'gitbook-sync@finekra.com'], dir);
-    git(['config', 'user.name', 'GitBook Sync'], dir);
-    git(['remote', 'add', 'origin', repoUrl], dir);
-    git(['checkout', '-b', branch], dir);
-
-    // Initial export from GitBook
-    logger.info('updatePage: initial export from GitBook', { spaceId });
-    await apiPost(`/spaces/${spaceId}/git/export`, {
-      url: repoUrl,
-      ref: `refs/heads/${branch}`,
-      commitMessage: 'Initial GitBook export',
-    });
-
-    // Wait and pull
-    await waitForBranch(dir, branch);
-  } else {
-    // Pull latest
-    try {
-      git(['fetch', 'origin', branch], dir);
-      git(['reset', '--hard', `origin/${branch}`], dir);
-    } catch {
-      logger.debug('updatePage: fetch failed, re-exporting');
-      await apiPost(`/spaces/${spaceId}/git/export`, {
-        url: repoUrl,
-        ref: `refs/heads/${branch}`,
-        commitMessage: 'GitBook re-export',
-      });
-      await waitForBranch(dir, branch);
-    }
-  }
-
-  return { dir, branch, repoUrl };
-}
-
-async function waitForBranch(dir: string, branch: string): Promise<void> {
-  for (let i = 0; i < 15; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
-    try {
-      git(['fetch', 'origin', branch], dir);
-      git(['reset', '--hard', `origin/${branch}`], dir);
-      return;
-    } catch {
-      logger.debug(`updatePage: waiting for export... attempt ${i + 1}`);
-    }
-  }
-  throw new Error('Timed out waiting for GitBook export');
-}
-
 function findFileBySlug(dir: string, slug: string): string | null {
   const entries = readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
@@ -374,50 +300,52 @@ function findFileBySlug(dir: string, slug: string): string | null {
   return null;
 }
 
-async function updatePageViaGitSync(
+async function apiPostFresh<T = unknown>(endpoint: string, body: unknown): Promise<T> {
+  const data = await apiPost<T>(endpoint, body);
+  cache.flushAll();
+  return data;
+}
+
+// Writes go through a change request, never `git/import`: import overwrites the whole
+// space with a branch, so one edited page would carry every export artefact live.
+// The change request touches only this page and stays unpublished until merged in GitBook.
+async function updatePageViaChangeRequest(
   spaceId: string,
   pagePath: string,
   markdown: string,
-  commitMessage: string,
-): Promise<{ success: boolean; pagePath: string; localFile: string }> {
-  const { dir, branch, repoUrl } = await ensureSyncRepo(spaceId);
-
-  // Find target file
-  const mdFile = pagePath.endsWith('.md') ? pagePath : `${pagePath}.md`;
-  let targetPath = join(dir, mdFile);
-
-  if (!existsSync(targetPath)) {
-    const slug = pagePath.split('/').pop() || '';
-    const found = findFileBySlug(dir, slug);
-    if (!found) throw new Error(`Page file not found: ${mdFile}. Available: use listPages to find correct path.`);
-    targetPath = found;
+  subject: string,
+): Promise<Record<string, unknown>> {
+  const wanted = pagePath.replace(/\.md$/, '').replace(/\/README$/, '').replace(/^\/+|\/+$/g, '');
+  const tree = await apiGet<{ pages: PageItem[] }>(`/spaces/${spaceId}/content`);
+  const flat = flattenPages(tree.pages || []);
+  const matches = flat.filter((p) => p.path === wanted);
+  if (matches.length !== 1) {
+    throw new Error(`Page path must match exactly one page, found ${matches.length}: ${wanted}. Use listPages for exact paths.`);
   }
+  const page = matches[0];
 
-  // Write updated content
-  writeFileSync(targetPath, markdown, 'utf-8');
-  const relPath = targetPath.replace(dir + '/', '').replace(dir + '\\', '');
-  logger.info('updatePage: file updated', { path: relPath });
-
-  // Commit and push
-  git(['add', '-A'], dir);
-  try {
-    git(['commit', '-m', commitMessage || 'Update page via GitBook sync'], dir);
-  } catch {
-    return { success: true, pagePath: relPath, localFile: targetPath };
-  }
-  git(['push', 'origin', branch], dir);
-
-  // Import back to GitBook
-  logger.info('updatePage: importing back to GitBook', { spaceId });
-  await apiPost(`/spaces/${spaceId}/git/import`, {
-    url: repoUrl,
-    ref: `refs/heads/${branch}`,
+  const cr = await apiPostFresh<{ id: string; number?: number; urls?: { app?: string } }>(
+    `/spaces/${spaceId}/change-requests`,
+    { subject },
+  );
+  await apiPostFresh(`/spaces/${spaceId}/change-requests/${cr.id}/content`, {
+    changes: [{ operation: 'update_page', page: page.id, document: { markdown } }],
   });
 
-  // Invalidate cache
-  cache.flushAll();
-
-  return { success: true, pagePath: relPath, localFile: targetPath };
+  const back = await apiGet<{ markdown?: string }>(
+    `/spaces/${spaceId}/change-requests/${cr.id}/content/page/${page.id}?format=markdown`,
+  );
+  const norm = (t: string) => t.replace(/\r\n/g, '\n');
+  return {
+    changeRequestId: cr.id,
+    changeRequestNumber: cr.number,
+    url: cr.urls?.app,
+    pageId: page.id,
+    pagePath: page.path,
+    readbackMatches: norm(back.markdown || '') === norm(markdown),
+    published: false,
+    note: 'Change request is open and NOT merged. Review and merge it in GitBook.',
+  };
 }
 
 // --- Local-first read helper ---
@@ -517,7 +445,7 @@ export const gitbookTools = [
         pageId: { type: 'string', description: 'Page ID (getPage). Alternative to page path in URL.' },
         pagePath: { type: 'string', description: 'Page file path within space (updatePage). e.g. "erp/erp-rapor-sayfalari"' },
         markdown: { type: 'string', description: 'Markdown content to write (updatePage).' },
-        commitMessage: { type: 'string', description: 'Git commit message (updatePage).' },
+        commitMessage: { type: 'string', description: 'Change request subject (updatePage). The change request is opened, not merged.' },
         searchTerm: { type: 'string', description: 'Search query (searchContent, ask)' },
       },
       required: ['action'],
@@ -676,14 +604,14 @@ export const gitbookTools = [
           };
         }
 
-        // --- Update page content via git sync ---
+        // --- Update page content via a change request (never merged here) ---
         case 'updatePage': {
           if (!path) throw new Error('path (space) required');
           if (!markdown) throw new Error('markdown content required');
           const targetPagePath = argPagePath || extractPagePath(path!) || '';
           if (!targetPagePath) throw new Error('pagePath required (or include page path in URL)');
           const spaceId = await resolveSpaceId(path);
-          const result = await updatePageViaGitSync(
+          const result = await updatePageViaChangeRequest(
             spaceId,
             targetPagePath,
             markdown,

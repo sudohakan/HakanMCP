@@ -1,11 +1,11 @@
 /**
  * Chrome DevTools MCP proxy
  *
- * Wraps chrome-devtools-mcp@latest as a lazy-spawned stdio child process.
+ * Wraps chrome-devtools-mcp@1.10.1 as a lazy-spawned stdio child process.
  * Tools are exposed under the `chrome_*` prefix on HakanMCP's surface.
  *
  * Lifecycle:
- *  - Child spawned on first chrome_* call (npx -y chrome-devtools-mcp@latest)
+ *  - Child spawned on first chrome_* call (npx -y chrome-devtools-mcp@1.10.1)
  *  - JSON-RPC initialize handshake, persistent across calls (page state preserved)
  *  - Idle disconnect after 5 minutes of no activity
  *
@@ -37,7 +37,7 @@ const SLOW_TOOLS = new Set<string>([
   'performance_stop_trace',
   'performance_analyze_insight',
   'lighthouse_audit',
-  'take_memory_snapshot',
+  'take_heapsnapshot',
 ]);
 const SPAWN_TIMEOUT_MS = 60 * 1000;
 
@@ -125,7 +125,7 @@ class ChromeDevtoolsClient {
 
   private spawnAndInit(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const args = ['-y', 'chrome-devtools-mcp@latest'];
+      const args = ['-y', 'chrome-devtools-mcp@1.10.1'];
       const browserUrl = process.env.CHROME_DEVTOOLS_BROWSER_URL?.trim();
       const persistProfile = process.env.CHROME_DEVTOOLS_PERSIST_PROFILE === '1';
       if (browserUrl) {

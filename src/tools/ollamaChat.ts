@@ -14,14 +14,16 @@ function hostCandidates(): string[] {
   const out: string[] = [];
   const env = process.env.OLLAMA_HOST?.trim();
   if (env) out.push(env.startsWith('http') ? env : `http://${env}:11434`);
+  out.push('http://localhost:11434');
   try {
-    // WSL default route points at the Windows host.
+    // WSL default route points at the Windows host under NAT networking. Under
+    // mirrored networking (this stack's mode) the default gateway is the physical
+    // router and never answers, so this candidate is tried last, not first.
     const route = execFileSync('ip', ['route', 'show', 'default'], { encoding: 'utf8', timeout: 2000 });
     const via = route.split(/\s+/);
     const gw = via[via.indexOf('via') + 1];
     if (gw) out.push(`http://${gw}:11434`);
-  } catch { /* not on WSL, or `ip` unavailable — fall through to localhost */ }
-  out.push('http://localhost:11434');
+  } catch { /* not on WSL, or `ip` unavailable — localhost candidate already queued */ }
   return [...new Set(out)];
 }
 
@@ -68,11 +70,11 @@ const schema = z.object({
 export const ollamaChatTools = [
   {
     name: 'ollamaChat',
-    description: 'Delegate a chat/completion task to a local Ollama model or Ollama Cloud. The local host is resolved at runtime (OLLAMA_HOST, else the WSL default gateway) because the Windows-host IP changes across reboots; omit `model` to use the first installed chat model. Use to offload token-heavy tasks (log summarization, CSV extraction, formatting) from Claude MAX to a free local model.',
+    description: 'Delegate a chat/completion task to a local Ollama model or Ollama Cloud. The local host is resolved at runtime (OLLAMA_HOST, then localhost, then the WSL default gateway; first that answers wins) because the Windows-host IP changes across reboots; omit `model` to use OLLAMA_CHAT_MODEL if installed, else the newest installed chat model. Use to offload token-heavy tasks (log summarization, CSV extraction, formatting) from Claude MAX to a free local model.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        model: { type: 'string', description: 'Ollama model name. Omit to auto-pick the first installed chat model. Use ollamaListModels to see what is available.' },
+        model: { type: 'string', description: 'Ollama model name. Omit to use OLLAMA_CHAT_MODEL if installed, else the newest installed chat model. Use ollamaListModels to see what is available.' },
         messages: {
           type: 'array',
           description: 'Chat messages array (role: system|user|assistant)',
@@ -113,7 +115,10 @@ export const ollamaChatTools = [
             `. Pull one on the Windows host, e.g. \`ollama pull qwen2.5:14b\`.`,
           );
         }
-        model = chat[0];
+        // Ollama lists models newest-first, so chat[0] silently changes whenever a model is
+        // pulled. OLLAMA_CHAT_MODEL names the preferred default; ignored if not installed.
+        const preferred = process.env.OLLAMA_CHAT_MODEL?.trim();
+        model = preferred && chat.includes(preferred) ? preferred : chat[0];
       }
 
       const messages = parsed.system_prompt

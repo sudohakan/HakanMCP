@@ -89,20 +89,6 @@
         "Current time in a specific timezone needed"
       ]
     },
-    "mermaid": {
-      "name": "Mermaid",
-      "description": "Diagram generation - flowcharts, sequence, class, ER, state, Gantt",
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-mermaid"
-      ],
-      "conditions": [
-        "User asks for a visual diagram",
-        "Architecture or data flow visualization needed",
-        "Documentation requires embedded diagrams"
-      ]
-    },
     "duckdb": {
       "name": "DuckDB",
       "description": "Analytical SQL on local CSV, Parquet, and JSON files",

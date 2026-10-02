@@ -979,7 +979,7 @@ const _mcpLegacyTools = [
         serverKey: {
           type: 'string',
           description:
-            'Server key from catalog (e.g., "fetch", "git", "sqlite", "mermaid", "duckdb", "graphify", "sequential-thinking", "time", "filesystem")',
+            'Server key from catalog (e.g., "fetch", "git", "sqlite", "duckdb", "graphify", "sequential-thinking", "time", "filesystem")',
         },
         extraArgs: {
           type: 'array',

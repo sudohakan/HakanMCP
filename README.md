@@ -242,7 +242,6 @@ Beyond its built-in tools, HakanMCP can connect to **14 additional MCP servers**
 | `sequential-thinking` | Sequential Thinking | Structured reasoning with hypothesis revision and trade-off analysis |
 | `sqlite` | SQLite | Local SQLite database querying and analysis |
 | `time` | Time | Timezone conversion and current time queries |
-| `mermaid` | Mermaid | Diagram generation — flowcharts, sequence, class, ER, state, Gantt |
 | `duckdb` | DuckDB | Analytical SQL on local CSV, Parquet, and JSON files |
 | `playwright` | Playwright | Browser automation and lightweight browser evidence capture |
 | `infoset` | Infoset | Customer support ticket, contact, and company management |

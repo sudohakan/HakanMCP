@@ -31,7 +31,7 @@ each one permanently.
 | **On-demand server catalog** | Connect git, filesystem, sqlite, duckdb, playwright, markitdown and more at runtime |
 | **Low-token browser bridge** | Drive Chrome through wrappers instead of returning large raw snapshots |
 | **Lazy native drivers** | SQL/Mongo drivers load on first call; a missing one stays a placeholder, not a crash |
-| **Single-file bundle** | One `dist/server.js` — one file read instead of a module graph, which is what startup is paid in on NTFS |
+| **Single-file bundle** | One `dist/src/index.js` — one file read instead of a module graph, which is what startup is paid in on NTFS |
 
 ---
 
@@ -40,7 +40,7 @@ each one permanently.
 Register with Claude Code:
 
 ```bash
-claude mcp add hakanmcp node /path/to/HakanMCP/dist/server.js
+claude mcp add hakanmcp node /path/to/HakanMCP/dist/src/index.js
 ```
 
 Or add to your client config:
@@ -50,7 +50,7 @@ Or add to your client config:
   "mcpServers": {
     "hakanmcp": {
       "command": "node",
-      "args": ["/path/to/HakanMCP/dist/server.js"]
+      "args": ["/path/to/HakanMCP/dist/src/index.js"]
     }
   }
 }
@@ -88,7 +88,7 @@ placeholder, so the catalog does not shift with the host's install state.
 
 ```
 src/index.ts          Server entry (STDIO transport, ToolRegistry)
-dist/server.js        What runs — single-file esbuild bundle
+dist/src/index.js        What runs — single-file esbuild bundle
 config.yaml           Runtime config (Zod-validated; unknown keys dropped, not rejected)
 ```
 
@@ -115,9 +115,9 @@ npm run measure:coldstart  # spawn-to-tools/list median
 
 | Script | Does |
 |:---|:---|
-| `build` | Typecheck, bundle to `dist/server.js`, regenerate tool manifest |
+| `build` | Typecheck, bundle to `dist/src/index.js`, regenerate tool manifest |
 | `bundle` | esbuild only |
-| `start` | Run `dist/server.js` |
+| `start` | Run `dist/src/index.js` |
 | `test` | Jest suite |
 | `lint` / `format` | ESLint / Prettier |
 

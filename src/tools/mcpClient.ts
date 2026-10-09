@@ -211,7 +211,7 @@ function fieldItemPropertyNames(tool?: RemoteToolDescriptor): Set<string> {
   return new Set(Object.keys(properties));
 }
 
-function adaptArgsForTool(
+export function adaptArgsForTool(
   tool: RemoteToolDescriptor | undefined,
   args: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -223,6 +223,23 @@ function adaptArgsForTool(
   const adapted = Object.fromEntries(
     Object.entries(aliased).filter(([key]) => allowedKeys.has(key)),
   );
+
+  // Fail loud, not silent. The ref->target rename slipped through for exactly
+  // one reason: a dropped key left a required field unset and the call died
+  // downstream with "expected string, received undefined", miles from the cause.
+  // If the live schema still has a required field we did not supply while the
+  // caller handed us a key the schema rejects, the alias map is behind upstream.
+  // Say so here, naming the gap, so the next rename is a one-line diagnosis.
+  const required = tool?.inputSchema?.required ?? [];
+  const missingRequired = required.filter((k) => adapted[k] === undefined);
+  const droppedKeys = Object.keys(args).filter((k) => !allowedKeys.has(k));
+  if (missingRequired.length > 0 && droppedKeys.length > 0) {
+    throw new Error(
+      `Tool "${tool?.name ?? 'unknown'}" arg mismatch: required ${JSON.stringify(missingRequired)} unset, ` +
+        `caller sent unrecognized ${JSON.stringify(droppedKeys)}. The upstream schema likely renamed a field; ` +
+        `extend REMOTE_ARG_ALIASES in mcpClient.ts (schema accepts ${JSON.stringify([...allowedKeys])}).`,
+    );
+  }
 
   // browser_fill_form carries the handle one level down, inside each fields[] entry —
   // a top-level filter never reaches it, so the same rename is applied per item.

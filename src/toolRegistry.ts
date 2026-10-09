@@ -9,6 +9,7 @@
  */
 
 import type { ToolDefinition, ToolHandler, ToolResponse } from './types/index.js';
+import { recordCall, recordError } from './utils/toolMetrics.js';
 
 export interface FeatureModule {
   /** Relative path to compiled module, e.g. './tools/db.js' */
@@ -25,6 +26,7 @@ export interface FeatureModule {
 
 export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   http: { modulePath: './tools/http.js', exportName: 'httpTools', nativeDeps: [], core: true, featureName: '' },
+  health: { modulePath: './tools/health.js', exportName: 'healthTools', nativeDeps: [], core: true, featureName: '' },
   gb: { modulePath: './tools/gitbook.js', exportName: 'gitbookTools', nativeDeps: [], core: true, featureName: '' },
   backup: { modulePath: './tools/backup.js', exportName: 'backupTools', nativeDeps: [], core: true, featureName: '' },
   mcp: { modulePath: './tools/mcpClient.js', exportName: 'mcpClientTools', nativeDeps: [], core: true, featureName: '' },
@@ -294,6 +296,7 @@ export class ToolRegistry {
 
     return async (args: unknown): Promise<ToolResponse> => {
       const toolLogger = this.log?.child({ tool: toolName, operation: 'invoke' });
+      recordCall(toolName);
       try {
         toolLogger?.info('Tool invoked', { args: args as Record<string, unknown> });
         const result = await Promise.race([
@@ -308,6 +311,8 @@ export class ToolRegistry {
         toolLogger?.info('Tool completed successfully');
         return result;
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        recordError(toolName, message);
         toolLogger?.error('Tool execution failed', error, { args: args as Record<string, unknown> });
         throw error;
       }

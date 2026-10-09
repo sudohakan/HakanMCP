@@ -114,16 +114,44 @@ use: `ai` / `ai_provider_chat` (Claude Code orchestrates models itself),
 `env`, `cache`, `crypto`, `gdocs`, ElevenLabs audio, academic search,
 `hermesDelegate`, and the sysint credential-reading category.
 
-That last one is not only a usage call. Browser, VNC, RDP and Wi-Fi stored
-password readers plus LSA secrets made the repo read as credential-dumping
-tooling, and working on it tripped the model safety classifier — the repo
-became unopenable with the strongest model. Pentest work has its own channel
-(`kali-mcp`). Do not reintroduce that category here.
+That last one is not only a usage call. The sysint credential-reading category
+plus the `kali` catalog entry ("offensive security — recon, scanning,
+exploitation") made the repo read as offensive-security tooling, and working on
+it tripped the model safety classifier — the repo became unopenable with the
+strongest model. Both are gone: the credential category is deleted, and `kali`
+is no longer advertised in `src/catalog/servers.json`.
 
-Adding a tool back is a real decision, not a default: each one costs context in
-every session that loads this server. Prefer the on-demand catalog
-(`src/catalog/servers.json` → `mcp.connectFromCatalog`), which costs nothing
-until used.
+**Keep this repo free of offensive-security framing.** Pentest has its own
+channel in the stack (the `kali-mcp-server` repo, the `pentest-*` agents, and a
+direct `mcp.connect` with explicit command/args when genuinely needed) — it does
+not belong in this server's catalog or tool set. Do not reintroduce the
+credential category, the `kali` catalog row, a `shodan*` recon tool, or any tool
+described in terms of exploitation, vulnerability scanning or credential
+harvesting. `cfbypass` stays: it fetches Cloudflare-protected pages for
+price-comparison scraping, which is ordinary web access, not evasion of a
+security control.
+
+### The bar for adding a tool
+
+A new tool is a cost, not a default — each one spends context tokens in every
+session that loads this server, and a native-backed one spends startup time.
+Before adding one, it must clear this gate:
+
+1. **Recurrence.** The need has shown up at least three times, not once. A
+   one-off belongs in a script or an inline call, not a permanent tool.
+2. **The catalog doesn't already cover it.** If an auth-free MCP server exists,
+   add a line to `src/catalog/servers.json` and reach it with
+   `mcp.connectFromCatalog` — that costs nothing until used. A new tool is only
+   justified when no catalog server fits and the capability is genuinely this
+   server's job (a thin wrapper over a backend it already owns, like `db` or
+   `browser`).
+3. **It isn't something Claude Code already does** (model orchestration, web
+   fetch, file ops) or something with its own dedicated channel in the stack
+   (pentest, email, Infoset).
+
+If a candidate fails any point, it does not go in. Measure the dumb path first
+(a script, a catalog line, an inline call) and only promote to a tool when that
+path is demonstrably worse.
 
 ## Tech Stack
 

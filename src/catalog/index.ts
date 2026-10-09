@@ -3,12 +3,10 @@
  * Provides catalog-based connections to external MCP servers
  * that require no API keys or authentication.
  */
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Imported, not read from disk: a disk read made the catalog a two-step edit
+// (src/catalog/servers.json, then dist/) where forgetting the second step looked
+// like "the server is not in the catalog". It also keeps the server bundleable.
+import catalogData from './servers.json' with { type: 'json' };
 
 export interface CatalogServer {
   name: string;
@@ -26,15 +24,8 @@ export interface ServerCatalog {
   servers: Record<string, CatalogServer>;
 }
 
-let cachedCatalog: ServerCatalog | null = null;
-
 export function loadCatalog(): ServerCatalog {
-  if (cachedCatalog) return cachedCatalog;
-
-  const catalogPath = join(__dirname, 'servers.json');
-  const raw = readFileSync(catalogPath, 'utf-8');
-  cachedCatalog = JSON.parse(raw) as ServerCatalog;
-  return cachedCatalog;
+  return catalogData as ServerCatalog;
 }
 
 export function getCatalogServer(serverKey: string): CatalogServer | null {

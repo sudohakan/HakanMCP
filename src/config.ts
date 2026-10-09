@@ -45,7 +45,6 @@ const envSchema = z
 
 const configSchema = z.object({
   serverName: z.string().min(1, 'serverName cannot be empty'),
-  gitbookUrl: z.string().url('gitbookUrl must be a valid URL'),
   gitbookToken: z.string().optional(),
   cacheTtl: z
     .number()
@@ -53,13 +52,8 @@ const configSchema = z.object({
     .min(0, 'cacheTtl must be a positive integer')
     .max(86400, 'cacheTtl should not exceed 86400 seconds'),
   logLevel: z.enum(['debug', 'info', 'warn', 'error', 'none']),
-  ollamaUrl: z.string().url('ollamaUrl must be a valid URL'),
-  ollamaModel: z.string().min(1, 'ollamaModel cannot be empty'),
-  ollamaTimeout: z.number().int().positive('ollamaTimeout must be positive'),
-  ollamaUpgradeTolerance: z.number().min(0).max(1).default(0.15),
   retryCount: z.number().int().min(0, 'retryCount must be non-negative'),
   mongoDbUrl: z.string().url('mongoDbUrl must be a valid URL').optional(),
-  availableModels: z.array(z.string()),
   github: z
     .object({
       enabled: z.boolean(),
@@ -86,16 +80,6 @@ const configSchema = z.object({
         .optional(),
     })
     .optional(),
-  selfImprovement: z
-    .object({
-      enabled: z.boolean(),
-      autoCommit: z.boolean().default(false),
-      requireApproval: z.boolean().default(true),
-      maxChangesPerDay: z.number().int().min(1).max(100).default(10),
-      allowedOperations: z.array(z.string()),
-      restrictedPaths: z.array(z.string()),
-    })
-    .optional(),
   backup: z
     .object({
       enabled: z.boolean(),
@@ -108,53 +92,10 @@ const configSchema = z.object({
       excludes: z.array(z.string()).optional(),
     })
     .optional(),
-  aiProviders: z
-    .object({
-      codexKeyEncrypted: z.string().optional(),
-      claudeKeyEncrypted: z.string().optional(),
-      geminiKeyEncrypted: z.string().optional(),
-      encryptionPasswordEnv: z.string().optional(),
-      localModels: z.boolean().optional(),
-      agenticEnabled: z.boolean().optional(),
-      agenticMaxIterations: z.number().int().min(1).max(50).optional(),
-    })
-    .optional(),
-  scheduler: z
-    .object({
-      enabled: z.boolean(),
-      maxConcurrentTasks: z.number().int().min(1),
-      taskHistoryRetentionDays: z.number().int().min(1),
-      persistencePath: z.string(),
-    })
-    .optional(),
   system: z
     .object({
       allowedPaths: z.array(z.string()).optional(),
       commandTimeout: z.number().int().min(5).max(3600).optional(),
-    })
-    .optional(),
-  consciousness: z.object({
-    enabled: z.boolean(),
-    maxJournalEntries: z.number().int().min(10).max(10000),
-    reflection: z.object({
-      maxLength: z.number().int().min(50).max(1000).default(200),
-      maxEntriesInPrompt: z.number().int().min(1).max(10).default(3),
-      style: z.enum(['auto', 'emotional', 'mixed', 'minimal']).default('auto'),
-    }).optional(),
-  }).optional(),
-  watch: z.object({
-    enabled: z.boolean(),
-    paths: z.array(z.string()).optional(),
-    debounceMs: z.number().int().positive().optional(),
-  }).optional(),
-  reactive: z.object({
-    enabled: z.boolean(),
-  }).optional(),
-  googleDocs: z
-    .object({
-      clientId: z.string().optional(),
-      clientSecret: z.string().optional(),
-      refreshToken: z.string().optional(),
     })
     .optional(),
 });
@@ -162,30 +103,14 @@ const configSchema = z.object({
 export type Config = z.infer<typeof configSchema>;
 export type GitHubConfig = Config['github'];
 export type MonitoringConfig = Config['monitoring'];
-export type SelfImprovementConfig = Config['selfImprovement'];
 export type BackupConfig = Config['backup'];
-export type AIProviderSecretConfig = Config['aiProviders'];
-export type SchedulerConfig = Config['scheduler'];
-export type ConsciousnessConfig = Config['consciousness'];
 
 const DEFAULT_CONFIG: Config = {
   serverName: 'hakan-mcp',
-  gitbookUrl: process.env.GITBOOK_URL || 'https://example.com/api-docs',
   gitbookToken: process.env.GITBOOK_TOKEN || undefined,
   cacheTtl: 300,
   logLevel: 'info',
-  ollamaUrl: 'http://localhost:11434',
-  ollamaModel: 'llama3',
-  ollamaTimeout: 36000000,
-  ollamaUpgradeTolerance: 0.15,
   retryCount: 3,
-  availableModels: [],
-  aiProviders: {
-    encryptionPasswordEnv: 'AI_KEY_PASSWORD',
-    localModels: false,
-    agenticEnabled: true,
-    agenticMaxIterations: 15,
-  },
   backup: {
     enabled: false,
     localPath: './backups',
@@ -269,27 +194,6 @@ function loadConfigFile(configPath: string): Partial<Config> {
   }
 }
 
-function parseBooleanEnv(value: string | undefined): boolean | undefined {
-  if (value === undefined) return undefined;
-  const normalized = value.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
-  return undefined;
-}
-
-function normalizeSchedulerConfig(fileConfig: Partial<Config>): SchedulerConfig | undefined {
-  if (!fileConfig.scheduler) {
-    return undefined;
-  }
-
-  return {
-    enabled: fileConfig.scheduler.enabled ?? true,
-    maxConcurrentTasks: fileConfig.scheduler.maxConcurrentTasks ?? 5,
-    taskHistoryRetentionDays: fileConfig.scheduler.taskHistoryRetentionDays ?? 30,
-    persistencePath: fileConfig.scheduler.persistencePath || './scheduler-state.json',
-  };
-}
-
 function applyRuntimeEnvOverrides(
   baseConfig: Config,
   envValues: Record<string, string | undefined>,
@@ -297,10 +201,6 @@ function applyRuntimeEnvOverrides(
   const cfg: Config = {
     ...baseConfig,
     monitoring: baseConfig.monitoring ? { ...baseConfig.monitoring } : baseConfig.monitoring,
-    scheduler: baseConfig.scheduler ? { ...baseConfig.scheduler } : baseConfig.scheduler,
-    selfImprovement: baseConfig.selfImprovement
-      ? { ...baseConfig.selfImprovement }
-      : baseConfig.selfImprovement,
   };
 
   const peerOverride = envValues.MONITORING_PEER_INSTANCE?.trim();
@@ -310,16 +210,6 @@ function applyRuntimeEnvOverrides(
 
   if (cfg.monitoring?.peerInstance && !path.isAbsolute(cfg.monitoring.peerInstance)) {
     cfg.monitoring.peerInstance = path.resolve(PROJECT_ROOT, cfg.monitoring.peerInstance);
-  }
-
-  const schedulerEnabledOverride = parseBooleanEnv(envValues.SCHEDULER_ENABLED);
-  if (schedulerEnabledOverride !== undefined && cfg.scheduler) {
-    cfg.scheduler.enabled = schedulerEnabledOverride;
-  }
-
-  const selfImprovementEnabledOverride = parseBooleanEnv(envValues.SELF_IMPROVEMENT_ENABLED);
-  if (selfImprovementEnabledOverride !== undefined && cfg.selfImprovement) {
-    cfg.selfImprovement.enabled = selfImprovementEnabledOverride;
   }
 
   const logLevelEnv = envValues.HAKANMCP_LOG_LEVEL || envValues.LOG_LEVEL;
@@ -336,30 +226,9 @@ function applyRuntimeEnvOverrides(
   if (!Number.isNaN(cacheTtlEnv) && cacheTtlEnv >= 0 && cacheTtlEnv <= 86400) {
     cfg.cacheTtl = cacheTtlEnv;
   }
-  const gitbookUrlEnv = envValues.GITBOOK_URL?.trim();
-  if (gitbookUrlEnv) {
-    try {
-      new URL(gitbookUrlEnv);
-      cfg.gitbookUrl = gitbookUrlEnv;
-    } catch (err) {
-      console.error('Invalid GITBOOK_URL:', err instanceof Error ? err.message : String(err));
-    }
-  }
   const gitbookTokenEnv = envValues.GITBOOK_TOKEN?.trim();
   if (gitbookTokenEnv) {
     cfg.gitbookToken = gitbookTokenEnv;
-  }
-
-  const gdClientId = envValues.GOOGLE_DOCS_CLIENT_ID?.trim();
-  const gdClientSecret = envValues.GOOGLE_DOCS_CLIENT_SECRET?.trim();
-  const gdRefreshToken = envValues.GOOGLE_DOCS_REFRESH_TOKEN?.trim();
-  if (gdClientId || gdClientSecret || gdRefreshToken) {
-    cfg.googleDocs = {
-      ...(cfg.googleDocs || {}),
-      ...(gdClientId ? { clientId: gdClientId } : {}),
-      ...(gdClientSecret ? { clientSecret: gdClientSecret } : {}),
-      ...(gdRefreshToken ? { refreshToken: gdRefreshToken } : {}),
-    };
   }
 
   return cfg;
@@ -407,20 +276,6 @@ function validateEnvironmentRequirements(
     }
   }
 
-  const hasEncryptedKey =
-    Boolean(cfg.aiProviders?.codexKeyEncrypted) ||
-    Boolean(cfg.aiProviders?.claudeKeyEncrypted) ||
-    Boolean(cfg.aiProviders?.geminiKeyEncrypted);
-  const passwordEnv = cfg.aiProviders?.encryptionPasswordEnv || 'AI_KEY_PASSWORD';
-
-  if (hasEncryptedKey) {
-    if (!env[passwordEnv]) {
-      errors.push(
-        `Encrypted AI keys detected but ${passwordEnv} is missing. Define ${passwordEnv} in your environment to decrypt secrets.`,
-      );
-    }
-  }
-
   if (errors.length > 0) {
     if (options.strict) {
       const errorMessage = `Environment validation failed:\n${errors.map((e) => `  - ${e}`).join('\n')}`;
@@ -443,14 +298,9 @@ function loadConfig(envValues: Record<string, string | undefined>): Config {
   const configPath = getConfigPath();
   const fileConfig = loadConfigFile(configPath);
 
-  const normalizedConfig = {
-    ...fileConfig,
-    scheduler: normalizeSchedulerConfig(fileConfig),
-  };
-
   const merged = deepMerge(
     { ...DEFAULT_CONFIG },
-    normalizedConfig as Record<string, unknown>,
+    fileConfig as Record<string, unknown>,
   ) as Config;
   const mergedWithOverrides = applyRuntimeEnvOverrides(merged, envValues);
 
@@ -505,10 +355,7 @@ export function updateConfig(updates: Partial<Config>): void {
       throw new Error(`Updated config is invalid:\n${messages.map((m) => `  - ${m}`).join('\n')}`);
     }
 
-    const normalized = {
-      ...validation.data,
-      scheduler: normalizeSchedulerConfig(validation.data) || validation.data.scheduler,
-    };
+    const normalized = validation.data;
 
     const strictEnvValidation = process.env.NODE_ENV === 'production';
     const env = loadEnvironment({ strict: strictEnvValidation, warnOnly: !strictEnvValidation });
@@ -649,9 +496,7 @@ try {
 
 logger.info('Configuration loaded', {
   serverName: config.serverName,
-  gitbookUrl: config.gitbookUrl,
   gitbookToken: config.gitbookToken ? '***' : 'not set',
-  ollamaUrl: config.ollamaUrl,
   cacheTtl: config.cacheTtl,
 });
 

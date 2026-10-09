@@ -4,24 +4,15 @@ process.setMaxListeners(20);
 const TOOL_MODULES = [
   { path: './tools/gitbook.js', export: 'gitbookTools' },
   { path: './tools/http.js', export: 'httpTools' },
-  { path: './tools/env.js', export: 'envTools' },
-  { path: './tools/aiTools.js', export: 'aiTools' },
   { path: './tools/backup.js', export: 'backupTools' },
   { path: './tools/mcpClient.js', export: 'mcpClientTools' },
-  { path: './tools/encryption.js', export: 'encryptionTools' },
-  { path: './tools/aiProviders.js', export: 'aiProviderTools' },
-  { path: './tools/cache.js', export: 'cacheTools' },
   { path: './tools/disk.js', export: 'diskTools' },
   { path: './tools/sysint.js', export: 'sysintTools' },
   { path: './tools/cfbypass.js', export: 'cfbypassTools' },
   { path: './tools/chromeDevtools.js', export: 'chromeDevtoolsTools' },
   { path: './tools/exaSearch.js', export: 'exaTools' },
-  { path: './tools/academicSearch.js', export: 'academicTools' },
-  { path: './tools/elevenlabs.js', export: 'elevenlabsTools' },
   { path: './tools/ollamaChat.js', export: 'ollamaChatTools' },
   { path: './tools/transcribeLocal.js', export: 'transcribeLocalTools' },
-  { path: './tools/hermesDelegate.js', export: 'hermesDelegateTools' },
-  { path: './tools/googleDocs.js', export: 'googleDocsTools' },
 ] as const;
 
 async function main() {
@@ -177,8 +168,6 @@ async function main() {
 
   await Promise.all([...loadPromises, featurePromise]);
 
-  const { setAgenticToolsRef } = await import('./tools/aiTools.js');
-  setAgenticToolsRef(buildAgenticToolsRef(registry));
   logger.info(`ToolRegistry initialized: ${registry.getToolCount()} tools in ${Date.now() - loadStart}ms`);
   resolveToolsReady!();
 
@@ -186,25 +175,10 @@ async function main() {
   let stopToolHealthCheckRef: (() => void) | null = null;
   setImmediate(async () => {
     try {
-      const { logActiveCooldowns } = await import('./services/aiProviderCooldown.js');
-      const { conversationManager } = await import('./services/conversationHistory.js');
       const { backupService } = await import('./services/backupService.js');
-      const { ConsciousnessService } = await import('./services/consciousnessService.js');
       const { scheduleDailyHealthCheck } = await import('./services/toolHealthCheck.js');
 
-      logActiveCooldowns();
-      conversationManager.loadFromDisk();
-
       const role = (process.env.INSTANCE_ROLE || 'main').toLowerCase();
-
-      if (role === 'main') {
-        logger.info('Auto-reload mechanism active', { version: 'v3' });
-        if (config.aiProviders?.localModels && process.env.DISABLE_LOCAL_MODELS !== '1') {
-          syncOllamaModels(config, logger);
-        }
-      } else {
-        logger.info('Skipping Ollama model sync', { reason: 'non-main instance role', role });
-      }
 
       try {
         backupService.start();
@@ -237,13 +211,6 @@ async function main() {
       stopToolHealthCheckRef = scheduleDailyHealthCheck(healthCheckTools, PROJECT_ROOT);
       logger.info('Tool health check scheduler active', { frequency: 'daily' });
 
-      if (config.consciousness?.enabled !== false) {
-        const maxEntries = config.consciousness?.maxJournalEntries ?? 500;
-        const consciousnessService = new ConsciousnessService(PROJECT_ROOT, maxEntries);
-        consciousnessService.ensureDir();
-        logger.info('Consciousness service initialized (event-driven mode)');
-      }
-
       logger.info('Phase 3 initialization complete');
     } catch (err) {
       logger.error('Phase 3 initialization failed', { error: err instanceof Error ? err.message : String(err) });
@@ -256,9 +223,7 @@ async function main() {
     shuttingDown = true;
     logger.info('Shutdown signal received, shutting down', { signal });
     try {
-      const { conversationManager } = await import('./services/conversationHistory.js');
       const { backupService } = await import('./services/backupService.js');
-      conversationManager.shutdown();
       backupService.stop();
       if (stopToolHealthCheckRef) stopToolHealthCheckRef();
 
@@ -300,30 +265,6 @@ function registerPlaceholders(
   }
 }
 
-function buildAgenticToolsRef(registry: import('./toolRegistry.js').ToolRegistry): Array<{
-  name: string;
-  description: string;
-  inputSchema: { type: string; properties: Record<string, unknown>; required?: string[] };
-  handler: (args: unknown) => Promise<{ content: Array<{ type: string; text?: string }>; isError?: boolean }>;
-}> {
-  const tools = registry.listTools();
-  return tools.map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: t.inputSchema as { type: string; properties: Record<string, unknown>; required?: string[] },
-    handler: async (args: unknown) => {
-      const handler = await registry.getHandler(t.name);
-      if (!handler) {
-        return {
-          content: [{ type: 'text', text: `Tool ${t.name} is not available` }],
-          isError: true,
-        };
-      }
-      return handler(args) as Promise<{ content: Array<{ type: string; text?: string }>; isError?: boolean }>;
-    },
-  }));
-}
-
 function startGuardianLoop(
   role: string,
   config: import('./config.js').Config,
@@ -352,54 +293,6 @@ function startGuardianLoop(
       logger.error('Guardian loop error', { error: err instanceof Error ? err.message : String(err) });
     }
   }, interval);
-}
-
-async function syncOllamaModels(
-  config: import('./config.js').Config,
-  logger: typeof import('./utils/logger.js').logger,
-) {
-  try {
-    const ollamaUrl = config.ollamaUrl || 'http://localhost:11434';
-    const response = await fetch(`${ollamaUrl}/api/tags`);
-    if (response.ok) {
-      const data = (await response.json()) as { models?: Array<{ name: string }> };
-      const models = (data.models || []).map((m) => m.name).sort();
-
-      if (models.length > 0) {
-        import('./config.js').then(({ config: cfg, updateConfig }) => {
-          const current = cfg.availableModels || [];
-          const modelsChanged =
-            current.length !== models.length || !current.every((m, i) => m === models[i]);
-
-          const updates: Partial<typeof cfg> = {};
-          if (modelsChanged) {
-            updates.availableModels = models;
-          }
-
-          const currentDefault = cfg.ollamaModel;
-          const currentDefaultExists = models.some((m) => m === currentDefault || m.startsWith(`${currentDefault}:`));
-          if (!currentDefaultExists) {
-            const preferred = models.find((m) => m.includes('Gemma3-Instruct-Abliterated'));
-            if (preferred) {
-              updates.ollamaModel = preferred;
-              logger.info('Auto-selected Ollama default model', { previous: currentDefault, selected: preferred });
-            } else {
-              logger.warn('Preferred Ollama model not found, keeping current default', { current: currentDefault, available: models });
-            }
-          }
-
-          if (Object.keys(updates).length > 0) {
-            updateConfig(updates);
-            logger.info('Synced Ollama models to config.yaml', { count: models.length, default: updates.ollamaModel ?? currentDefault });
-          }
-        }).catch((err) => {
-          logger.warn('Failed to apply Ollama model sync', { error: err instanceof Error ? err.message : String(err) });
-        });
-      }
-    }
-  } catch (e) {
-    logger.info('Could not sync Ollama models', { reason: 'Ollama may be unavailable', error: String(e) });
-  }
 }
 
 main().catch((err) => {

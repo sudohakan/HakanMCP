@@ -2,7 +2,7 @@
   "name": "hakanmcp",
   "version": "3.0.0",
   "description": "HakanMCP — MCP tool server for Claude Code",
-  "main": "dist/src/index.js",
+  "main": "dist/server.js",
   "types": "dist/src/index.d.ts",
   "type": "module",
   "homepage": "https://github.com/sudohakan/HakanMCP#readme",
@@ -17,8 +17,8 @@
   "scripts": {
     "prepublishOnly": "npm run build",
     "prepack": "npm run build",
-    "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('src/catalog/servers.json','dist/src/catalog/servers.json')\" && node dist/scripts/generate-tool-manifest.js",
-    "start": "node --no-warnings dist/src/index.js",
+    "build": "tsc -p tsconfig.build.json && node scripts/bundle.mjs && node dist/scripts/generate-tool-manifest.js",
+    "start": "node --no-warnings dist/server.js",
     "dev": "node --no-warnings --loader ts-node/esm src/index.ts",
     "lint": "eslint \"{src,tests,scripts,bin}/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"{src,tests,scripts,bin}/**/*.{ts,tsx}\" --fix",
@@ -27,7 +27,9 @@
     "test:smoke": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --runInBand tests/config.test.ts tests/logger.test.ts tests/http.test.ts",
     "test:watch": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --watch",
     "test:coverage": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --coverage",
-    "check:quick": "npm run build && npm run test:smoke"
+    "check:quick": "npm run build && npm run test:smoke",
+    "bundle": "node scripts/bundle.mjs",
+    "measure:coldstart": "node scripts/measure-coldstart.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -67,6 +69,7 @@
     "@typescript-eslint/parser": "^8.17.0",
     "adm-zip": "^0.6.1",
     "cross-env": "^10.1.0",
+    "esbuild": "^0.28.2",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.1",

@@ -98,9 +98,6 @@ describe('config module', () => {
     const override = {
       serverName: 'custom-server',
       logLevel: 'debug',
-      gitbookUrl: 'https://docs.example.com',
-      ollamaUrl: 'https://ollama.example.com',
-      availableModels: ['llama3'],
       backup: {
         enabled: false,
         localPath: './alt-backups',
@@ -115,7 +112,7 @@ describe('config module', () => {
     const { config } = module;
 
     expect(config.serverName).toBe('custom-server');
-    expect(config.ollamaUrl).toBe('https://ollama.example.com');
+    expect(config.logLevel).toBe('debug');
     expect(config.backup?.localPath).toBe('./alt-backups');
     expect(mocks.logger.info).toHaveBeenCalledWith(expect.stringContaining('Loaded config'));
   });
@@ -123,18 +120,14 @@ describe('config module', () => {
   it('updateConfig persists merged changes and updates runtime config', async () => {
     const base = {
       serverName: 'initial',
-      gitbookUrl: 'https://docs.example.com',
       cacheTtl: 200,
       logLevel: 'info',
-      ollamaUrl: 'https://ollama.example.com',
-      ollamaModel: 'llama3',
-      availableModels: ['llama3'],
     };
 
     const { module, files, mocks } = await setupConfigModule({ fileConfig: base });
     await module.updateConfig({
       serverName: 'updated',
-      availableModels: ['llama3', 'codellama'],
+      cacheTtl: 450,
       backup: {
         enabled: true,
         localPath: './backups',
@@ -153,7 +146,7 @@ describe('config module', () => {
       backup?: { retentionHours?: number };
     };
     expect(persisted.serverName).toBe('updated');
-    expect(persisted.availableModels).toEqual(['llama3', 'codellama']);
+    expect(persisted.cacheTtl).toBe(450);
     expect(persisted.backup?.retentionHours).toBe(72);
     expect(module.config.serverName).toBe('updated');
     expect(module.config.backup?.retentionHours).toBe(72);
@@ -162,23 +155,16 @@ describe('config module', () => {
   describe('validateConfig', () => {
     const validConfig = {
       serverName: 'srv',
-      gitbookUrl: 'https://docs.example.com',
       cacheTtl: 60,
       logLevel: 'info',
-      ollamaUrl: 'https://ollama.example.com',
-      ollamaModel: 'llama3',
-      ollamaTimeout: 1000,
       retryCount: 1,
-      availableModels: [],
     };
 
     it.each([
       ['empty server name', { serverName: '' }, 'serverName cannot be empty'],
-      ['invalid gitbook url', { gitbookUrl: 'notaurl' }, 'gitbookUrl must be a valid URL'],
       ['cache ttl negative', { cacheTtl: -5 }, 'cacheTtl must be a positive integer'],
       ['cache ttl too high', { cacheTtl: 90000 }, 'cacheTtl should not exceed 86400 seconds'],
       ['invalid log level', { logLevel: 'trace' }, 'Invalid option: expected one of'],
-      ['missing ollama url', { ollamaUrl: '' }, 'ollamaUrl must be a valid URL'],
     ])('detects %s', async (_label, patch, expectedMessage) => {
       const { module } = await setupConfigModule({ fileConfig: validConfig });
       const cfg = { ...validConfig, ...patch };
@@ -217,51 +203,40 @@ describe('config module', () => {
       fileConfig: {
         ...{
           serverName: 'srv',
-          gitbookUrl: 'https://docs.example.com',
-          cacheTtl: 10,
+              cacheTtl: 10,
           logLevel: 'info',
-          ollamaUrl: 'https://ollama.example.com',
-          ollamaModel: 'llama3',
-          availableModels: [],
-        },
+                    },
       },
     });
 
     const unsafe = {
       serverName: 'bad',
-      gitbookUrl: 'invalid-url',
       cacheTtl: 10,
       logLevel: 'info',
-      ollamaUrl: 'https://ollama.example.com',
-      ollamaModel: 'llama3',
-      availableModels: [],
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test passes unsafe config
     const safe = module.getSafeConfig(unsafe as any);
     expect(safe.serverName).toBe('hakan-mcp');
-    expect(safe.ollamaModel).toBe('llama3');
+    expect(safe.serverName).toBe('hakan-mcp');
   });
 
-  it('loads aiProviders extensions from file config', async () => {
+  it('keeps an unknown key out of the runtime config instead of failing to load', async () => {
     const fileConfig = {
-      serverName: 'aiproviders-enabled',
-      gitbookUrl: 'https://docs.example.com',
+      serverName: 'with-stale-key',
       cacheTtl: 300,
       logLevel: 'info',
-      ollamaUrl: 'https://ollama.example.com',
-      ollamaModel: 'llama3',
-      ollamaTimeout: 2000,
       retryCount: 1,
-      availableModels: ['llama3'],
-      aiProviders: {
-        geminiKeyEncrypted: 'ENC_TEST',
-      },
+      // A key from an older schema: config.yaml files in the wild still carry
+      // aiProviders/scheduler/consciousness blocks, and finding one must not
+      // stop the server from starting.
+      aiProviders: { geminiKeyEncrypted: 'ENC_TEST' },
     };
 
     const { module } = await setupConfigModule({ fileConfig });
     const { config } = module;
 
-    expect(config.aiProviders?.geminiKeyEncrypted).toBe('ENC_TEST');
+    expect(config.serverName).toBe('with-stale-key');
+    expect((config as Record<string, unknown>).aiProviders).toBeUndefined();
   });
 });

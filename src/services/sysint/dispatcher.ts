@@ -16,6 +16,23 @@ interface CategoryModule {
   run: (toolId: string, args?: string[]) => Promise<unknown>;
 }
 
+/**
+ * Static category loaders. A template literal import would be shorter, but it is
+ * unresolvable at build time and keeps the server out of a single-file bundle —
+ * which is what the cold start is paid in. Adding a category means adding a line.
+ */
+const CATEGORY_LOADERS: Record<string, () => Promise<CategoryModule>> = {
+  audio: () => import('./tools/audio.js'),
+  browser: () => import('./tools/browser.js'),
+  disk: () => import('./tools/disk.js'),
+  network: () => import('./tools/network.js'),
+  outlook: () => import('./tools/outlook.js'),
+  process: () => import('./tools/process.js'),
+  programmer: () => import('./tools/programmer.js'),
+  registry: () => import('./tools/registry.js'),
+  system: () => import('./tools/system.js'),
+};
+
 /** Successfully-loaded category modules (only cached on success — failures are retried). */
 const _categoryModules = new Map<string, Promise<CategoryModule>>();
 
@@ -23,10 +40,11 @@ async function getCategoryModule(category: string): Promise<CategoryModule | nul
   if (_categoryModules.has(category)) {
     return _categoryModules.get(category)!;
   }
+  const loader = CATEGORY_LOADERS[category];
+  if (!loader) return null;
   try {
-    const mod = await import(`./tools/${category}.js`) as CategoryModule;
-    const resolved = Promise.resolve(mod);
-    _categoryModules.set(category, resolved);
+    const mod = await loader();
+    _categoryModules.set(category, Promise.resolve(mod));
     return mod;
   } catch {
     return null;

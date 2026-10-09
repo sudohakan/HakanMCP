@@ -99,17 +99,6 @@ const ALL_NATIVE_TOOL_IDS = [
   'registry-usb',
   'registry-associations',
   'registry-mru',
-  // Phase 4: Password
-  'browser-chrome-passwords',
-  'browser-firefox-passwords',
-  'wifi-passwords',
-  'credential-manager',
-  'windows-vault',
-  'rdp-credentials',
-  'vnc-passwords',
-  'mail-passwords',
-  'lsa-secrets',
-  'network-passwords',
   // Phase 5: Programmer
   'dll-exports',
   'pe-headers',

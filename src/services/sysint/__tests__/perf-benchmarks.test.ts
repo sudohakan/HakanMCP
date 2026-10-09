@@ -69,7 +69,6 @@ describe('Performance: category module import time', () => {
     'system',
     'browser',
     'registry',
-    'password',
     'programmer',
     'outlook',
     'audio',

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-09
+
+Reduced to a focused MCP tool server. The Mission Agent CLI and the AI provider
+orchestration layer were removed; the autonomy layer, `/loop`, `/goal` and cron
+cover that ground and Claude Code orchestrates models itself.
+
+### Removed
+- Mission Agent CLI (watch, scheduled, assistant, reactive modes) and the `bin` entry — the package is server-only
+- AI provider orchestration (cooldown, warmup, agentic loop), consciousness, conversation history
+- Tool modules unused over six months of session history: `ai`, `ai_provider_chat`, `env`, `cache`, `crypto`, `gdocs`, ElevenLabs audio, academic search, `hermesDelegate`
+- The sysint credential-reading category and `shodanRecon` — out of this server's scope, and their presence tripped model safety classifiers on the repo
+- 12 now-unused dependencies; 14 orphan test files whose targets were already gone
+
+### Added
+- Single-file esbuild bundle (`dist/server.js`); cold start on NTFS improved by inlining the module graph
+- `measure-coldstart` script
+
+### Changed
+- `src/catalog/servers.json` is a static import, removing the edit-source/forget-dist catalog trap
+- Unknown `config.yaml` keys are dropped on load instead of rejected
+- Tool set: 64 → 46 tools, 23 → 13 modules
+
+### Security
+- `npm audit`: proxy-addr (critical), @modelcontextprotocol/sdk OAuth and http-cache-semantics (high) resolved
+
+
 ### Added
 - `cfbypass` tool: Cloudflare-protected sayfaları FlareSolverr Docker container (port 8191) üzerinden çekme. Rendered HTML + cookies (cf_clearance dahil) döndürür. Akakçe, Epey, Sinerji, Cimri gibi basit Cloudflare JS challenge siteleri için çalışır. Turnstile siteleri (Trendyol, n11) kapsam dışı.
 - Unit tests (`tests/cfbypass.test.ts`): 8 test — happy path, method switching, session passthrough, error handling, zod validation, timeout propagation

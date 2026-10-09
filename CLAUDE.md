@@ -21,7 +21,7 @@ server.
 
 ```
 src/index.ts          Server entry (STDIO transport, ToolRegistry)
-dist/server.js        What actually runs — single-file esbuild bundle
+dist/src/index.js        What actually runs — single-file esbuild bundle
 config.yaml           Runtime configuration (Zod-validated)
 .env                  Secrets & env overrides (never committed)
 ```
@@ -42,7 +42,7 @@ The repo lives on `/mnt/c` (NTFS). Node resolving a dependency graph across the
 WSL boundary dominates startup — every module is a separate cross-boundary
 read, and the server used to answer `tools/list` in tens of seconds. One file
 is one read. `npm run build` compiles with `tsc`, then bundles `src/index.ts`
-into `dist/server.js` via `scripts/bundle.mjs`.
+into `dist/src/index.js` via `scripts/bundle.mjs`.
 
 Native addons stay external: they load their own `.node` binaries at runtime
 and cannot be inlined, and they are optional, so a missing one must stay a
@@ -142,7 +142,7 @@ HCD (`/mnt/c/dev/hakans-claude-dashboard`) spawns this server over stdio
 JSON-RPC from `packages/backend/src/lib/hakanmcp-client.ts` and discovers tools
 dynamically through `tools/list` — it holds no hardcoded tool names. Changing
 the tool set does not break it; changing the entry path or the stdio contract
-would. The client points at `dist/server.js`.
+would. The client points at `dist/src/index.js`.
 
 Claude Code registers the server in both `.claude.json` files (WSL and
 Windows). Cold start is charged on every session that loads it.

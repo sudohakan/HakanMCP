@@ -2,7 +2,7 @@
   "name": "hakanmcp",
   "version": "3.0.0",
   "description": "HakanMCP — MCP tool server for Claude Code",
-  "main": "dist/server.js",
+  "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "type": "module",
   "homepage": "https://github.com/sudohakan/HakanMCP#readme",
@@ -18,7 +18,7 @@
     "prepublishOnly": "npm run build",
     "prepack": "npm run build",
     "build": "tsc -p tsconfig.build.json && node scripts/bundle.mjs && node dist/scripts/generate-tool-manifest.js",
-    "start": "node --no-warnings dist/server.js",
+    "start": "node --no-warnings dist/src/index.js",
     "dev": "node --no-warnings --loader ts-node/esm src/index.ts",
     "lint": "eslint \"{src,tests,scripts,bin}/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"{src,tests,scripts,bin}/**/*.{ts,tsx}\" --fix",
@@ -29,7 +29,7 @@
     "test:coverage": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --coverage",
     "check:quick": "npm run build && npm run test:smoke",
     "bundle": "node scripts/bundle.mjs",
-    "measure:coldstart": "node scripts/measure-coldstart.mjs"
+    "measure:coldstart": "node scripts/measure-coldstart.mjs dist/src/index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

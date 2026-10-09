@@ -25,12 +25,17 @@ const NATIVE_EXTERNALS = [
   'socks',
 ];
 
-rmSync('dist/server.js', { force: true });
-rmSync('dist/server.js.map', { force: true });
+// Output overwrites the tsc-emitted entry at the exact path every consumer
+// already registers (dist/src/index.js: both .claude.json files, HCD's
+// HAKANMCP_PATH). They get the single-file bundle with no config change. The
+// sibling dist/src/**/*.js from tsc stay in place — the tool-manifest
+// generator reads dist/src/tools/*.js directly.
+const OUTFILE = 'dist/src/index.js';
+rmSync(`${OUTFILE}.map`, { force: true });
 
 const result = await build({
   entryPoints: ['src/index.ts'],
-  outfile: 'dist/server.js',
+  outfile: OUTFILE,
   bundle: true,
   platform: 'node',
   target: 'node20',
@@ -52,4 +57,4 @@ const result = await build({
 const bytes = Object.values(result.metafile.outputs)
   .filter((o) => !o.entryPoint || true)
   .reduce((a, o) => a + o.bytes, 0);
-console.log(`bundle: dist/server.js (${(bytes / 1024 / 1024).toFixed(2)} MB)`);
+console.log(`bundle: dist/src/index.js (${(bytes / 1024 / 1024).toFixed(2)} MB)`);

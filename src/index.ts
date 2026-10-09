@@ -7,6 +7,7 @@ process.setMaxListeners(20);
 // module means adding a line here.
 type ToolList = Array<import('./types/index.js').ToolDefinition>;
 const TOOL_MODULES: Array<{ name: string; load: () => Promise<ToolList> }> = [
+  { name: 'health', load: async () => (await import('./tools/health.js')).healthTools as ToolList },
   { name: 'gitbook', load: async () => (await import('./tools/gitbook.js')).gitbookTools as ToolList },
   { name: 'http', load: async () => (await import('./tools/http.js')).httpTools as ToolList },
   { name: 'backup', load: async () => (await import('./tools/backup.js')).backupTools as ToolList },
@@ -103,7 +104,6 @@ async function main() {
   });
 
   const { ToolRegistry, FEATURE_TOOL_METADATA } = await import('./toolRegistry.js');
-  const { isPackageAvailable } = await import('./dependencyResolver.js');
 
   registry = new ToolRegistry({
     timeoutSec: config.system?.commandTimeout ?? 60,
@@ -125,52 +125,17 @@ async function main() {
     }
   });
 
-  // Load feature tools (db, mongo)
-  const featureModules = [
-    {
-      prefix: 'db',
-      check: () =>
-        isPackageAvailable('pg') ||
-        isPackageAvailable('mysql2') ||
-        isPackageAvailable('mssql') ||
-        isPackageAvailable('sqlite3'),
-      loader: () => import('./tools/db.js'),
-      exportName: 'dbTools',
-    },
-    {
-      prefix: 'mongo',
-      check: () => isPackageAvailable('mongodb'),
-      loader: () => import('./tools/mongodb.js'),
-      exportName: 'mongoTools',
-    },
-  ];
+  // Feature tools (db, mongo) are always registered as placeholders; the real
+  // module loads on the first call through registry.getHandler(). Loading them
+  // eagerly imported their native drivers at startup — mongodb alone costs ~12s
+  // on NTFS and mongo is called rarely — so every session paid for a driver it
+  // usually never used. tools/list stays complete because the placeholder
+  // carries the metadata.
+  for (const prefix of ['db', 'mongo']) {
+    registerPlaceholders(FEATURE_TOOL_METADATA, prefix, registry);
+  }
 
-  const featurePromise = (async () => {
-    for (const fm of featureModules) {
-      if (fm.check()) {
-        try {
-          const mod = await fm.loader() as Record<string, unknown>;
-          const tools = mod[fm.exportName] as Array<import('./types/index.js').ToolDefinition>;
-          for (const tool of tools) {
-            registry.registerTool(tool, fm.prefix);
-          }
-          logger.info(`Feature tools loaded eagerly: ${fm.prefix}`, { count: tools.length });
-        } catch (err) {
-          logger.warn(`Failed to eagerly load ${fm.prefix} tools, using placeholders`, {
-            error: err instanceof Error ? err.message : String(err),
-          });
-          registerPlaceholders(FEATURE_TOOL_METADATA, fm.prefix, registry);
-        }
-      } else {
-        registerPlaceholders(FEATURE_TOOL_METADATA, fm.prefix, registry);
-        logger.info(`Feature tools registered as placeholders: ${fm.prefix}`, {
-          reason: 'native dependencies not installed',
-        });
-      }
-    }
-  })();
-
-  await Promise.all([...loadPromises, featurePromise]);
+  await Promise.all(loadPromises);
 
   logger.info(`ToolRegistry initialized: ${registry.getToolCount()} tools in ${Date.now() - loadStart}ms`);
   resolveToolsReady!();

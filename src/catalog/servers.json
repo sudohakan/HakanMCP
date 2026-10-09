@@ -136,20 +136,6 @@
         "SLA breach monitoring"
       ]
     },
-    "kali": {
-      "name": "Kali MCP",
-      "description": "Offensive security tools — recon, scanning, exploitation",
-      "command": "bash",
-      "args": [
-        "-lc",
-        "cd /mnt/c/dev/kali-mcp-server && exec python3 -m kali_mcp_server.server --transport stdio"
-      ],
-      "conditions": [
-        "Pentest, recon, or vulnerability scanning requested",
-        "Network discovery or port scanning needed",
-        "Security assessment or exploitation"
-      ]
-    },
     "chroma": {
       "name": "Chroma",
       "description": "Vector database for document embedding and similarity search",

@@ -18,7 +18,6 @@ const TOOL_MODULES = [
   { path: './tools/exaSearch.js', export: 'exaTools' },
   { path: './tools/academicSearch.js', export: 'academicTools' },
   { path: './tools/elevenlabs.js', export: 'elevenlabsTools' },
-  { path: './tools/shodanRecon.js', export: 'shodanTools' },
   { path: './tools/ollamaChat.js', export: 'ollamaChatTools' },
   { path: './tools/transcribeLocal.js', export: 'transcribeLocalTools' },
   { path: './tools/hermesDelegate.js', export: 'hermesDelegateTools' },

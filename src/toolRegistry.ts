@@ -25,13 +25,9 @@ export interface FeatureModule {
 
 export const FEATURE_TOOL_MAP: Record<string, FeatureModule> = {
   http: { modulePath: './tools/http.js', exportName: 'httpTools', nativeDeps: [], core: true, featureName: '' },
-  env: { modulePath: './tools/env.js', exportName: 'envTools', nativeDeps: [], core: true, featureName: '' },
-  cache: { modulePath: './tools/cache.js', exportName: 'cacheTools', nativeDeps: [], core: true, featureName: '' },
   gb: { modulePath: './tools/gitbook.js', exportName: 'gitbookTools', nativeDeps: [], core: true, featureName: '' },
-  ai: { modulePath: './tools/aiTools.js', exportName: 'aiTools', nativeDeps: [], core: true, featureName: '' },
   backup: { modulePath: './tools/backup.js', exportName: 'backupTools', nativeDeps: [], core: true, featureName: '' },
   mcp: { modulePath: './tools/mcpClient.js', exportName: 'mcpClientTools', nativeDeps: [], core: true, featureName: '' },
-  crypto: { modulePath: './tools/encryption.js', exportName: 'encryptionTools', nativeDeps: [], core: true, featureName: '' },
   disk: { modulePath: './tools/disk.js', exportName: 'diskTools', nativeDeps: [], core: true, featureName: '' },
   sysint: { modulePath: './tools/sysint.js', exportName: 'sysintTools', nativeDeps: [], core: true, featureName: '' },
 

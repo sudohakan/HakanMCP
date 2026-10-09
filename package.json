@@ -1,13 +1,10 @@
 {
   "name": "hakanmcp",
-  "version": "2.2.1",
-  "description": "HakanMCP — Unified AI Agent Orchestration & MCP Tool Platform",
+  "version": "3.0.0",
+  "description": "HakanMCP — MCP tool server for Claude Code",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "type": "module",
-  "bin": {
-    "hakanmcp": "./dist/bin/cli.js"
-  },
   "homepage": "https://github.com/sudohakan/HakanMCP#readme",
   "bugs": {
     "url": "https://github.com/sudohakan/HakanMCP/issues"
@@ -27,33 +24,18 @@
     "lint:fix": "eslint \"{src,tests,scripts,bin}/**/*.{ts,tsx}\" --fix",
     "format": "prettier --write \"{src,tests,scripts,bin}/**/*.{ts,tsx,js,json,md}\"",
     "test": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest",
-    "test:smoke": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --runInBand tests/config.test.ts tests/aiProviders.test.ts tests/logger.test.ts",
+    "test:smoke": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --runInBand tests/config.test.ts tests/logger.test.ts tests/http.test.ts",
     "test:watch": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --watch",
     "test:coverage": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --coverage",
-    "check:quick": "npm run build && npm run test:smoke",
-    "console:chat": "node --no-warnings --loader ts-node/esm scripts/console_chat.ts",
-    "status:board": "node --no-warnings --loader ts-node/esm scripts/status_board.ts",
-    "status:quick": "node --no-warnings --loader ts-node/esm scripts/quick_status.ts"
+    "check:quick": "npm run build && npm run test:smoke"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.3.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.8.0",
-    "boxen": "^8.0.1",
-    "chalk": "^5.6.2",
-    "chalk-animation": "^2.0.3",
-    "chokidar": "^4.0.3",
-    "commander": "^14.0.3",
     "dotenv": "^17.2.3",
-    "form-data": "^4.0.5",
-    "gradient-string": "^3.0.0",
-    "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.0",
     "node-cache": "^5.1.2",
-    "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "ora": "^9.3.0",
-    "semver": "^7.6.0",
     "systeminformation": "^5.31.5",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
@@ -72,15 +54,12 @@
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/chalk-animation": "^1.6.3",
     "@types/express": "^5.0.6",
-    "@types/gradient-string": "^1.1.6",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/jsdom": "^21.1.1",
     "@types/mssql": "^9.1.8",
     "@types/node": "^24.10.1",
-    "@types/node-cron": "^3.0.11",
     "@types/pg": "^8.10.9",
     "@types/semver": "^7.7.1",
     "@types/xml2js": "^0.4.14",
@@ -110,9 +89,6 @@
     "hakanmcp",
     "mcp",
     "model-context-protocol",
-    "ai-agents",
-    "agent-orchestration",
-    "cli",
     "developer-tools",
     "automation"
   ],
@@ -132,10 +108,6 @@
       "prettier --write"
     ],
     "tests/**/*.{ts,tsx,js}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "bin/**/*.{ts,tsx,js}": [
       "eslint --fix",
       "prettier --write"
     ]

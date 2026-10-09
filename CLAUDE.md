@@ -1,143 +1,158 @@
 # HakanMCP — Claude Code Configuration
 
-> Unified MCP Server + Mission Agent CLI. v2.2.1, ESM, Node >= 20.
+> MCP tool server for Claude Code. ESM, Node >= 20.
 
 ## Project Overview
 
-HakanMCP serves two roles:
-1. **MCP Server** — STDIO-based Model Context Protocol server with 63 tools for Claude Code + on-demand MCP catalog (9 auth-free servers)
-2. **Mission Agent CLI** — Autonomous task execution via markdown mission files with 4 operating modes (Watch, Scheduled, Assistant, Reactive)
+HakanMCP is a STDIO Model Context Protocol server: one process exposing the
+tools Claude Code reaches for (browser and Chrome DevTools, HTTP, SQL and
+MongoDB, GitBook, system intelligence, disk, search, local transcription,
+Ollama delegation), plus an on-demand catalog that connects to external
+auth-free MCP servers at runtime instead of registering them permanently.
+
+It used to carry a second role — a Mission Agent CLI with watch, scheduled,
+assistant and reactive modes, and its own AI provider orchestration. Both were
+removed in v3.0.0: the autonomy layer (`auto`, `claude-autonomy.timer`),
+`/loop`, `/goal` and cron cover that ground, and Claude Code itself does the
+model orchestration. The package has no `bin` entry; `npm start` runs the
+server.
 
 ## Architecture
 
 ```
-src/index.ts          MCP Server entry (STDIO transport, ToolRegistry)
-bin/hakanmcp.ts       CLI entry (Commander.js)
+src/index.ts          Server entry (STDIO transport, ToolRegistry)
+dist/server.js        What actually runs — single-file esbuild bundle
 config.yaml           Runtime configuration (Zod-validated)
 .env                  Secrets & env overrides (never committed)
 ```
 
-The MCP server uses a `ToolRegistry` with lazy loading: core tools are eagerly registered, feature tools (db, mongo) load on first call if native deps are available. Placeholder metadata is registered when deps are missing so `tools/list` always returns the full catalog. An on-demand MCP catalog (`src/catalog/servers.json`) allows dynamic connections to external auth-free MCP servers (git, filesystem, memory, etc.).
+Startup runs in three phases so the handshake is never blocked: the SDK
+connects the transport first, tool modules load second, and heavy services
+(backup, daily tool health check) are deferred to a `setImmediate` after
+`tools/list` can already be served.
+
+`ToolRegistry` registers core tools eagerly and feature tools (`db`, `mongo`)
+lazily on first call when their native dependency is present. When a dependency
+is missing the tool still appears in `tools/list` as a placeholder, so the
+catalog a client sees does not change with the host's install state.
+
+### The bundle is the point, not an optimization
+
+The repo lives on `/mnt/c` (NTFS). Node resolving a dependency graph across the
+WSL boundary dominates startup — every module is a separate cross-boundary
+read, and the server used to answer `tools/list` in tens of seconds. One file
+is one read. `npm run build` compiles with `tsc`, then bundles `src/index.ts`
+into `dist/server.js` via `scripts/bundle.mjs`.
+
+Native addons stay external: they load their own `.node` binaries at runtime
+and cannot be inlined, and they are optional, so a missing one must stay a
+resolve-time failure the placeholder path already handles.
+
+Two things keep the bundle possible, and breaking either silently un-bundles
+the server:
+- **No template-literal imports.** `import('./tools/' + x + '.js')` is
+  unresolvable at build time. The sysint dispatcher uses an explicit
+  `CATEGORY_LOADERS` map; adding a category means adding a line.
+- **JSON is imported, not read from disk.** `src/catalog/servers.json` and
+  `chromeDevtools.tools.json` are static imports. A `readFileSync` against
+  `__dirname` would both break bundling and resurrect the old two-step trap
+  where editing the source left `dist/` stale and the server looked like it had
+  lost a catalog entry.
+
+Measure with `npm run measure:coldstart` — it reports the median of N runs,
+because a single run on NTFS swings with the page cache.
 
 ## Directory Structure
 
 ```
 src/
-  index.ts              MCP server bootstrap & tool registration
+  index.ts              Server bootstrap & tool registration
   config.ts             YAML + env config loading, Zod validation
   toolRegistry.ts       Lazy-load tool registry with placeholder support
   dependencyResolver.ts Native dependency detection
+  catalog/              On-demand MCP server catalog (servers.json)
   tools/                MCP tool modules (one file per domain)
-  services/             Business logic (agentic loop, backup, cache, consciousness, etc.)
-  utils/                Shared utilities (logger, httpClient, dbPoolManager, etc.)
+  services/             backupService, toolHealthCheck, disk, sysint
+  utils/                logger, httpClient, dbPoolManager, processRegistry, …
   types/                TypeScript type definitions
-  cli/                  CLI command handlers
-    cliUtils.ts         Shared rendering utilities (headers, dividers)
-    configValidator.ts  Workspace config schema (Zod) with WorkspaceEntrySchema
-    initCommand.ts      Interactive workspace setup (@inquirer/prompts)
-    missionCommand.ts   Workspace dashboard & detailed status
-    startCommand.ts     Workspace execution modes (--workspace, --all, --parallel)
-  mission/              Mission loading, running, state tracking, report generation
-  watch/                File watcher mode (chokidar-based)
-  scheduled/            Cron/interval scheduled execution
-  reactive/             Unified event bus combining watch + scheduled
-  flows/                Flow execution runner
-bin/
-  cli.ts                Compiled CLI entry point
-  hakanmcp.ts           Premium CLI with gradient UI (Commander.js)
-tests/                  Jest test suite
-scripts/          Build scripts (tool manifest generator)
+scripts/
+  bundle.mjs            esbuild single-file bundle
+  measure-coldstart.mjs Spawn-to-tools/list timing
+  generate-tool-manifest.ts
+data/sysint/catalog.json  sysint tool catalog (97 tools, 9 categories)
+tests/                  Jest suite
 ```
 
-## CLI Commands
+## MCP Tools
 
-| Command | Description |
-|---------|-------------|
-| `hakanmcp init` | Interactive workspace setup (config + mission via Q&A) |
-| `hakanmcp init --remove <name>` | Remove a workspace (config, files, state) |
-| `hakanmcp start` | Start mission agent (default workspace) |
-| `hakanmcp start --workspace <name>` | Start specific workspace |
-| `hakanmcp start --all` | Start all workspaces |
-| `hakanmcp stop` | Stop running agent |
-| `hakanmcp mission` | Workspace dashboard (all workspaces overview) |
-| `hakanmcp mission --workspace <name>` | Detailed status for one workspace |
-| `hakanmcp report [-n N]` | Show recent execution reports |
-| `hakanmcp watch` | File watcher mode |
-| `hakanmcp scheduled` | Cron/interval task mode |
-| `hakanmcp reactive` | Combined watch + scheduled mode |
-| `hakanmcp doctor` | Health check (version, build, config, tools) |
-| `hakanmcp doctor fix` | AI-driven auto-repair |
-| `hakanmcp health` | Alias for doctor |
-| `hakanmcp status` | Status dashboard (version, uptime, backup) |
-| `hakanmcp tools` | List registered MCP tools (reads `dist/tool-manifest.json`) |
-| `hakanmcp backup [run]` | Backup info / force a backup |
-| `hakanmcp config [yaml [help]]` | View/edit config.yaml |
-| `hakanmcp journal` | Consciousness journal entries |
-| `hakanmcp providers` | AI provider status |
-| `hakanmcp ralph` | Ralph autonomous loop control |
-| `hakanmcp logs` | Tail server logs |
-
-Interactive menu: run `hakanmcp` with no args.
-
-### CLI Launcher (Windows)
-
-The CLI needs **Node >= 18** (`import ... with { type: 'json' }`). The user's
-nvm4w default is `16.20.2` (Finekra React builds), so the npm-generated
-`hakanmcp.cmd`/`.ps1` shims in `%APPDATA%\npm` are repointed to a fixed
-Node 24 install — they do not follow the nvm-active version:
-
-```
-"C:\Users\Hakan\AppData\Local\nvm\v24.11.1\node.exe" "C:\dev\HakanMCP\dist\bin\cli.js" %*
-```
-
-After `npm install -g .` (which regenerates npm's ambient-Node shims),
-re-apply the Node-24 pin to `hakanmcp.cmd` and `hakanmcp.ps1`.
-
-## MCP Tools (src/tools/)
-
-23 modules → 63 registered tools. Most are action-multiplexed (one tool, `action` parameter).
+13 modules → 46 tools. Most are action-multiplexed: one tool with an `action`
+parameter rather than a tool per verb.
 
 | Module | Tool Name(s) | Purpose |
 |--------|--------------|---------|
-| gitbook.ts | `gitbook` | GitBook API operations (listSpaces, getPage, updatePage, search...) |
-| http.ts | `http` | HTTP request, downloadFile |
-| env.ts | `env` | Environment variable management |
-| aiTools.ts | `ai` | AI chat, generate, listModels, history |
-| aiProviders.ts | `ai_provider_chat` | Multi-provider AI routing (codex/claude/gemini) |
-| backup.ts | `backup` | Project backup/restore |
-| cache.ts | `cache` | In-memory cache (get, set, delete, clear, stats) |
-| encryption.ts | `crypto` | File/value encryption |
-| disk.ts | `disk` | Disk usage scan, duplicate find, temp/cache/log cleanup |
-| sysint.ts | `sysint` | Cross-platform native system intelligence (ports, drivers, USB, Wi-Fi, processes) |
-| cfbypass.ts | `cfbypass` | Cloudflare challenge bypass (FlareSolverr) |
+| mcpClient.ts | `mcp`, `browser` | On-demand MCP bridge + Playwright browser automation |
 | chromeDevtools.ts | `chrome_*` (29) | Chrome DevTools proxy — console, network, perf, DOM, JS eval, screenshot |
+| http.ts | `http` | HTTP request, downloadFile |
+| db.ts | `db` | SQL operations (feature tool, lazy-loaded) |
+| mongodb.ts | `mongo` | MongoDB CRUD, aggregation, indexes (feature tool, lazy-loaded) |
+| gitbook.ts | `gitbook` | GitBook API operations |
+| sysint.ts | `sysint` | Cross-platform system intelligence (ports, drivers, USB, Wi-Fi, processes) |
+| disk.ts | `disk` | Disk usage scan, duplicate find, temp/cache/log cleanup |
+| cfbypass.ts | `cfbypass` | Cloudflare challenge bypass (FlareSolverr) |
 | exaSearch.ts | `exaSearch`, `exaFindSimilar`, `exaGetContents` | Exa neural web search |
-| academicSearch.ts | `arxivSearch`, `semanticScholarSearch`, `paperDetails` | Academic paper search |
-| elevenlabs.ts | `ttsGenerate`, `listVoices`, `transcribe`, `voiceClone` | ElevenLabs TTS / STT / voice clone |
-| shodanRecon.ts | `shodanHostInfo`, `shodanSearch`, `shodanDnsResolve` | Shodan recon |
 | ollamaChat.ts | `ollamaChat`, `ollamaListModels` | Local Ollama delegation |
 | transcribeLocal.ts | `transcribeLocal` | Local faster-whisper STT (offline) |
-| hermesDelegate.ts | `hermesDelegate`, `hermesStatus` | Hermes Agent task delegation |
-| googleDocs.ts | `gdocs` | Google Docs operations |
-| mcpClient.ts | `mcp`, `browser` | On-demand MCP bridge + Playwright browser automation (action-multiplexed) |
-| db.ts | `db` | SQL database operations (feature tool, lazy-loaded) |
-| mongodb.ts | `mongo` | MongoDB CRUD, aggregation, indexes (feature tool, lazy-loaded) |
+| backup.ts | `backup` | Project backup/restore |
 
-Feature tools (`db`, `mongo`) require optional native dependencies — they register as placeholders when deps are missing.
+`mcpClient.ts` exposes only `mcp` + `browser`; the individual handlers in the
+internal `_mcpLegacyTools` array are delegation targets, not registered tools.
 
-`mcpClient.ts` exposes only `mcp` + `browser`; the individual `mcp_*` / `mcp_browser*` handlers in the internal `_mcpLegacyTools` array are implementation targets the two multiplexed tools delegate to — they are not registered as MCP tools.
+### What is deliberately absent
+
+Tools removed in v3.0.0 after six months of session history showed near-zero
+use: `ai` / `ai_provider_chat` (Claude Code orchestrates models itself),
+`env`, `cache`, `crypto`, `gdocs`, ElevenLabs audio, academic search,
+`hermesDelegate`, and the sysint credential-reading category.
+
+That last one is not only a usage call. Browser, VNC, RDP and Wi-Fi stored
+password readers plus LSA secrets made the repo read as credential-dumping
+tooling, and working on it tripped the model safety classifier — the repo
+became unopenable with the strongest model. Pentest work has its own channel
+(`kali-mcp`). Do not reintroduce that category here.
+
+Adding a tool back is a real decision, not a default: each one costs context in
+every session that loads this server. Prefer the on-demand catalog
+(`src/catalog/servers.json` → `mcp.connectFromCatalog`), which costs nothing
+until used.
 
 ## Tech Stack
 
 - **Runtime:** Node.js >= 20, ESM (`"type": "module"`)
-- **Language:** TypeScript 5.x (compiled via `tsc -p tsconfig.build.json`)
+- **Language:** TypeScript 5.x (`tsc -p tsconfig.build.json`)
+- **Bundler:** esbuild (single-file server output)
 - **MCP SDK:** `@modelcontextprotocol/sdk` (STDIO transport)
-- **CLI Framework:** Commander.js with chalk, boxen, ora, gradient-string
 - **Config:** YAML (js-yaml) + Zod schema validation + dotenv
 - **Logging:** Winston with daily-rotate-file
 - **Testing:** Jest with ts-jest (experimental VM modules)
-- **Linting:** ESLint + Prettier + lint-staged
-- **Optional DB Drivers:** pg, mysql2, mssql, sqlite3, mongodb (lazy-loaded)
+- **Optional native drivers:** pg, mysql2, mssql, sqlite3, better-sqlite3, mongodb
+
+## Consumers
+
+HCD (`/mnt/c/dev/hakans-claude-dashboard`) spawns this server over stdio
+JSON-RPC from `packages/backend/src/lib/hakanmcp-client.ts` and discovers tools
+dynamically through `tools/list` — it holds no hardcoded tool names. Changing
+the tool set does not break it; changing the entry path or the stdio contract
+would. The client points at `dist/server.js`.
+
+Claude Code registers the server in both `.claude.json` files (WSL and
+Windows). Cold start is charged on every session that loads it.
+
+## Config
+
+Unknown keys in `config.yaml` are dropped on load rather than rejected, so a
+file carrying blocks from an older schema still boots. Live keys: `serverName`,
+`logLevel`, `cacheTtl`, `retryCount`, `gitbookToken`, `mongoDbUrl`, `github`,
+`monitoring`, `backup`, `system`.
 
 ## Coding Conventions
 
@@ -148,56 +163,3 @@ Feature tools (`db`, `mongo`) require optional native dependencies — they regi
 - ALWAYS read a file before editing it
 - NEVER commit secrets, credentials, or .env files
 - Use `src/` for source, `tests/` for tests, `scripts/` for build scripts
-- All tool modules export an array of `ToolDefinition` objects
-- Handler functions return `{ content: [{ type: 'text', text: string }], isError?: boolean }`
-- Config changes go through `updateConfig()` which validates and atomically writes
-
-## Environment Variables (.env)
-
-| Variable | Purpose |
-|----------|---------|
-| `CODEX_API_KEY` / `OPENAI_API_KEY` | OpenAI API key |
-| `CLAUDE_CODE_API_KEY` / `ANTHROPIC_API_KEY` | Anthropic API key |
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `AI_KEY_PASSWORD` | Decrypt encrypted API keys in config.yaml |
-| `LOG_LEVEL` / `HAKANMCP_LOG_LEVEL` | Override log level (debug/info/warn/error/none) |
-| `CACHE_TTL` / `HAKANMCP_CACHE_TTL` | Override cache TTL in seconds |
-| `GITBOOK_URL` | GitBook instance URL |
-| `MONITORING_PEER_INSTANCE` | Peer instance path for guardian sync |
-| `SCHEDULER_ENABLED` | Enable/disable scheduler |
-| `HAKANMCP_PROJECT_ROOT` | Override detected project root |
-
-## Repository Cleanliness
-
-- NEVER commit generated artifacts, test outputs, or temp files to the repo
-- All test artifacts must use `fs.mkdtempSync()` for temp directories (no predictable paths)
-- Runtime state files (`.ai-provider-*.json`, `scheduler-state.json`, logs/) are gitignored — never commit them
-- Before adding new directories, check `.gitignore` and add entries for any generated/runtime content
-- Periodically audit for dead code, unused placeholders, and orphaned files — remove them promptly
-- Empty directories without a clear documented purpose should be removed
-
-## Config Change Rule
-
-When modifying config schema (`src/config.ts`), config.yaml defaults, or adding/removing config fields:
-1. Update `CONFIG_INFO` in `bin/hakanmcp.ts` — the `config info <category>` descriptions must reflect current fields
-2. Update the status board display in `runStatus()` if the field is user-visible
-3. Ensure `config.yaml.example` has the new field with a sensible default
-4. If a config field exists in schema but is never read at runtime, either wire it up or remove it
-5. If the field is overridable via `.env`, ensure it exists in both `.env.example` and `config.yaml.example`
-
-## CLI Change Rule
-
-When adding, removing, or renaming CLI commands or subcommands:
-1. Update the help menu in `bin/hakanmcp.ts` (`showHelp()` function) — every command must appear
-2. Update the CLI Commands table in this file (`CLAUDE.md`)
-3. If a command has category-level info (e.g. `config info`), update the corresponding `CONFIG_INFO` or similar constant
-
-## Build & Run
-
-```bash
-npm run build          # TypeScript compile + generate tool manifest
-npm run dev            # Run with ts-node (development)
-npm start              # Run compiled server
-npm test               # Run Jest test suite
-npm run check:quick    # Build + smoke tests
-```

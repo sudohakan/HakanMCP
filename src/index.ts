@@ -1,19 +1,24 @@
 process.setMaxListeners(20);
 
-// Tool modules — loaded lazily via dynamic import after MCP handshake
-const TOOL_MODULES = [
-  { path: './tools/gitbook.js', export: 'gitbookTools' },
-  { path: './tools/http.js', export: 'httpTools' },
-  { path: './tools/backup.js', export: 'backupTools' },
-  { path: './tools/mcpClient.js', export: 'mcpClientTools' },
-  { path: './tools/disk.js', export: 'diskTools' },
-  { path: './tools/sysint.js', export: 'sysintTools' },
-  { path: './tools/cfbypass.js', export: 'cfbypassTools' },
-  { path: './tools/chromeDevtools.js', export: 'chromeDevtoolsTools' },
-  { path: './tools/exaSearch.js', export: 'exaTools' },
-  { path: './tools/ollamaChat.js', export: 'ollamaChatTools' },
-  { path: './tools/transcribeLocal.js', export: 'transcribeLocalTools' },
-] as const;
+// Core tool modules. The loaders are static imports, not import(variable):
+// a computed specifier is unresolvable at bundle time, and esbuild would leave
+// it as a runtime import that finds nothing inside the single-file bundle —
+// the server would start with zero tools and only a warning. Adding a tool
+// module means adding a line here.
+type ToolList = Array<import('./types/index.js').ToolDefinition>;
+const TOOL_MODULES: Array<{ name: string; load: () => Promise<ToolList> }> = [
+  { name: 'gitbook', load: async () => (await import('./tools/gitbook.js')).gitbookTools as ToolList },
+  { name: 'http', load: async () => (await import('./tools/http.js')).httpTools as ToolList },
+  { name: 'backup', load: async () => (await import('./tools/backup.js')).backupTools as ToolList },
+  { name: 'mcpClient', load: async () => (await import('./tools/mcpClient.js')).mcpClientTools as ToolList },
+  { name: 'disk', load: async () => (await import('./tools/disk.js')).diskTools as ToolList },
+  { name: 'sysint', load: async () => (await import('./tools/sysint.js')).sysintTools as ToolList },
+  { name: 'cfbypass', load: async () => (await import('./tools/cfbypass.js')).cfbypassTools as ToolList },
+  { name: 'chromeDevtools', load: async () => (await import('./tools/chromeDevtools.js')).chromeDevtoolsTools as ToolList },
+  { name: 'exaSearch', load: async () => (await import('./tools/exaSearch.js')).exaTools as ToolList },
+  { name: 'ollamaChat', load: async () => (await import('./tools/ollamaChat.js')).ollamaChatTools as ToolList },
+  { name: 'transcribeLocal', load: async () => (await import('./tools/transcribeLocal.js')).transcribeLocalTools as ToolList },
+];
 
 async function main() {
   // Phase 0: Import MCP SDK first and connect transport immediately
@@ -109,13 +114,12 @@ async function main() {
   const loadStart = Date.now();
   const loadPromises = TOOL_MODULES.map(async (mod) => {
     try {
-      const module = await import(mod.path);
-      const tools = module[mod.export] as Array<import('./types/index.js').ToolDefinition>;
+      const tools = await mod.load();
       for (const tool of tools) {
         registry.registerTool(tool as unknown as import('./types/index.js').ToolDefinition, null);
       }
     } catch (err) {
-      logger.warn(`Failed to load tool module: ${mod.path}`, {
+      logger.warn(`Failed to load tool module: ${mod.name}`, {
         error: err instanceof Error ? err.message : String(err),
       });
     }

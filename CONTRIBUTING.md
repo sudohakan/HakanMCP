@@ -1,7 +1,7 @@
 # Contributing to HakanMCP
 
 > Thank you for your interest in contributing!
-> For setup, see [SETUP.md](SETUP.md). For security, see [SECURITY.md](SECURITY.md).
+> For setup, see the [README](README.md). For security, see [SECURITY.md](SECURITY.md).
 
 ## Table of Contents
 

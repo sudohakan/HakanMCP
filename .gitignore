@@ -135,3 +135,6 @@ output/
 *.rotate-audit.json
 graphify-out/
 credentials*
+
+# Internal planning (local only, not published)
+.planning/

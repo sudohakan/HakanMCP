@@ -4,7 +4,7 @@
 
 **MCP tool server for Claude Code**
 
-46 MCP tools · on-demand server catalog · single-file bundle
+47 MCP tools · on-demand server catalog · single-file bundle
 
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square)](https://nodejs.org)
@@ -27,7 +27,7 @@ each one permanently.
 
 | What you get | Details |
 |:---|:---|
-| **46 MCP tools, 13 modules** | Most are action-multiplexed — one tool, an `action` parameter |
+| **47 MCP tools** | Most are action-multiplexed — one tool, an `action` parameter |
 | **On-demand server catalog** | Connect git, filesystem, sqlite, duckdb, playwright, markitdown and more at runtime |
 | **Low-token browser bridge** | Drive Chrome through wrappers instead of returning large raw snapshots |
 | **Lazy native drivers** | SQL/Mongo drivers load on first call; a missing one stays a placeholder, not a crash |
@@ -37,26 +37,52 @@ each one permanently.
 
 ## Install
 
-Register with Claude Code:
+**Prerequisites:** Node.js 20 or newer, npm, and git. Check with `node -v`.
+
+**1. Clone and build.**
 
 ```bash
-claude mcp add hakanmcp node /path/to/HakanMCP/dist/src/index.js
+git clone https://github.com/sudohakan/HakanMCP.git
+cd HakanMCP
+npm install
+npm run build
 ```
 
-Or add to your client config:
+The build produces `dist/src/index.js` — the file the MCP client runs. Note its
+absolute path (run `pwd` in the repo and append `/dist/src/index.js`).
+
+**2. Register with Claude Code.**
+
+```bash
+claude mcp add hakanmcp node /absolute/path/to/HakanMCP/dist/src/index.js
+```
+
+Or add it to the MCP client config by hand (Claude Desktop, Cursor, …):
 
 ```json
 {
   "mcpServers": {
     "hakanmcp": {
       "command": "node",
-      "args": ["/path/to/HakanMCP/dist/src/index.js"]
+      "args": ["/absolute/path/to/HakanMCP/dist/src/index.js"]
     }
   }
 }
 ```
 
-Build first: `npm install && npm run build`.
+**3. Verify.** Run `claude mcp list` (it should show `hakanmcp` connected), or
+call the `health` tool from your client.
+
+**Configuration is optional.** The server runs with no setup. To use tools that
+need a key or an external service, copy `.env.example` to `.env` and fill in only
+what you need:
+- `gitbook` → `GITBOOK_TOKEN`
+- `exaSearch` → `EXA_API_KEY`
+- `cfbypass` → a running FlareSolverr container (the tool's description prints the
+  `docker run` command)
+- `ollamaChat` → a local Ollama instance
+- `db` / `mongo` → install the matching driver (`npm install pg`, `mongodb`, …);
+  until then the tool shows as a placeholder.
 
 ---
 

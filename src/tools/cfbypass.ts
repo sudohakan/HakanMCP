@@ -39,28 +39,28 @@ export const cfbypassTools = [
   {
     name: 'cfbypass',
     description:
-      'Cloudflare-protected sayfayı FlareSolverr Docker container üzerinden çek. ' +
-      'Rendered HTML + cookies (cf_clearance dahil) döndürür. ' +
-      'Kullan: WebFetch veya HakanMCP browser 403/challenge dönerse (Akakçe, Epey, Sinerji, Cimri). ' +
-      'Kullanma: Cloudflare Turnstile sayfaları (Trendyol, Hepsiburada, n11, Teknosa) — başarısız olur. ' +
-      'FlareSolverr container calismiyorsa: docker run -d --name flaresolverr -p 8191:8191 ' +
+      'Fetch a Cloudflare-protected page through a FlareSolverr Docker container. ' +
+      'Returns the rendered HTML plus cookies (including cf_clearance). ' +
+      'Use when WebFetch or the browser tool gets a 403/challenge on a site behind Cloudflare. ' +
+      'Does not work against Cloudflare Turnstile pages. ' +
+      'If the FlareSolverr container is not running: docker run -d --name flaresolverr -p 8191:8191 ' +
       '--restart unless-stopped ghcr.io/flaresolverr/flaresolverr:latest',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        url: { type: 'string', description: 'Fetch edilecek URL' },
+        url: { type: 'string', description: 'URL to fetch' },
         method: {
           type: 'string',
           enum: ['GET', 'POST'],
-          description: 'HTTP metodu (default: GET)',
+          description: 'HTTP method (default: GET)',
         },
         postData: {
           type: 'string',
-          description: 'URL-encoded POST gövdesi (method=POST ise)',
+          description: 'URL-encoded POST body (when method=POST)',
         },
         cookies: {
           type: 'array',
-          description: 'Önceden elde edilmiş cookie seti (session reuse için)',
+          description: 'Previously obtained cookie set (for session reuse)',
           items: {
             type: 'object',
             properties: {
@@ -77,7 +77,7 @@ export const cfbypassTools = [
         },
         sessionId: {
           type: 'string',
-          description: 'Opsiyonel session — aynı session tekrar kullanılınca cf_clearance korunur',
+          description: 'Optional session id — reusing the same session preserves cf_clearance',
         },
         flaresolverrUrl: {
           type: 'string',

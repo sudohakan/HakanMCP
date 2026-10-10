@@ -1,6 +1,6 @@
 # Security Policy
 
-> For setup instructions, see [SETUP.md](SETUP.md). For contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
+> For setup, see the [README](README.md). For contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Table of Contents
 

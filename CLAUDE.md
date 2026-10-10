@@ -62,6 +62,25 @@ the server:
 Measure with `npm run measure:coldstart` — it reports the median of N runs,
 because a single run on NTFS swings with the page cache.
 
+### Why it stays one per-session process (do not split)
+
+The obvious next step — run the stateless tools (`db`, `http`, `sysint`, `disk`,
+`gitbook`, `exaSearch`, `ollamaChat`, `transcribeLocal`, `cfbypass`, `backup`,
+`health`) as a shared warm process so sessions skip the ~29.5s cold start, and
+keep only `browser`/`mcp` per-session — was investigated and declined
+(2026-10-10). The blocker: an MCP tool's prefix comes from its `.claude.json`
+key, and one key is one transport. You cannot serve the stateless tools (shared
+HTTP) and `browser`/`mcp` (per-session stdio) both under `mcp__HakanMCP__*`. Any
+split either moves the stateless tools to a second prefix (`mcp__hakanmcp-core__*`,
+breaking every `mcp__HakanMCP__*` reference across the stack), doubles the tool
+surface in context (additive core), or inserts a proxy shim in front of the
+stack's most-used MCP server. The cold start is already down 47s → ~29.5s from
+the bundle + lazy feature tools; the remainder is a one-time first-call latency
+not worth that cost. Full analysis:
+`~/.claude/docs/superpowers/specs/2026-10-09-hakanmcp-stateless-split-design.md`.
+Reopen only if session startup measurably regresses or `node_modules` moves to
+ext4.
+
 ## Directory Structure
 
 ```

@@ -85,7 +85,6 @@ jobs:
       - name: Verify build output
         run: |
           test -f dist/src/index.js || exit 1
-          test -f dist/bin/cli.js || exit 1
           test -f dist/tool-manifest.json || exit 1
         shell: bash
 

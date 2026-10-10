@@ -7,38 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.0.0] - 2026-10-09
+## [3.0.0] - 2026-10-10
 
 Reduced to a focused MCP tool server. The Mission Agent CLI and the AI provider
-orchestration layer were removed; the autonomy layer, `/loop`, `/goal` and cron
-cover that ground and Claude Code orchestrates models itself.
+orchestration layer were removed; Claude Code orchestrates models itself, and
+scheduling lives outside this package.
 
 ### Removed
-- Mission Agent CLI (watch, scheduled, assistant, reactive modes) and the `bin` entry — the package is server-only
+- Mission Agent CLI (watch, scheduled, assistant, reactive modes) and the `bin` entry; the package is server-only
 - AI provider orchestration (cooldown, warmup, agentic loop), consciousness, conversation history
-- Tool modules unused over six months of session history: `ai`, `ai_provider_chat`, `env`, `cache`, `crypto`, `gdocs`, ElevenLabs audio, academic search, `hermesDelegate`
-- The sysint credential-reading category and `shodanRecon` — out of this server's scope, and their presence tripped model safety classifiers on the repo
-- 12 now-unused dependencies; 14 orphan test files whose targets were already gone
+- Tool modules with near-zero use over six months: `ai`, `ai_provider_chat`, `env`, `cache`, `crypto`, `gdocs`, ElevenLabs audio, academic search, `hermesDelegate`
+- The sysint credential-reading category, `shodanRecon`, and the `kali` catalog entry; offensive-security tooling is out of scope for this server
+- 13 unused dependencies, orphan tests, the dead `peer/` package and stale setup docs
 
 ### Added
-- Single-file esbuild bundle (`dist/server.js`); cold start on NTFS improved by inlining the module graph
-- `measure-coldstart` script
+- `health` tool: native driver availability, backend liveness (Chrome DevTools, FlareSolverr), build mode, uptime, per-process tool error rate
+- Single-file esbuild bundle written to `dist/src/index.js`, the path clients already register
+- `measure:coldstart` script (median spawn-to-`tools/list` time)
 
 ### Changed
+- `db` and `mongo` load their native drivers on first call instead of at startup; cold start roughly 47s to 29s on NTFS
+- Browser argument adaptation throws a named error when an upstream schema rename leaves a required field unset, instead of failing silently downstream
 - `src/catalog/servers.json` is a static import, removing the edit-source/forget-dist catalog trap
 - Unknown `config.yaml` keys are dropped on load instead of rejected
-- Tool set: 64 → 46 tools, 23 → 13 modules
+- Tool set: 64 to 47 tools
 
 ### Security
-- `npm audit`: proxy-addr (critical), @modelcontextprotocol/sdk OAuth and http-cache-semantics (high) resolved
-
-
-### Added
-- `cfbypass` tool: Cloudflare-protected sayfaları FlareSolverr Docker container (port 8191) üzerinden çekme. Rendered HTML + cookies (cf_clearance dahil) döndürür. Akakçe, Epey, Sinerji, Cimri gibi basit Cloudflare JS challenge siteleri için çalışır. Turnstile siteleri (Trendyol, n11) kapsam dışı.
-- Unit tests (`tests/cfbypass.test.ts`): 8 test — happy path, method switching, session passthrough, error handling, zod validation, timeout propagation
-
-### Setup
-- FlareSolverr container: `docker run -d --name flaresolverr -p 8191:8191 --restart unless-stopped ghcr.io/flaresolverr/flaresolverr:latest`
+- `npm audit`: proxy-addr (critical), @modelcontextprotocol/sdk OAuth, http-cache-semantics, and the lint-staged/micromatch chain (high) resolved
 
 ## [2.2.1] - 2026-04-12
 

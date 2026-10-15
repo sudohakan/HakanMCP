@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-15
+
+### Changed
+- `db` and `mongo` are read-only by default. A `db` query that writes or changes schema (INSERT, UPDATE, DELETE, MERGE, DDL, EXEC/stored procedures, `SELECT ... INTO`), the `db` restore action, and `mongo` insert/update/delete/createIndex are rejected unless the call passes `allowWrite: true`. Comments, string literals and quoted identifiers are ignored when looking for write keywords. Callers that write must add the flag.
+
+### Added
+- `src/utils/writeGuard.ts` (`findSqlWrite`, `assertWriteAllowed`) with tests in `tests/writeGuard.test.ts`.
+
 ## [3.0.0] - 2026-10-10
 
 Reduced to a focused MCP tool server. The Mission Agent CLI and the AI provider

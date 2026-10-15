@@ -35,6 +35,7 @@ describe('Database Tools', () => {
           dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)',
+          allowWrite: true,
         });
 
         // Insert data
@@ -43,6 +44,7 @@ describe('Database Tools', () => {
           dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: "INSERT INTO users (name, email) VALUES ('John Doe', 'john@example.com')",
+          allowWrite: true,
         });
 
         // Query data
@@ -68,6 +70,7 @@ describe('Database Tools', () => {
           dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, price REAL)',
+          allowWrite: true,
         });
 
         // Insert multiple rows
@@ -76,12 +79,14 @@ describe('Database Tools', () => {
           dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: "INSERT INTO products (name, price) VALUES ('Product 1', 10.99)",
+          allowWrite: true,
         });
         await tool.handler({
           action: 'query',
           dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: "INSERT INTO products (name, price) VALUES ('Product 2', 20.50)",
+          allowWrite: true,
         });
 
         // Query all
@@ -108,12 +113,14 @@ describe('Database Tools', () => {
           dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE table1 (id INTEGER PRIMARY KEY)',
+          allowWrite: true,
         });
         await tool.handler({
           action: 'query',
           dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE table2 (id INTEGER PRIMARY KEY)',
+          allowWrite: true,
         });
 
         const result = await tool.handler({
@@ -140,6 +147,7 @@ describe('Database Tools', () => {
           dbType: 'sqlite',
           dbPath: testSqlitePath,
           query: 'CREATE TABLE my_table (id INTEGER PRIMARY KEY)',
+          allowWrite: true,
         });
 
         const result = await tool.handler({

@@ -26,6 +26,7 @@ async function getSqlite() {
 import { getPgPool, getMysqlPool, getMssqlPool, dbPoolManager } from '../utils/dbPoolManager.js';
 import type { MSSQLConfig } from '../utils/dbPoolManager.js';
 import { assertPathSafe } from '../utils/common.js';
+import { ALLOW_WRITE_PROPERTY, allowWriteSchema, assertSqlAllowed, assertWriteAllowed } from '../utils/writeGuard.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -68,7 +69,8 @@ export const dbTools = [
     description:
       'Database operations for PostgreSQL, MySQL, SQLite, and MSSQL. ' +
       'Actions: query, listTables, getTableSchema, backup, restore, closeConnections, getPoolStats. ' +
-      'Set dbType to choose the engine, then supply the matching connection parameters.',
+      'Set dbType to choose the engine, then supply the matching connection parameters. ' +
+      'Read-only by default: a query that writes or changes schema, and restore, need allowWrite: true.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -98,6 +100,7 @@ export const dbTools = [
         outputPath: { type: 'string', description: 'Output file path for backup dump (postgres/mysql backup)' },
         backupPath: { type: 'string', description: 'Backup file path on SQL Server host (mssql backup/restore)' },
         inputPath: { type: 'string', description: 'Input dump file path to restore from (postgres/mysql restore)' },
+        ...ALLOW_WRITE_PROPERTY,
       },
       required: ['action'],
     },
@@ -106,8 +109,9 @@ export const dbTools = [
 
       switch (action) {
         case 'query': {
-          const base = z.object({ dbType: z.enum(['postgres', 'mysql', 'sqlite', 'mssql']), query: z.string() });
-          const { dbType, query } = base.parse(args);
+          const base = allowWriteSchema.extend({ dbType: z.enum(['postgres', 'mysql', 'sqlite', 'mssql']), query: z.string() });
+          const { dbType, query, allowWrite } = base.parse(args);
+          assertSqlAllowed(query, allowWrite);
 
           switch (dbType) {
             case 'postgres': {
@@ -423,6 +427,7 @@ export const dbTools = [
         }
 
         case 'restore': {
+          assertWriteAllowed('restore', allowWriteSchema.parse(args).allowWrite);
           const { dbType } = z.object({ dbType: z.enum(['postgres', 'mysql', 'mssql']) }).parse(args);
 
           switch (dbType) {

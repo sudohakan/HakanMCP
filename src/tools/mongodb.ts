@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { MongoClient } from 'mongodb';
 import { logger } from '../utils/logger.js';
+import { ALLOW_WRITE_PROPERTY, allowWriteSchema, assertWriteAllowed, findPipelineWrite } from '../utils/writeGuard.js';
+
+const WRITE_ACTIONS: ReadonlySet<string> = new Set(['insert', 'update', 'delete', 'createIndex']);
 
 /**
  * MongoDB Connection Manager
@@ -105,7 +108,8 @@ export const mongoTools = [
   {
     name: 'mongo',
     description:
-      'MongoDB operations. Actions: connect, find, insert, update, delete, countDocuments, aggregate, createIndex, listCollections, listDatabases, disconnect.',
+      'MongoDB operations. Actions: connect, find, insert, update, delete, countDocuments, aggregate, createIndex, listCollections, listDatabases, disconnect. ' +
+      'Read-only by default: insert, update, delete, createIndex and an aggregate with $out/$merge need allowWrite: true.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -135,15 +139,18 @@ export const mongoTools = [
         },
         keys: { type: 'object', description: 'Index fields and directions (1 or -1) (createIndex action)' },
         options: { type: 'object', description: 'Index options (unique, sparse, etc.) (createIndex action)' },
+        ...ALLOW_WRITE_PROPERTY,
       },
       required: ['action'],
     },
     handler: async (args: unknown) => {
-      const { action } = z
-        .object({
+      const { action, allowWrite } = allowWriteSchema
+        .extend({
           action: z.enum(['connect', 'find', 'insert', 'update', 'delete', 'countDocuments', 'aggregate', 'createIndex', 'listCollections', 'listDatabases', 'disconnect']),
         })
         .parse(args);
+
+      if (WRITE_ACTIONS.has(action)) assertWriteAllowed(`mongo ${action}`, allowWrite);
 
       switch (action) {
         case 'connect': {
@@ -350,6 +357,9 @@ export const mongoTools = [
               pipeline: z.array(z.record(z.string(), z.unknown())),
             })
             .parse(args);
+
+          const pipelineWrite = findPipelineWrite(pipeline);
+          if (pipelineWrite) assertWriteAllowed(`mongo aggregate ${pipelineWrite}`, allowWrite);
 
           const client = connectionManager.getClient(connectionId);
           const db = client.db(database);

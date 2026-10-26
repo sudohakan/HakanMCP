@@ -43,6 +43,7 @@ const SPECS: Record<string, Spec> = {
   'chat-new': { pos: ['title'], flags: [['members', '--members']], write: true },
   'chat-rename': { pos: ['chat', 'title'], flags: [], write: true },
   'chat-delete': { pos: ['chat'], flags: [], write: true },
+  'channel-post': { pos: ['team', 'channel', 'text'], flags: [], write: true },
   'event-new': { pos: ['subject'], flags: [['start', '--start'], ['end', '--end'], ['minutes', '--minutes'], ['attendees', '--attendees'], ['online', '--online'], ['body', '--body'], ['location', '--location']], write: true },
   'event-edit': { pos: ['event'], flags: [['on', '--on'], ...EVENT_WHEN], write: true },
   'event-delete': { pos: ['event'], flags: [['on', '--on']], write: true },
@@ -54,7 +55,7 @@ const SPECS: Record<string, Spec> = {
   'todo-done': { pos: ['task'], flags: [['list', '--list']], write: true },
   'todo-delete': { pos: ['task'], flags: [['list', '--list']], write: true },
 };
-const OPTIONAL_POS = new Set(['person', 'team', 'status']);
+const OPTIONAL_POS = new Set(['presence:person', 'presence-set:status', 'channels:team']);   // action:field
 const BOOLEAN_FIELDS = new Set(['remove', 'online']);
 const LIST_FIELDS = new Set(['members', 'attendees']);          // one flag, many values
 const REPEAT_FIELDS = new Set(['mention']);                      // one flag per value
@@ -65,7 +66,7 @@ const schema = z.object({
   action: z.enum(ACTIONS),
   confirm: z.boolean().optional(),
   name: text.optional(), chat: text.optional(), message_id: text.optional(), text: text.optional(), key: text.optional(),
-  title: text.optional(), event: text.optional(), answer: text.optional(), status: text.optional(), person: text.optional(),
+  title: text.optional(), channel: text.optional(), event: text.optional(), answer: text.optional(), status: text.optional(), person: text.optional(),
   path: text.optional(), file_name: text.optional(), query: text.optional(), team: text.optional(), task: text.optional(),
   limit: z.number().int().positive().max(500).optional(),
   size: z.number().int().positive().max(200).optional(),
@@ -97,7 +98,7 @@ export function buildArgs(parsed: Parsed): string[] {
   for (const field of spec.pos) {
     const v = value(field);
     if (v === undefined || v === '') {
-      if (OPTIONAL_POS.has(field)) continue;
+      if (OPTIONAL_POS.has(`${parsed.action}:${field}`)) continue;
       throw new Error(`${parsed.action} needs ${field}`);
     }
     positionals.push(String(v));
@@ -110,7 +111,7 @@ export function buildArgs(parsed: Parsed): string[] {
 export const teamsTools = [
   {
     name: 'teams',
-    description: "Work with the user's own Microsoft Teams through the teams-browser CLI: read (unread, chat, mentions, asks, recent, digest, calendar, calls, files, spaces, search, people, channels, activity, presence, todo, event-show) and manage (send, edit, delete, react, mark-read, mark-unread, chat-new, chat-rename, chat-delete, event-new, event-edit, event-delete, event-respond, presence-set, upload, file-delete, todo-add, todo-done, todo-delete). Every manage action returns a draft until confirm is true. Exit codes come back as the error text.",
+    description: "Work with the user's own Microsoft Teams through the teams-browser CLI: read (unread, chat, mentions, asks, recent, digest, calendar, calls, files, spaces, search, people, channels, activity, presence, todo, event-show) and manage (send, edit, delete, react, mark-read, mark-unread, chat-new, chat-rename, chat-delete, channel-post, event-new, event-edit, event-delete, event-respond, presence-set, upload, file-delete, todo-add, todo-done, todo-delete). Every manage action returns a draft until confirm is true. Exit codes come back as the error text.",
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -121,6 +122,7 @@ export const teamsTools = [
         message_id: { type: 'string', description: 'edit/delete/react: message id shown as #id in chat output' },
         text: { type: 'string', description: 'send/edit: message text' },
         key: { type: 'string', description: 'react: like, heart, laugh, surprised, sad or angry' },
+        channel: { type: 'string', description: 'channel-post: channel name part (team goes in `team`)' },
         title: { type: 'string', description: 'chat-new/chat-rename/todo-add: title' },
         event: { type: 'string', description: 'event-*: subject part or full event id' },
         answer: { type: 'string', description: 'event-respond: accept, decline or tentative' },
@@ -129,7 +131,7 @@ export const teamsTools = [
         path: { type: 'string', description: 'upload: local file path (up to 4 MB)' },
         file_name: { type: 'string', description: 'file-delete: exact file name in the drive root' },
         query: { type: 'string', description: 'search: words to look for' },
-        team: { type: 'string', description: 'channels: team name part (omit to list teams)' },
+        team: { type: 'string', description: 'channels: team name part (omit to list teams); channel-post: team name part' },
         task: { type: 'string', description: 'todo-done/todo-delete: task title part' },
         limit: { type: 'number', description: 'chat: number of messages (default 20)' },
         size: { type: 'number', description: 'search: number of results (default 25)' },

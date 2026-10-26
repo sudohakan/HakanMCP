@@ -19,6 +19,7 @@ const TOOL_MODULES: Array<{ name: string; load: () => Promise<ToolList> }> = [
   { name: 'exaSearch', load: async () => (await import('./tools/exaSearch.js')).exaTools as ToolList },
   { name: 'ollamaChat', load: async () => (await import('./tools/ollamaChat.js')).ollamaChatTools as ToolList },
   { name: 'transcribeLocal', load: async () => (await import('./tools/transcribeLocal.js')).transcribeLocalTools as ToolList },
+  { name: 'teams', load: async () => (await import('./tools/teams.js')).teamsTools as ToolList },
 ];
 
 async function main() {

@@ -152,6 +152,12 @@ Adding a tool module: add a static loader line in `src/index.ts` `TOOL_MODULES`.
 Adding an on-demand catalog server: edit `src/catalog/servers.json` (a static
 import — no separate copy-to-`dist` step).
 
+`package.json` `overrides` pins `@azure/msal-node` to `^7.1.1`. It is not a direct
+dependency: `mssql → tedious → @azure/identity` pulls it in for Azure AD auth, and
+`@azure/identity` asks for `^6`, which carries a high-severity advisory
+(GHSA-xcx6-jx8p-x3h5, fails `npm audit --audit-level=high` in CI). Drop the override
+once `@azure/identity` ships with msal-node 7.
+
 ---
 
 ## License

@@ -102,7 +102,7 @@ what you need:
 | exaSearch | `exaSearch`, `exaFindSimilar`, `exaGetContents` | Exa neural web search |
 | ollamaChat | `ollamaChat`, `ollamaListModels` | Local Ollama delegation |
 | transcribeLocal | `transcribeLocal` | Offline faster-whisper STT |
-| teams | `teams` | The user's own Teams: chats, calendar, calls, files (runs the teams-browser CLI) |
+| teams | `teams` | The user's own Teams: chats, calendar, calls, files, search, to-do, presence; changes return a draft until confirmed (runs the teams-browser CLI) |
 | backup | `backup` | Project backup/restore |
 
 Native drivers (`pg`, `mysql2`, `mssql`, `sqlite3`, `better-sqlite3`, `mongodb`)

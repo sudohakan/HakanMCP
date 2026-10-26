@@ -48,6 +48,9 @@ describe('teams tool', () => {
   it('optional positionals may be omitted, required ones may not', () => {
     expect(buildArgs({ action: 'presence' })).toEqual(['presence', '--json']);
     expect(buildArgs({ action: 'presence-set', note: 'toplantıdayım' })).toEqual(['presence-set', '--note', 'toplantıdayım', '--json']);
+    expect(buildArgs({ action: 'chat-add', chat: 'Ekip', members: ['Koray', 'Ali'], confirm: true })).toEqual(
+      ['chat-add', '--members', 'Koray', 'Ali', '--yes', '--json', '--', 'Ekip']);
+    expect(buildArgs({ action: 'chat-remove', chat: 'Ekip', person: 'Ali' })).toEqual(['chat-remove', '--json', '--', 'Ekip', 'Ali']);
     expect(buildArgs({ action: 'channels' })).toEqual(['channels', '--json']);
     expect(buildArgs({ action: 'channel-post', team: 'Finekra', channel: 'Duyurular', text: 'selam' })).toEqual(
       ['channel-post', '--json', '--', 'Finekra', 'Duyurular', 'selam']);

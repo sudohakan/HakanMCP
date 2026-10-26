@@ -1,0 +1,15 @@
+title = "HakanMCP gitleaks config"
+
+[extend]
+useDefault = true
+
+# Two known false positives in test data, matched by exact secret value so any other
+# key, in the same files or elsewhere, still fails the scan. (paths + condition = "AND"
+# was tried and suppresses every finding in the path, so it is not used.)
+[[allowlists]]
+description = "Public Key Token (.NET assembly identity) in sysint programmer-plan01 test"
+regexes = ['''^b77a5c561934e089$''']
+
+[[allowlists]]
+description = "netsh wlan 'Authentication : WPA2-Enterprise' line in netsh-wifi-networks fixture"
+regexes = ['''^WPA2-Enterprise$''']

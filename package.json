@@ -48,7 +48,7 @@
     "mongodb": "^6.0.0",
     "mssql": "^12.1.1",
     "mysql2": "^3.6.5",
-    "pg": "8.20.0",
+    "pg": "8.23.1",
     "socks": "2.8.7",
     "sqlite": "^5.1.1",
     "sqlite3": "^6.0.1"
@@ -62,7 +62,7 @@
     "@types/jsdom": "^21.1.1",
     "@types/mssql": "^9.1.8",
     "@types/node": "^24.10.1",
-    "@types/pg": "^8.10.9",
+    "@types/pg": "^8.23.1",
     "@types/semver": "^7.7.1",
     "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^8.17.0",

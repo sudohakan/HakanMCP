@@ -43,6 +43,8 @@ const SPECS: Record<string, Spec> = {
   'chat-new': { pos: ['title'], flags: [['members', '--members']], write: true },
   'chat-rename': { pos: ['chat', 'title'], flags: [], write: true },
   'chat-delete': { pos: ['chat'], flags: [], write: true },
+  'chat-add': { pos: ['chat'], flags: [['members', '--members']], write: true },
+  'chat-remove': { pos: ['chat', 'person'], flags: [], write: true },
   'channel-post': { pos: ['team', 'channel', 'text'], flags: [], write: true },
   'event-new': { pos: ['subject'], flags: [['start', '--start'], ['end', '--end'], ['minutes', '--minutes'], ['attendees', '--attendees'], ['online', '--online'], ['body', '--body'], ['location', '--location']], write: true },
   'event-edit': { pos: ['event'], flags: [['on', '--on'], ...EVENT_WHEN], write: true },
@@ -111,7 +113,7 @@ export function buildArgs(parsed: Parsed): string[] {
 export const teamsTools = [
   {
     name: 'teams',
-    description: "Work with the user's own Microsoft Teams through the teams-browser CLI: read (unread, chat, mentions, asks, recent, digest, calendar, calls, files, spaces, search, people, channels, activity, presence, todo, event-show) and manage (send, edit, delete, react, mark-read, mark-unread, chat-new, chat-rename, chat-delete, channel-post, event-new, event-edit, event-delete, event-respond, presence-set, upload, file-delete, todo-add, todo-done, todo-delete). Every manage action returns a draft until confirm is true. Exit codes come back as the error text.",
+    description: "Work with the user's own Microsoft Teams through the teams-browser CLI: read (unread, chat, mentions, asks, recent, digest, calendar, calls, files, spaces, search, people, channels, activity, presence, todo, event-show) and manage (send, edit, delete, react, mark-read, mark-unread, chat-new, chat-rename, chat-delete, chat-add, chat-remove, channel-post, event-new, event-edit, event-delete, event-respond, presence-set, upload, file-delete, todo-add, todo-done, todo-delete). Every manage action returns a draft until confirm is true. Exit codes come back as the error text.",
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -127,8 +129,8 @@ export const teamsTools = [
         event: { type: 'string', description: 'event-*: subject part or full event id' },
         answer: { type: 'string', description: 'event-respond: accept, decline or tentative' },
         status: { type: 'string', description: 'presence-set: Available, Busy, DoNotDisturb, BeRightBack or Away' },
-        person: { type: 'string', description: 'presence: person name (default: the user)' },
-        path: { type: 'string', description: 'upload: local file path (up to 4 MB)' },
+        person: { type: 'string', description: 'presence: person name (default: the user); chat-remove: member to remove' },
+        path: { type: 'string', description: 'upload: local file path (up to 250 MB)' },
         file_name: { type: 'string', description: 'file-delete: exact file name in the drive root' },
         query: { type: 'string', description: 'search: words to look for' },
         team: { type: 'string', description: 'channels: team name part (omit to list teams); channel-post: team name part' },
@@ -157,7 +159,7 @@ export const teamsTools = [
         remove: { type: 'boolean', description: 'react: take the reaction back' },
         online: { type: 'boolean', description: 'event-new: add a Teams meeting link' },
         mention: { type: 'array', items: { type: 'string' }, description: 'send: people to tag; each name must appear in the text' },
-        members: { type: 'array', items: { type: 'string' }, description: 'chat-new: people to add besides the user' },
+        members: { type: 'array', items: { type: 'string' }, description: 'chat-new/chat-add: people to add besides the user' },
         attendees: { type: 'array', items: { type: 'string' }, description: 'event-new: people to invite' },
       },
       required: ['action'],

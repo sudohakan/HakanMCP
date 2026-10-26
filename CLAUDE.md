@@ -121,6 +121,7 @@ parameter rather than a tool per verb.
 | exaSearch.ts | `exaSearch`, `exaFindSimilar`, `exaGetContents` | Exa neural web search |
 | ollamaChat.ts | `ollamaChat`, `ollamaListModels` | Local Ollama delegation |
 | transcribeLocal.ts | `transcribeLocal` | Local faster-whisper STT (offline) |
+| teams.ts | `teams` | The user's own Teams via the teams-browser CLI (thin wrapper) |
 | backup.ts | `backup` | Project backup/restore |
 
 `mcpClient.ts` exposes only `mcp` + `browser`; the individual handlers in the

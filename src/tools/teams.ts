@@ -25,6 +25,7 @@ const SPECS: Record<string, Spec> = {
   calendar: { pos: [], flags: RANGE },
   calls: { pos: [], flags: RANGE },
   files: { pos: [], flags: [['since', '--since'], ['download', '--download'], ['type', '--type'], ['sender', '--sender']] },
+  media: { pos: ['chat', 'message_id'], flags: [['out', '--out']] },
   spaces: { pos: [], flags: [] },
   doctor: { pos: [], flags: [] },
   presence: { pos: ['person'], flags: [] },
@@ -76,7 +77,7 @@ const schema = z.object({
   from: text.optional(), to: text.optional(), since: text.optional(), after: text.optional(), download: text.optional(),
   sender: text.optional(), type: text.optional(), subject: text.optional(), start: text.optional(), end: text.optional(),
   body: text.optional(), location: text.optional(), on: text.optional(), comment: text.optional(), note: text.optional(),
-  send_to: text.optional(), due: text.optional(), list: text.optional(),
+  out: text.optional(), send_to: text.optional(), due: text.optional(), list: text.optional(),
   remove: z.boolean().optional(), online: z.boolean().optional(),
   mention: z.array(text).optional(), members: z.array(text).optional(), attendees: z.array(text).optional(),
 });
@@ -113,7 +114,7 @@ export function buildArgs(parsed: Parsed): string[] {
 export const teamsTools = [
   {
     name: 'teams',
-    description: "Work with the user's own Microsoft Teams through the teams-browser CLI: read (unread, chat, mentions, asks, recent, digest, calendar, calls, files, spaces, search, people, channels, activity, presence, todo, event-show) and manage (send, edit, delete, react, mark-read, mark-unread, chat-new, chat-rename, chat-delete, chat-add, chat-remove, channel-post, event-new, event-edit, event-delete, event-respond, presence-set, upload, file-delete, todo-add, todo-done, todo-delete). Every manage action returns a draft until confirm is true. Exit codes come back as the error text.",
+    description: "Work with the user's own Microsoft Teams through the teams-browser CLI: read (unread, chat, mentions, asks, recent, digest, calendar, calls, files, media, spaces, search, people, channels, activity, presence, todo, event-show) and manage (send, edit, delete, react, mark-read, mark-unread, chat-new, chat-rename, chat-delete, chat-add, chat-remove, channel-post, event-new, event-edit, event-delete, event-respond, presence-set, upload, file-delete, todo-add, todo-done, todo-delete). Every manage action returns a draft until confirm is true. Exit codes come back as the error text.",
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -121,7 +122,8 @@ export const teamsTools = [
         confirm: { type: 'boolean', description: 'Manage actions: true runs the change, otherwise only a draft comes back' },
         name: { type: 'string', description: 'chat/people: part of the chat or person name' },
         chat: { type: 'string', description: 'Manage actions: chat name part, 19:/48: id, or "notlar" for the notes chat' },
-        message_id: { type: 'string', description: 'edit/delete/react: message id shown as #id in chat output' },
+        message_id: { type: 'string', description: 'edit/delete/react/media: message id shown as #id in chat output' },
+        out: { type: 'string', description: 'media: directory for the downloaded pictures (default: Downloads)' },
         text: { type: 'string', description: 'send/edit: message text' },
         key: { type: 'string', description: 'react: like, heart, laugh, surprised, sad or angry' },
         channel: { type: 'string', description: 'channel-post: channel name part (team goes in `team`)' },

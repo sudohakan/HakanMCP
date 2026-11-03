@@ -8,6 +8,12 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 10
+    ignore:
+      # eslint 10 fails the lint job; @types/node majors run ahead of the Node 20 floor
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     reviewers:
       - "sudohakan"
     labels:

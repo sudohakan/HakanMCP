@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.2] - 2026-11-03
+
+### Changed
+- Repository history rewritten and republished: the NirSoft binaries (`data/nirsoft`, Git LFS, removed from the code in 3.0.0) and the internal `.planning/` notes no longer exist in any commit. Tags and releases point at the rewritten commits
+- Dependabot skips eslint and @types/node major versions (eslint 10 fails lint; @types/node majors run ahead of the Node 20 floor)
+
+### Removed
+- Leftover `.gitattributes` LFS rule for `data/nirsoft/bin`
+
 ## [3.2.1] - 2026-11-03
 
 ### Removed

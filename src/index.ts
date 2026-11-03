@@ -40,7 +40,7 @@ async function main() {
   const toolsReady = new Promise<void>((resolve) => { resolveToolsReady = resolve; });
 
   const server = new Server(
-    { name: 'hakan-mcp', version: '3.2.0' },
+    { name: 'hakan-mcp', version: '3.2.1' },
     {
       capabilities: {
         tools: {},

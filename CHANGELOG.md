@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-11-03
+
+### Removed
+- `plugin/`: a Claude Code plugin manifest from the orchestration era whose `agents`, `commands` and `skills` were symlinks to paths outside the repo and whose hooks called a CLI that no longer exists
+- `tests/docker-regression/`: shell suites for the removed swarm, agent, CLI and worker features, never run by CI
+- `Dockerfile` and `docker-compose.yml`: undocumented, unused by CI, and a restart-always compose service does not fit a stdio server
+
 ## [3.2.0] - 2026-11-03
 
 ### Added

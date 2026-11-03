@@ -11,8 +11,8 @@ describe('teams tool', () => {
   });
 
   it('builds CLI arguments per action', () => {
-    expect(buildArgs({ action: 'chat', name: 'Finekra', limit: 5, from: '2026-10-01', to: '2026-10-05' })).toEqual(
-      ['chat', '-n', '5', '--from', '2026-10-01', '--to', '2026-10-05', '--json', '--', 'Finekra']);
+    expect(buildArgs({ action: 'chat', name: 'Contoso', limit: 5, from: '2026-10-01', to: '2026-10-05' })).toEqual(
+      ['chat', '-n', '5', '--from', '2026-10-01', '--to', '2026-10-05', '--json', '--', 'Contoso']);
     expect(buildArgs({ action: 'recent', since: '3d' })).toEqual(['recent', '--since', '3d', '--json']);
     expect(buildArgs({ action: 'unread', after: 'c~1' })).toEqual(['unread', '--after', 'c~1', '--json']);
     expect(buildArgs({ action: 'files', sender: 'Koray', type: 'pdf', since: '7d' })).toEqual(
@@ -52,9 +52,9 @@ describe('teams tool', () => {
       ['chat-add', '--members', 'Koray', 'Ali', '--yes', '--json', '--', 'Ekip']);
     expect(buildArgs({ action: 'chat-remove', chat: 'Ekip', person: 'Ali' })).toEqual(['chat-remove', '--json', '--', 'Ekip', 'Ali']);
     expect(buildArgs({ action: 'channels' })).toEqual(['channels', '--json']);
-    expect(buildArgs({ action: 'channel-post', team: 'Finekra', channel: 'Duyurular', text: 'selam' })).toEqual(
-      ['channel-post', '--json', '--', 'Finekra', 'Duyurular', 'selam']);
-    expect(() => buildArgs({ action: 'channel-post', team: 'Finekra', text: 'selam' })).toThrow(/channel/);
+    expect(buildArgs({ action: 'channel-post', team: 'Contoso', channel: 'Duyurular', text: 'selam' })).toEqual(
+      ['channel-post', '--json', '--', 'Contoso', 'Duyurular', 'selam']);
+    expect(() => buildArgs({ action: 'channel-post', team: 'Contoso', text: 'selam' })).toThrow(/channel/);
     expect(() => buildArgs({ action: 'send', chat: 'notlar' })).toThrow(/text/);
     expect(() => buildArgs({ action: 'event-respond', event: 'x' })).toThrow(/answer/);
   });

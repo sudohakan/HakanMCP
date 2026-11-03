@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-11-03
+
+### Added
+- `teams` tool: runs the teams-browser CLI (`TEAMS_BROWSER_CLI`) for the user's own Teams: read actions (chats, mentions, calendar, calls, files, search, people, channels, activity, presence, to-do), manage actions (send, edit, delete, react, chat create/rename/delete, member add/remove, channel post, events, presence, upload, to-do) that return a draft until `confirm: true`, and `media` to download pictures from a chat message
+- Catalog values may start with `~/` or contain `${NAME}` (resolved from the environment, e.g. the project `.env`); an unset variable fails with the server and variable name
+
+### Changed
+- Machine-specific paths moved out of the code into environment variables: `HAKANMCP_WRITE_ROOTS` (extra write roots for `http` downloads; home and temp stay allowed), `GITBOOK_SYNC_BASE` and `GITBOOK_SYNC_REPO` (GitBook git sync), `INFOSET_MCP_DIR` and `GTASKS_MCP_DIR` (catalog servers run from a local checkout)
+- macOS build runs as its own CI job; a cancelled runner no longer fails the gate
+- Dependencies: mongodb 7, dotenv 18, mssql 12.7.13, pg 8.23, @modelcontextprotocol/sdk 1.32.2, systeminformation 5.33.19 (high-severity advisory), socks 2.8.10, plus dev tooling
+
+### Fixed
+- Dependabot npm entry points at the repository root
+- The gtasks catalog entry no longer carries an `env` block the connector never passed
+
 ## [3.1.0] - 2026-10-15
 
 ### Changed

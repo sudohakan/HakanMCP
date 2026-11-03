@@ -124,7 +124,7 @@
       "description": "Customer support ticket, contact, and company management",
       "command": "node",
       "args": [
-        "/mnt/c/dev/infoset-mcp/src/mcp-server.mjs"
+        "${INFOSET_MCP_DIR}/src/mcp-server.mjs"
       ],
       "envKeys": [
         "INFOSET_API_KEY",
@@ -144,7 +144,7 @@
         "--client-type",
         "persistent",
         "--data-dir",
-        "/home/hakan/.chroma-data"
+        "~/.chroma-data"
       ],
       "conditions": [
         "Vector database or embedding operations",
@@ -184,13 +184,10 @@
     "gtasks": {
       "name": "Google Tasks",
       "description": "Google Tasks list/create/update (OAuth — requires prior auth in config dir)",
-      "command": "/home/hakan/.bun/bin/bun",
+      "command": "~/.bun/bin/bun",
       "args": [
-        "/mnt/c/dev/gtasks-mcp/dist/index.js"
+        "${GTASKS_MCP_DIR}/dist/index.js"
       ],
-      "env": {
-        "GTASKS_MCP_CONFIG_DIR": "/home/hakan/.config/gtasks-mcp"
-      },
       "conditions": [
         "Google Tasks list, create, or update operations",
         "Task tracking via Google Tasks needed",

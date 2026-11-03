@@ -97,7 +97,7 @@ describe('resolveEnvKeys — catalog integration scenario', () => {
     tempFile = join(tempDir, '.credentials.env');
     writeFileSync(
       tempFile,
-      'INFOSET_API_KEY=be32f162\nINFOSET_BASE_URL=https://api.infoset.app\n',
+      'INFOSET_API_KEY=test-key-1\nINFOSET_BASE_URL=https://api.infoset.app\n',
     );
   });
 
@@ -115,7 +115,7 @@ describe('resolveEnvKeys — catalog integration scenario', () => {
 
     expect(env).toBeDefined();
     expect(env).toEqual({
-      INFOSET_API_KEY: 'be32f162',
+      INFOSET_API_KEY: 'test-key-1',
       INFOSET_BASE_URL: 'https://api.infoset.app',
     });
   });

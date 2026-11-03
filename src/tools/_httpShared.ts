@@ -47,19 +47,28 @@ export function jsonResultTruncated(data: unknown) {
   return { content: [{ type: 'text' as const, text }], _meta: { truncated } };
 }
 
-const ALLOWED_WRITE_ROOTS = [
-  os.homedir(),
-  os.tmpdir(),
-  '/mnt/c/Users/Hakan',
-  '/mnt/c/dev',
-];
+// Extra write roots (e.g. a Windows profile mounted under WSL) come from
+// HAKANMCP_WRITE_ROOTS, separated by the platform path delimiter. Read per call so the
+// project .env (loaded by config.ts) applies whatever the module import order is.
+export function allowedWriteRoots(): string[] {
+  return [
+    os.homedir(),
+    os.tmpdir(),
+    ...(process.env.HAKANMCP_WRITE_ROOTS ?? '')
+      .split(path.delimiter)
+      .map((root) => root.trim())
+      .filter((root) => root.length > 0)
+      .map((root) => path.resolve(root)),
+  ];
+}
 
 export function safePath(inputPath: string, mode: 'read' | 'write' = 'read'): string {
   const resolved = path.resolve(inputPath);
   if (resolved.includes('\0')) throw new Error('Invalid path (null byte)');
   if (mode === 'write') {
-    const allowed = ALLOWED_WRITE_ROOTS.some((root) => resolved.startsWith(root + path.sep) || resolved === root);
-    if (!allowed) throw new Error(`Path not allowed for write (must be under: ${ALLOWED_WRITE_ROOTS.join(', ')}): ${resolved}`);
+    const roots = allowedWriteRoots();
+    const allowed = roots.some((root) => resolved.startsWith(root + path.sep) || resolved === root);
+    if (!allowed) throw new Error(`Path not allowed for write (must be under: ${roots.join(', ')}): ${resolved}`);
   }
   return resolved;
 }

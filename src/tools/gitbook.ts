@@ -4,7 +4,7 @@ import NodeCache from 'node-cache';
 import { execFileSync } from 'child_process';
 import { mkdtempSync, readFileSync, rmSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { tmpdir } from 'os';
+import { homedir, tmpdir } from 'os';
 
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
@@ -250,11 +250,17 @@ function renderDocument(node: unknown, spaceId?: string): string {
 }
 
 // --- Git Sync helpers (for the local-first read path) ---
-// Uses persistent local git repo at C:/dev/Finekra/gitbook-{spaceSlug}/
+// Uses a persistent local git repo at <GITBOOK_SYNC_BASE>/gitbook-{spaceSlug}/ mirrored to
+// the GitHub repo GITBOOK_SYNC_REPO (owner/name). Without a local repo the read path falls back to the API.
 // Flow: export (first time or on sync) → edit locally → commit+push → import
 
-const GITBOOK_SYNC_BASE = '/mnt/c/dev/Finekra';
-const SYNC_REPO_NAME = 'sudohakan/finekra-gitbook-sync';
+const GITBOOK_SYNC_BASE = process.env.GITBOOK_SYNC_BASE || join(homedir(), 'gitbook-sync');
+
+function getSyncRepoName(): string {
+  const repo = process.env.GITBOOK_SYNC_REPO;
+  if (!repo) throw new Error('GITBOOK_SYNC_REPO (owner/name) required for the GitBook git sync');
+  return repo;
+}
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, encoding: 'utf-8', timeout: 30000 }).trim();
@@ -362,7 +368,7 @@ async function tryReadFromLocal(
 
     // Pull latest from remote (sync with GitBook)
     const ghToken = getGitHubToken();
-    const repoUrl = `https://${ghToken}@github.com/${SYNC_REPO_NAME}.git`;
+    const repoUrl = `https://${ghToken}@github.com/${getSyncRepoName()}.git`;
     const branch = slug;
 
     // Export latest from GitBook first

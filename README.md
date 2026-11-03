@@ -4,7 +4,7 @@
 
 **MCP tool server for Claude Code**
 
-47 MCP tools · on-demand server catalog · single-file bundle
+48 MCP tools · on-demand server catalog · single-file bundle
 
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square)](https://nodejs.org)
@@ -27,7 +27,7 @@ each one permanently.
 
 | What you get | Details |
 |:---|:---|
-| **47 MCP tools** | Most are action-multiplexed — one tool, an `action` parameter |
+| **48 MCP tools** | Most are action-multiplexed — one tool, an `action` parameter |
 | **On-demand server catalog** | Connect git, filesystem, sqlite, duckdb, playwright, markitdown and more at runtime |
 | **Low-token browser bridge** | Drive Chrome through wrappers instead of returning large raw snapshots |
 | **Lazy native drivers** | SQL/Mongo drivers load on first call; a missing one stays a placeholder, not a crash |
@@ -81,6 +81,8 @@ what you need:
 - `cfbypass` → a running FlareSolverr container (the tool's description prints the
   `docker run` command)
 - `ollamaChat` → a local Ollama instance
+- `teams` → the teams-browser CLI (`TEAMS_BROWSER_CLI`)
+- `gitbook` git sync → `GITBOOK_SYNC_REPO`; catalog servers that run from a local checkout → `INFOSET_MCP_DIR`, `GTASKS_MCP_DIR`
 - `db` / `mongo` → install the matching driver (`npm install pg`, `mongodb`, …);
   until then the tool shows as a placeholder.
 
@@ -91,7 +93,7 @@ what you need:
 | Module | Tool(s) | Purpose |
 |:---|:---|:---|
 | mcpClient | `mcp`, `browser` | On-demand MCP bridge + Playwright browser automation |
-| chromeDevtools | `chrome_*` (29) | Console, network, performance, DOM, JS eval, screenshot |
+| chromeDevtools | `chrome_*` (30) | Console, network, performance, DOM, JS eval, screenshot |
 | http | `http` | HTTP request, file download |
 | db | `db` | SQL (Postgres/MySQL/MSSQL/SQLite), lazy-loaded |
 | mongodb | `mongo` | MongoDB CRUD, aggregation, indexes, lazy-loaded |
@@ -102,8 +104,9 @@ what you need:
 | exaSearch | `exaSearch`, `exaFindSimilar`, `exaGetContents` | Exa neural web search |
 | ollamaChat | `ollamaChat`, `ollamaListModels` | Local Ollama delegation |
 | transcribeLocal | `transcribeLocal` | Offline faster-whisper STT |
-| teams | `teams` | The user's own Teams: chats, calendar, calls, files, search, to-do, presence; changes return a draft until confirmed (runs the teams-browser CLI) |
+| teams | `teams` | The user's own Teams: chats, calendar, calls, files, search, to-do, presence; changes return a draft until confirmed (needs the separate teams-browser CLI, path in `TEAMS_BROWSER_CLI`) |
 | backup | `backup` | Project backup/restore |
+| health | `health` | Self-check: native drivers, backend liveness, build mode, uptime, tool error rate |
 
 Native drivers (`pg`, `mysql2`, `mssql`, `sqlite3`, `better-sqlite3`, `mongodb`)
 are optional. When one is absent its tool still appears in `tools/list` as a

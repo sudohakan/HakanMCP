@@ -9,10 +9,17 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     ignore:
-      # eslint 10 fails the lint job; @types/node majors run ahead of the Node 20 floor
+      # Majors that fail CI (eslint 10, js-yaml 5, typescript 7) or need a newer Node than the
+      # Node 20 floor (@types/node majors, better-sqlite3 13 wants Node >= 22)
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "js-yaml"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "better-sqlite3"
         update-types: ["version-update:semver-major"]
     reviewers:
       - "sudohakan"

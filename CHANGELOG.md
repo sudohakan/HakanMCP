@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Repository history rewritten and republished: the NirSoft binaries (`data/nirsoft`, Git LFS, removed from the code in 3.0.0) and the internal `.planning/` notes no longer exist in any commit. Tags and releases point at the rewritten commits
-- Dependabot skips eslint and @types/node major versions (eslint 10 fails lint; @types/node majors run ahead of the Node 20 floor)
+- Dependabot skips the eslint, js-yaml, typescript, @types/node and better-sqlite3 majors: they fail CI or need a newer Node than the Node 20 floor
+- Dependencies: mongodb 7.8, mysql2 3.24.6, @types/node 24.19, @types/semver 7.8; CI uses actions/checkout v7 and actions/setup-node v7
 
 ### Removed
 - Leftover `.gitattributes` LFS rule for `data/nirsoft/bin`

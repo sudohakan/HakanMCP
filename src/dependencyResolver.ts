@@ -13,6 +13,13 @@ export interface FeatureDependency {
 }
 
 export const FEATURE_DEPENDENCY_MAP: Record<string, FeatureDependency> = {
+  // the db tool module imports every driver: its feature needs all of them (toolRegistry FEATURE_TOOL_MAP.db)
+  database: {
+    packages: ['pg', 'mysql2', 'mssql', 'sqlite3', 'sqlite'],
+    description: 'Database operations (PostgreSQL, MySQL, SQL Server, SQLite)',
+    installCommand: 'npm install pg mysql2 mssql sqlite3 sqlite',
+    toolModulePath: './tools/db.js',
+  },
   postgresql: {
     packages: ['pg'],
     description: 'PostgreSQL database operations',

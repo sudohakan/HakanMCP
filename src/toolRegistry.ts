@@ -70,6 +70,7 @@ export function detectFeatureFromToolName(toolName: string): string | null {
 export function createPlaceholderHandler(
   toolName: string,
   featureModule: FeatureModule,
+  loadError?: string,
 ): ToolHandler {
   return async (): Promise<ToolResponse> => {
     const depsListLines = featureModule.nativeDeps
@@ -93,6 +94,7 @@ export function createPlaceholderHandler(
       '    autoInstall: true',
       '',
       'This will automatically install missing dependencies when a tool is first used.',
+      ...(loadError ? ['', `Load error: ${loadError}`] : []),
     ].join('\n');
 
     return {
@@ -224,13 +226,14 @@ export class ToolRegistry {
       const updated = this.tools.get(name);
       return updated?.handler ?? null;
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       this.log?.warn('Failed to load feature module, using placeholder', {
         tool: name,
         prefix,
         featureName: featureModule.featureName,
-        error: error instanceof Error ? error.message : String(error),
+        error: message,
       });
-      const placeholder = createPlaceholderHandler(name, featureModule);
+      const placeholder = createPlaceholderHandler(name, featureModule, message);
       entry.handler = placeholder;
       return placeholder;
     }

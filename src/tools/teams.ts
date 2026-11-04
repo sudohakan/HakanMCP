@@ -53,15 +53,16 @@ const SPECS: Record<string, Spec> = {
   'event-respond': { pos: ['event', 'answer'], flags: [['on', '--on'], ['comment', '--comment']], write: true },
   'presence-set': { pos: ['status'], flags: [['note', '--note']], write: true },
   upload: { pos: ['path'], flags: [['send_to', '--to']], write: true },
+  'send-file': { pos: ['chat', 'path', 'text'], flags: [['emails', '--email']], write: true },
   'file-delete': { pos: ['file_name'], flags: [], write: true },
   'todo-add': { pos: ['title'], flags: [['due', '--due'], ['list', '--list']], write: true },
   'todo-done': { pos: ['task'], flags: [['list', '--list']], write: true },
   'todo-delete': { pos: ['task'], flags: [['list', '--list']], write: true },
 };
-const OPTIONAL_POS = new Set(['presence:person', 'presence-set:status', 'channels:team']);   // action:field
+const OPTIONAL_POS = new Set(['presence:person', 'presence-set:status', 'channels:team', 'send-file:text']);   // action:field
 const BOOLEAN_FIELDS = new Set(['remove', 'online']);
 const LIST_FIELDS = new Set(['members', 'attendees']);          // one flag, many values
-const REPEAT_FIELDS = new Set(['mention']);                      // one flag per value
+const REPEAT_FIELDS = new Set(['mention', 'emails']);                      // one flag per value
 const ACTIONS = Object.keys(SPECS) as [string, ...string[]];
 
 const text = z.string();
@@ -77,7 +78,7 @@ const schema = z.object({
   from: text.optional(), to: text.optional(), since: text.optional(), after: text.optional(), download: text.optional(),
   sender: text.optional(), type: text.optional(), subject: text.optional(), start: text.optional(), end: text.optional(),
   body: text.optional(), location: text.optional(), on: text.optional(), comment: text.optional(), note: text.optional(),
-  out: text.optional(), send_to: text.optional(), due: text.optional(), list: text.optional(),
+  out: text.optional(), send_to: text.optional(), emails: z.array(text).optional(), due: text.optional(), list: text.optional(),
   remove: z.boolean().optional(), online: z.boolean().optional(),
   mention: z.array(text).optional(), members: z.array(text).optional(), attendees: z.array(text).optional(),
 });
@@ -114,7 +115,7 @@ export function buildArgs(parsed: Parsed): string[] {
 export const teamsTools = [
   {
     name: 'teams',
-    description: "Work with the user's own Microsoft Teams through the teams-browser CLI: read (unread, chat, mentions, asks, recent, digest, calendar, calls, files, media, spaces, search, people, channels, activity, presence, todo, event-show) and manage (send, edit, delete, react, mark-read, mark-unread, chat-new, chat-rename, chat-delete, chat-add, chat-remove, channel-post, event-new, event-edit, event-delete, event-respond, presence-set, upload, file-delete, todo-add, todo-done, todo-delete). Every manage action returns a draft until confirm is true. Exit codes come back as the error text.",
+    description: "Work with the user's own Microsoft Teams through the teams-browser CLI: read (unread, chat, mentions, asks, recent, digest, calendar, calls, files, media, spaces, search, people, channels, activity, presence, todo, event-show) and manage (send, edit, delete, react, mark-read, mark-unread, chat-new, chat-rename, chat-delete, chat-add, chat-remove, channel-post, event-new, event-edit, event-delete, event-respond, presence-set, upload, send-file (real attachment card with read access for the chat members), file-delete, todo-add, todo-done, todo-delete). Every manage action returns a draft until confirm is true. Exit codes come back as the error text.",
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -132,7 +133,8 @@ export const teamsTools = [
         answer: { type: 'string', description: 'event-respond: accept, decline or tentative' },
         status: { type: 'string', description: 'presence-set: Available, Busy, DoNotDisturb, BeRightBack or Away' },
         person: { type: 'string', description: 'presence: person name (default: the user); chat-remove: member to remove' },
-        path: { type: 'string', description: 'upload: local file path (up to 250 MB)' },
+        path: { type: 'string', description: 'upload/send-file: local file path (up to 250 MB)' },
+        emails: { type: 'array', items: { type: 'string' }, description: 'send-file: recipients to grant read access in a group chat (1:1 resolves the peer itself)' },
         file_name: { type: 'string', description: 'file-delete: exact file name in the drive root' },
         query: { type: 'string', description: 'search: words to look for' },
         team: { type: 'string', description: 'channels: team name part (omit to list teams); channel-post: team name part' },

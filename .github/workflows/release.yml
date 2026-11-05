@@ -80,7 +80,7 @@ jobs:
       - name: Publish
         run: |
           if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN tanımlı değil — npm publish atlanıyor (GitHub Release yeterli)."
+            echo "NPM_TOKEN is not set, skipping npm publish (the GitHub Release is enough)."
             exit 0
           fi
           npm publish --provenance --access public

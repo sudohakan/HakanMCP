@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { PROJECT_ROOT } from './utils/projectRoot.js';
 import { logger } from './utils/logger.js';
@@ -85,6 +85,22 @@ export function checkFeatureDeps(featureName: string): {
   return { available: missing.length === 0, missing };
 }
 
+const NPM_PACKAGE_NAME = /^(@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
+
+/** Installs packages without a shell; every name must be a plain npm package name. */
+export function installPackages(packages: string[], cwd: string): void {
+  const invalid = packages.filter((name) => !NPM_PACKAGE_NAME.test(name));
+  if (invalid.length > 0) {
+    throw new Error(`Refusing to install invalid package name(s): ${invalid.join(', ')}`);
+  }
+  // shortcut: bare `npm` needs a POSIX host; Windows would need npm.cmd (and a shell), upgrade if autoInstall is used there
+  execFileSync('npm', ['install', '--no-fund', '--no-audit', ...packages], {
+    cwd,
+    stdio: 'pipe',
+    timeout: 120_000,
+  });
+}
+
 const installLocks = new Map<string, Promise<void>>();
 
 /**
@@ -140,10 +156,6 @@ async function doInstallOrThrow(
   }
 
   logger.info(`Auto-installing: ${missing.join(', ')} for ${feature.description}`);
-  execSync(`npm install --no-fund --no-audit ${missing.join(' ')}`, {
-    cwd: PROJECT_ROOT,
-    stdio: 'pipe',
-    timeout: 120_000,
-  });
+  installPackages(missing, PROJECT_ROOT);
   logger.info(`Installed successfully: ${missing.join(', ')}`);
 }

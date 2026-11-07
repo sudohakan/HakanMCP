@@ -10,6 +10,7 @@
 
 import type { ToolDefinition, ToolHandler, ToolResponse } from './types/index.js';
 import { recordCall, recordError } from './utils/toolMetrics.js';
+import { annotationsFor, type ToolAnnotationHints } from './toolAnnotations.js';
 
 export interface FeatureModule {
   /** Relative path to compiled module, e.g. './tools/db.js' */
@@ -177,13 +178,14 @@ export class ToolRegistry {
    * Return static metadata for all registered tools.
    * NEVER triggers module loading — safe for tools/list.
    */
-  listTools(): Array<{ name: string; description: string; inputSchema: ToolDefinition['inputSchema'] }> {
-    const result: Array<{ name: string; description: string; inputSchema: ToolDefinition['inputSchema'] }> = [];
+  listTools(): Array<{ name: string; description: string; inputSchema: ToolDefinition['inputSchema']; annotations: ToolAnnotationHints }> {
+    const result: Array<{ name: string; description: string; inputSchema: ToolDefinition['inputSchema']; annotations: ToolAnnotationHints }> = [];
     for (const entry of this.tools.values()) {
       result.push({
         name: entry.name,
         description: entry.description,
         inputSchema: entry.inputSchema,
+        annotations: annotationsFor(entry.name),
       });
     }
     return result;

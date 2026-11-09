@@ -46,7 +46,7 @@
   },
   "optionalDependencies": {
     "mongodb": "^7.8.0",
-    "mssql": "^12.7.13",
+    "mssql": "^12.7.14",
     "mysql2": "^3.24.6",
     "pg": "8.23.1",
     "socks": "2.8.10",

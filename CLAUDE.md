@@ -21,7 +21,7 @@ server.
 
 ```
 src/index.ts          Server entry (STDIO transport, ToolRegistry)
-dist/src/index.js        What actually runs — single-file esbuild bundle
+dist/src/index.js        What actually runs — esbuild entry (+ dist/src/chunks/)
 config.yaml           Runtime configuration (Zod-validated)
 .env                  Secrets & env overrides (never committed)
 ```
@@ -31,8 +31,11 @@ connects the transport first, tool modules load second, and heavy services
 (backup, daily tool health check) are deferred to a `setImmediate` after
 `tools/list` can already be served.
 
-`ToolRegistry` registers core tools eagerly and feature tools (`db`, `mongo`)
-lazily on first call when their native dependency is present. When a dependency
+In the bundle every tool is a placeholder: `tools/list` is served from metadata
+`scripts/bundle.mjs` embeds at build time, and a module (with its chunk) loads
+on its first call. Unbundled runs (tsc output, jest) load core modules eagerly.
+Feature tools (`db`, `mongo`) additionally load only when their native
+dependency is present. When a dependency
 is missing the tool still appears in `tools/list` as a placeholder, so the
 catalog a client sees does not change with the host's install state.
 
@@ -40,9 +43,25 @@ catalog a client sees does not change with the host's install state.
 
 The repo lives on `/mnt/c` (NTFS). Node resolving a dependency graph across the
 WSL boundary dominates startup — every module is a separate cross-boundary
-read, and the server used to answer `tools/list` in tens of seconds. One file
-is one read. `npm run build` compiles with `tsc`, then bundles `src/index.ts`
-into `dist/src/index.js` via `scripts/bundle.mjs`.
+read, and the server used to answer `tools/list` in tens of seconds. The
+startup path is a handful of files. `npm run build` compiles with `tsc`, then
+bundles `src/index.ts` into `dist/src/index.js` plus code-split chunks via
+`scripts/bundle.mjs`.
+
+Splitting is about idle memory, which every session pays for its own copy:
+V8 keeps the full source and bytecode of whatever it parsed, so the old single
+3 MB file cost ~49 MB PSS idle and a ~16 s cold start; with tool modules in lazy
+chunks it is ~23 MB and ~1.5 s (median of 5 interleaved runs, 30 s idle).
+Externals are hoisted to the top of the chunk that imports them, so a static
+import of a native driver from a startup-path module loads it at startup
+(a shutdown-hook `import('./tools/mongodb.js')` once did exactly that).
+
+A running session holds its entry in memory and imports chunks by hashed name
+on a tool's first call, so the build never deletes a chunk a live process may
+still need: it builds into `dist/.bundle-staging`, smoke-tests tools/list and
+one lazy call there, copies new chunks in, swaps the entry last, and prunes
+only chunks no build has produced for 14 days. A process older than that gets
+a "rebuilt, restart the session" error on the pruned tool, not a crash.
 
 Native addons stay external: they load their own `.node` binaries at runtime
 and cannot be inlined, and they are optional, so a missing one must stay a
@@ -51,8 +70,10 @@ resolve-time failure the placeholder path already handles.
 Two things keep the bundle possible, and breaking either silently un-bundles
 the server:
 - **No template-literal imports.** `import('./tools/' + x + '.js')` is
-  unresolvable at build time. The sysint dispatcher uses an explicit
-  `CATEGORY_LOADERS` map; adding a category means adding a line.
+  unresolvable at build time and, from a chunk, resolves against
+  `dist/src/chunks/`. Tool modules are listed in `src/toolModules.ts`, sysint
+  categories in the dispatcher's `CATEGORY_LOADERS` map; adding one means adding
+  a line.
 - **JSON is imported, not read from disk.** `src/catalog/servers.json` and
   `chromeDevtools.tools.json` are static imports. A `readFileSync` against
   `__dirname` would both break bundling and resurrect the old two-step trap
@@ -95,7 +116,7 @@ src/
   utils/                logger, httpClient, dbPoolManager, processRegistry, …
   types/                TypeScript type definitions
 scripts/
-  bundle.mjs            esbuild single-file bundle
+  bundle.mjs            esbuild bundle (code-split) + embedded tool metadata
   measure-coldstart.mjs Spawn-to-tools/list timing
   generate-tool-manifest.ts
 data/sysint/catalog.json  sysint tool catalog (97 tools, 9 categories)
@@ -177,7 +198,7 @@ path is demonstrably worse.
 
 - **Runtime:** Node.js >= 20, ESM (`"type": "module"`)
 - **Language:** TypeScript 5.x (`tsc -p tsconfig.build.json`)
-- **Bundler:** esbuild (single-file server output)
+- **Bundler:** esbuild (entry + code-split chunks)
 - **MCP SDK:** `@modelcontextprotocol/sdk` (STDIO transport)
 - **Config:** YAML (js-yaml) + Zod schema validation + dotenv
 - **Logging:** Winston with daily-rotate-file

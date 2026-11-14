@@ -40,11 +40,13 @@ async function probe(url: string, timeoutMs = 1500): Promise<'up' | 'down'> {
   }
 }
 
-/** Is the running entry a single-file bundle or the per-module tsc output?
+/** Is the running entry the esbuild bundle or the per-module tsc output?
  *  The bundle is the fast-startup path; falling back to per-module loading on
  *  NTFS is a silent regression worth surfacing. */
 function buildMode(): 'bundle' | 'modules' | 'unknown' {
   try {
+    // The code-split bundle runs this module from dist/src/chunks/.
+    if (/[/\\]chunks[/\\]health-[^/\\]+\.js$/.test(fileURLToPath(import.meta.url))) return 'bundle';
     const entry = fileURLToPath(import.meta.url).replace(/health\.js$/, '').replace(/[/\\]tools[/\\]$/, '/index.js');
     const size = statSync(entry).size;
     // The bundle inlines every module → megabytes; a tsc-emitted index.js is a few KB.

@@ -134,6 +134,8 @@ export class ToolRegistry {
   private tools = new Map<string, ToolEntry>();
   /** Caches module import promises to prevent concurrent double-imports */
   private loadedModules = new Map<string, Promise<ToolDefinition[]>>();
+  /** Module loaders by placeholder prefix; take precedence over FEATURE_TOOL_MAP modulePath */
+  private loaders = new Map<string, () => Promise<ToolDefinition[]>>();
   private timeoutSec: number;
   private log: ToolRegistryOptions['logger'] | undefined;
 
@@ -175,6 +177,14 @@ export class ToolRegistry {
   }
 
   /**
+   * Set the loader for placeholders registered under `prefix`. It runs once, on
+   * the first getHandler() call for any of them, and fills every tool it returns.
+   */
+  registerLoader(prefix: string, load: () => Promise<ToolDefinition[]>): void {
+    this.loaders.set(prefix, load);
+  }
+
+  /**
    * Return static metadata for all registered tools.
    * NEVER triggers module loading — safe for tools/list.
    */
@@ -213,10 +223,11 @@ export class ToolRegistry {
     if (!prefix) return null;
 
     const featureModule = FEATURE_TOOL_MAP[prefix];
-    if (!featureModule) return null;
+    const loader = this.loaders.get(prefix);
+    if (!featureModule && !loader) return null;
 
     try {
-      const tools = await this.loadModule(prefix, featureModule);
+      const tools = await this.loadModule(prefix, featureModule, loader);
 
       for (const tool of tools) {
         const existing = this.tools.get(tool.name);
@@ -229,6 +240,19 @@ export class ToolRegistry {
       return updated?.handler ?? null;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // A build prunes chunks unused for two weeks; a process older than that asks for one by its old hash.
+      const isStaleChunk = /ERR_MODULE_NOT_FOUND|Cannot find module/.test(message) && /[/\\]chunks[/\\]/.test(message);
+      if (isStaleChunk || !featureModule || featureModule.core) {
+        // Not cached: the module cache dropped the rejected load, so the next call retries.
+        this.log?.warn('Failed to load tool module', { tool: name, prefix, error: message });
+        const text = isStaleChunk
+          ? `Tool "${name}" is unavailable: HakanMCP was rebuilt and this process's code chunk was pruned. Restart the session (or reconnect the MCP server). ${message}`
+          : `Tool "${name}" failed to load: ${message}`;
+        return async (): Promise<ToolResponse> => ({
+          content: [{ type: 'text', text }],
+          isError: true,
+        });
+      }
       this.log?.warn('Failed to load feature module, using placeholder', {
         tool: name,
         prefix,
@@ -255,11 +279,15 @@ export class ToolRegistry {
    * Load a feature module, ensuring dependencies are available first.
    * Uses loadedModules cache to prevent concurrent double-imports.
    */
-  private loadModule(prefix: string, featureModule: FeatureModule): Promise<ToolDefinition[]> {
-    const cacheKey = featureModule.modulePath;
+  private loadModule(
+    prefix: string,
+    featureModule: FeatureModule | undefined,
+    loader: (() => Promise<ToolDefinition[]>) | undefined,
+  ): Promise<ToolDefinition[]> {
+    const cacheKey = prefix;
 
     if (!this.loadedModules.has(cacheKey)) {
-      const loadPromise = this.doLoadModule(featureModule);
+      const loadPromise = this.doLoadModule(prefix, featureModule, loader);
       this.loadedModules.set(cacheKey, loadPromise);
 
       loadPromise.catch(() => {
@@ -270,24 +298,25 @@ export class ToolRegistry {
     return this.loadedModules.get(cacheKey)!;
   }
 
-  private async doLoadModule(featureModule: FeatureModule): Promise<ToolDefinition[]> {
-    const { ensureDependency } = await import('./dependencyResolver.js');
-    await ensureDependency(featureModule.featureName);
-
-    const mod = await import(featureModule.modulePath);
-    const tools: ToolDefinition[] = mod[featureModule.exportName];
-
-    if (!Array.isArray(tools)) {
-      throw new Error(
-        `Module ${featureModule.modulePath} does not export "${featureModule.exportName}" as an array`,
-      );
+  private async doLoadModule(
+    prefix: string,
+    featureModule: FeatureModule | undefined,
+    loader: (() => Promise<ToolDefinition[]>) | undefined,
+  ): Promise<ToolDefinition[]> {
+    if (featureModule && !featureModule.core) {
+      const { ensureDependency } = await import('./dependencyResolver.js');
+      await ensureDependency(featureModule.featureName);
     }
 
-    this.log?.info('Lazy-loaded feature module', {
-      modulePath: featureModule.modulePath,
-      exportName: featureModule.exportName,
-      toolCount: tools.length,
-    });
+    const tools: ToolDefinition[] = loader
+      ? await loader()
+      : (await import(featureModule!.modulePath))[featureModule!.exportName];
+
+    if (!Array.isArray(tools)) {
+      throw new Error(`Module for "${prefix}" did not return a tool array`);
+    }
+
+    this.log?.info('Lazy-loaded tool module', { prefix, toolCount: tools.length });
 
     return tools;
   }

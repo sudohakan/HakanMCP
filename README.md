@@ -18,7 +18,7 @@
 - **On-demand server catalog**: connect git, filesystem, sqlite, duckdb, playwright, markitdown and more at runtime instead of registering each one permanently.
 - **Low-token browser bridge**: drive Chrome through wrappers instead of returning large raw snapshots.
 - **Lazy native drivers**: SQL and Mongo drivers load on first call; a missing one stays a placeholder, not a crash.
-- **Single-file bundle**: one `dist/src/index.js`, one file read instead of a module graph, which is what startup is paid in on NTFS.
+- **Bundle with lazy chunks**: `dist/src/index.js` plus code-split chunks; startup reads a few files instead of a module graph (startup on NTFS is paid in file reads), and each tool module loads on its first call, which keeps idle memory per session low.
 
 ## Installation
 
@@ -102,7 +102,7 @@ npm run measure:coldstart  # spawn-to-tools/list median
 | `test` | Jest suite |
 | `lint` / `format` | ESLint / Prettier |
 
-Adding a tool module: add a static loader line in `src/index.ts` `TOOL_MODULES`. Adding an on-demand catalog server: edit `src/catalog/servers.json` (a static import, no separate copy-to-`dist` step).
+Adding a tool module: add a static loader line in `src/toolModules.ts` `TOOL_MODULES`. Adding an on-demand catalog server: edit `src/catalog/servers.json` (a static import, no separate copy-to-`dist` step).
 
 `package.json` `overrides` pins `@azure/msal-node` to `^7.1.1`. It is not a direct dependency: `mssql`, `tedious` and `@azure/identity` pull it in for Azure AD auth, and `@azure/identity` asks for `^6`, which carries a high-severity advisory (GHSA-xcx6-jx8p-x3h5, fails `npm audit --audit-level=high` in CI). Drop the override once `@azure/identity` ships with msal-node 7.
 
@@ -111,7 +111,7 @@ Adding a tool module: add a static loader line in `src/index.ts` `TOOL_MODULES`.
 ```
 src/index.ts        server entry (STDIO transport, ToolRegistry)
 src/catalog/        on-demand server catalog (servers.json)
-dist/src/index.js   what runs: single-file esbuild bundle
+dist/src/index.js   what runs: esbuild entry, chunks in dist/src/chunks/
 config.yaml         runtime config (Zod-validated; unknown keys dropped, not rejected)
 tests/              Jest suite
 ```

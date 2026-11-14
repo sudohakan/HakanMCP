@@ -1,26 +1,11 @@
+import { TOOL_MODULES, FEATURE_LOADERS } from './toolModules.js';
+
 process.setMaxListeners(20);
 
-// Core tool modules. The loaders are static imports, not import(variable):
-// a computed specifier is unresolvable at bundle time, and esbuild would leave
-// it as a runtime import that finds nothing inside the single-file bundle —
-// the server would start with zero tools and only a warning. Adding a tool
-// module means adding a line here.
-type ToolList = Array<import('./types/index.js').ToolDefinition>;
-const TOOL_MODULES: Array<{ name: string; load: () => Promise<ToolList> }> = [
-  { name: 'health', load: async () => (await import('./tools/health.js')).healthTools as ToolList },
-  { name: 'gitbook', load: async () => (await import('./tools/gitbook.js')).gitbookTools as ToolList },
-  { name: 'http', load: async () => (await import('./tools/http.js')).httpTools as ToolList },
-  { name: 'backup', load: async () => (await import('./tools/backup.js')).backupTools as ToolList },
-  { name: 'mcpClient', load: async () => (await import('./tools/mcpClient.js')).mcpClientTools as ToolList },
-  { name: 'disk', load: async () => (await import('./tools/disk.js')).diskTools as ToolList },
-  { name: 'sysint', load: async () => (await import('./tools/sysint.js')).sysintTools as ToolList },
-  { name: 'cfbypass', load: async () => (await import('./tools/cfbypass.js')).cfbypassTools as ToolList },
-  { name: 'chromeDevtools', load: async () => (await import('./tools/chromeDevtools.js')).chromeDevtoolsTools as ToolList },
-  { name: 'exaSearch', load: async () => (await import('./tools/exaSearch.js')).exaTools as ToolList },
-  { name: 'ollamaChat', load: async () => (await import('./tools/ollamaChat.js')).ollamaChatTools as ToolList },
-  { name: 'transcribeLocal', load: async () => (await import('./tools/transcribeLocal.js')).transcribeLocalTools as ToolList },
-  { name: 'teams', load: async () => (await import('./tools/teams.js')).teamsTools as ToolList },
-];
+// Bundled builds embed every core module's tool metadata (scripts/bundle.mjs).
+// tools/list is then served from it and each module, with its chunk, loads on
+// its first call; unbundled runs (tsc output, ts-node, jest) load eagerly.
+declare const __TOOL_METADATA__: Record<string, Array<{ name: string; description: string; inputSchema: unknown }>> | undefined;
 
 async function main() {
   // Phase 0: Import MCP SDK first and connect transport immediately
@@ -113,7 +98,13 @@ async function main() {
 
   // Load core tools
   const loadStart = Date.now();
+  const embeddedMetadata = typeof __TOOL_METADATA__ === 'undefined' ? undefined : __TOOL_METADATA__;
   const loadPromises = TOOL_MODULES.map(async (mod) => {
+    if (embeddedMetadata?.[mod.name]) {
+      registerPlaceholders(embeddedMetadata, mod.name, registry);
+      registry.registerLoader(mod.name, mod.load);
+      return;
+    }
     try {
       const tools = await mod.load();
       for (const tool of tools) {
@@ -134,6 +125,7 @@ async function main() {
   // carries the metadata.
   for (const prefix of ['db', 'mongo']) {
     registerPlaceholders(FEATURE_TOOL_METADATA, prefix, registry);
+    registry.registerLoader(prefix, FEATURE_LOADERS[prefix]);
   }
 
   await Promise.all(loadPromises);
@@ -196,13 +188,6 @@ async function main() {
       const { backupService } = await import('./services/backupService.js');
       backupService.stop();
       if (stopToolHealthCheckRef) stopToolHealthCheckRef();
-
-      try {
-        const { stopMongoCleanup } = await import('./tools/mongodb.js');
-        stopMongoCleanup();
-      } catch (err) {
-        logger.error('MongoDB cleanup failed during shutdown', err);
-      }
 
       const { processRegistry } = await import('./utils/processRegistry.js');
       await processRegistry.killAll(3000);

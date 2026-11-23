@@ -45,7 +45,7 @@
     "zod-to-json-schema": "^3.25.2"
   },
   "optionalDependencies": {
-    "mongodb": "^7.8.0",
+    "mongodb": "^7.9.1",
     "mssql": "^12.7.13",
     "mysql2": "^3.24.6",
     "pg": "8.23.1",

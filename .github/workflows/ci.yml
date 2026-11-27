@@ -3,8 +3,6 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -89,6 +87,8 @@ jobs:
   build-macos:
     name: Build (macos-latest)
     runs-on: macos-latest
+    # macOS minutes count 10x against the shared Actions quota: manual runs only.
+    if: github.event_name == 'workflow_dispatch'
     # Hosted macOS capacity can leave the job queued ~15 min until GitHub cancels it (the timeout
     # below counts only from job start). The gate fails on a real macOS failure, not on cancelled.
     timeout-minutes: 15
